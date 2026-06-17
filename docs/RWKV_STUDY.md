@@ -1,20 +1,29 @@
-# RWKV as a Recurrent Substrate — State-Propagation Study
+# RWKV as an RNN Signal Source — State-Propagation Study
 
-Substrate research for a **three-ingredient hybrid**:
+Signal-source research for a **multi-input contractive architecture**.
 
-1. a recurrent **substrate** — carries an evolving state (candidate fillers:
-   **VRU**, or **RWKV** studied fresh here; *the slot is open*);
-2. a transformer **reasoner** — attention-based reasoning;
-3. **Recursion** — the **application layer that couples** the substrate to the
-   reasoner. Not the substrate, not a modulator on either side: it *owns the
-   coupling*.
+The architecture: **Recursion is the substrate.** It has its own state and its
+own σ<1 contractive dynamics — *that contractive evolution is the manifold.*
+Multiple **signal sources project into it** through input ports; Recursion
+integrates them and evolves. The current instance has two sources:
 
-This document studies **RWKV purely as a candidate for ingredient #1** — how a
-real, scaled recurrent architecture propagates state, and what *ports* it would
-expose to a coupling layer. It deliberately does **not** decide VRU-vs-RWKV
-(§d), nor how the three layers couple (§e); those stay open for the architect.
-Parts (a)–(b) are the substrate mechanics; (c) re-reads them as an *interface*;
-(d) frames the substrate decision; (e) maps the coupling design space.
+1. an **RNN signal source** (candidate fillers: **VRU** or **RWKV**, studied
+   fresh here);
+2. a **transformer signal source** (attention-based);
+
+…feeding **Recursion**, the multi-input contractive substrate they project into.
+This is **not** structurally a two-source design: additional sources — other
+modalities, error signals, specialized processors — plug into Recursion's port
+surface without changing its substrate nature. "RNN + transformer + Recursion"
+is the *current instance*, not the structural limit.
+
+This document studies **RWKV purely as a candidate for the RNN signal-source
+slot** — one of Recursion's input ports — and what it exposes for Recursion to
+ingest. It does **not** decide RWKV-vs-VRU for that port (§d), nor fix the
+multi-input design (§e); those are the architect's calls. Parts (a)–(b) are
+RWKV's state-propagation mechanics; (c) re-reads them as the *ports* RWKV would
+present to Recursion; (d) frames the RNN-source decision; (e) maps the
+multi-input substrate design space.
 
 **Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM).
 A focused, text-only subset of the studied files is vendored under
@@ -23,9 +32,10 @@ below resolve in-repo (the full upstream tree carries ~5 MB of images plus many
 model generations that the study did not need — see that folder's
 `PROVENANCE.md`).
 
-**Aeon source referenced** as one concrete data point on a VRU-class cell — not
-as the target architecture: the `aeon/` package (`model.py`, `block.py`,
-`recursion.py`, `config.py`).
+**Aeon source referenced:** the `aeon/` package — `recursion.py` is the
+**Recursion substrate** (the `σ_max<margin<1` Cayley cell), and
+`block.py`/`model.py` show the *current* wiring (a one-sided instance being
+moved past, see §c).
 
 **Files read, top to bottom:**
 
@@ -288,146 +298,165 @@ random access in exchange for constant-memory, linear-time inference.
 
 ---
 
-## c) RWKV as a candidate recurrent substrate — its state interface ("ports")
+## c) RWKV as a candidate RNN signal source — the ports it presents to Recursion
 
-A substrate is judged on two things: how well it *holds* information (parts a–b)
-and what **ports** it exposes for a coupling layer to read from and write to.
-Read off the RNN-form code, RWKV's ports are unusually rich:
+RWKV would occupy **one of Recursion's input ports** (the RNN signal source).
+What matters for that role is not only how RWKV holds state (parts a–b) but the
+**ports it presents**: what Recursion can ingest from it, and what Recursion (or
+a feedback loop) can push back into it. Read off the RNN-form code, RWKV's port
+surface is unusually rich.
 
-**Read ports — what a reasoner could consume:**
+**Read ports — what Recursion can ingest from RWKV:**
 
-* **State readout** `out = state @ r` (v7) — the canned "what the substrate
-  knows now", `C`-dim per layer; already the time-mix output.
+* **State readout** `out = state @ r` (v7) — the canned "what the source knows
+  now", `C`-dim per layer; already the time-mix output.
 * **Raw matrix state** `S` of shape `(H, N, N)` per layer — the full
-  associative memory. A coupling layer can expose `S` itself (or a *learned
-  query* of it) instead of only the built-in readout `r`. This is the port that
-  makes a true cross-attention-style read possible.
-* **Per-layer or pooled** — RWKV keeps one `S` per layer, so the coupling layer
-  can read at any depth, or pool across depth.
+  associative memory. Recursion can ingest `S` itself (or a *learned query* of
+  it) instead of only the built-in readout `r`. This is the port that makes a
+  true cross-attention-style read possible.
+* **Per-layer or pooled** — RWKV keeps one `S` per layer, so Recursion can read
+  at any depth, or pool across depth.
 
-**Write ports — what a reasoner could push into the substrate:**
+**Write ports — what Recursion (or a feedback loop) can push into RWKV:**
 
-* **Association write** `S += v ⊗ k` — inject a key→value memory directly; a
-  reasoner can write conclusions as retrievable associations.
+* **Association write** `S += v ⊗ k` — inject a key→value memory directly.
 * **Decay control** `w` (per channel, `∈(0,1)`) — set how long things persist;
-  modulate memory horizon per channel.
+  modulate the source's memory horizon per channel.
 * **Delta-rule erase / learning-rate** `a`, `kk` (v7) — drive in-context
-  write/overwrite, so the substrate is *programmable while reading*.
+  write/overwrite, so the source is *programmable while reading*.
 * **Input mixing** — the standard token-shifted `x` input is the cheapest write.
 
 **Cross-layer bus.** v7's `v_first` (`model.py:875–878`) shows RWKV already
-supports a value bus threading layer 0 → all layers — a coupling layer could
-ride or extend it.
+carries a value bus threading layer 0 → all layers — Recursion could ride or
+extend it.
 
-**Clocking.** The substrate steps **`L` times per token** (once per layer,
-inside the operator), so coupling can be per-layer or batched at a readout.
+**Clocking.** RWKV's own state steps **`L` times per token** (once per layer,
+inside the operator). That sets the source's *native* update cadence, which any
+sampling against it (§e) has to reckon with.
 
-**Net:** RWKV offers a coupling layer a **high-capacity, content-addressable,
-multi-timescale, writable** memory with linear-time / constant-space dynamics
-and a parallel-scan training path. That is a *rich* substrate — many more ports
-than a single-vector cell.
+**Net:** as an RNN signal source, RWKV presents Recursion a **high-capacity,
+content-addressable, multi-timescale, writable** port surface, with
+linear-time / constant-space dynamics and a parallel-scan training path — many
+more ports than a single-vector source.
 
-**Contrast: a VRU-class cell.** Using the certified contractive cell in
-`aeon/recursion.py` as a concrete stand-in (flag: swap in the real VRU spec when
-you fix it), the port surface is far smaller — one input `x_t` (write), one
-hidden `h_t` (read), a slow carry `c`, and a single global contraction + scalar
-`λ` for decay. Its strength is **guarantees, not interface richness**:
-`σ_max < margin < 1` (`margin_h=0.98`, `margin_c=0.95`) gives provable
-forgetting, a unique attractor per fixed input, and bounded sensitivity —
-properties a coupling layer can *rely on* rather than police. Two substrate
+**Contrast: a VRU-class source.** VRU's spec is open; as a *character*
+placeholder for "a certified, simple RNN source" (real spec TBD), such a cell
+presents far fewer ports — one input (write), one hidden read, perhaps a decay
+knob. Its strength is **guarantees, not port richness**: a `σ_max<1` contractive
+cell gives provable forgetting, a unique attractor per fixed input, and bounded
+sensitivity — properties Recursion can *rely on* rather than police. Two source
 philosophies: **RWKV = capacity & rich ports; VRU-class = bounded, certified,
 simple ports.**
 
-> **Where the *current* Aeon code sits is now just a data point, not the
-> target.** It fuses a transformer with a VRU-class cell used as an **additive
-> modulator**: `AeonBlock` reads the global state, gates it by `γ_l` (zero at
-> init), and adds it to the residual before the Qwen block (`block.py:69–98`);
-> the state advances **once per token** after the full stack, on the *average*
-> of all block writes (`model.py:160–197`). That is the **one-sided** design
-> being moved past — substrate and coupling are not factored apart, and the
-> recurrence only nudges the residual. The three-ingredient frame separates
-> them; this study treats the substrate slot as genuinely open.
+> **The current Aeon code is a *one-sided* instance of this architecture — the
+> thing being moved past.** Today only the **transformer** projects into
+> Recursion: each block emits a write, the writes are **averaged** into a single
+> per-token step (`model.py:160–197`), and Recursion's state is read back only
+> as a **gated additive shift** on the residual (`block.py:69–98`, `γ_l=0` at
+> init). There is **no RNN signal source**, and the port surface is a single
+> averaged write in / a DC offset out. Adding RWKV (or VRU) as a second input
+> port — and widening the ports — is exactly the correction.
+> `recursion.py`'s `RecursionChartB` is the **Recursion substrate** itself (the
+> `σ_max<margin<1` Cayley cell, `margin_h=0.98`, `margin_c=0.95`) — not a signal
+> source.
 
 ---
 
-## d) The substrate decision — RWKV vs VRU (kept open)
+## d) The RNN-source decision — RWKV vs VRU (kept open)
 
-Decision deferred to the architect. These are the axes any recurrent substrate
-should be judged on *for this role*, with RWKV filled from the study and the VRU
-column filled hypothetically from `recursion.py` (flagged — replace with the
-real spec):
+Which candidate fills Recursion's **RNN signal-source port**. Decision deferred
+to the architect. These are the axes for judging an RNN-source candidate, with
+RWKV filled from the study and the VRU column a flagged hypothesis (replace with
+the real spec):
 
-| Axis | RWKV (studied) | VRU-class (per `recursion.py`; hypothesis) |
+| Axis | RWKV (studied) | VRU-class (certified-contractive hypothesis; spec TBD) |
 |---|---|---|
-| State shape / capacity | `(H,N,N)` matrix per layer — **high** | `(h_rec,)` vector + carry — **low** |
+| State shape / capacity | `(H,N,N)` matrix per layer — **high** | vector + carry — **low** |
 | State-evolution expressivity | v7 data-dependent matrix transition (delta rule) | contractive affine + `tanh` |
 | Decay / multi-timescale | per-channel learnable spectrum — **strong** | single contraction + scalar `λ` — weak |
 | Stability guarantee | bounded `w∈(0,1)`; no global cert | **certified** `σ_max<1` (Banach/Lyapunov) |
 | Trainability / parallelism | **parallel scan** ("GPT mode"), proven at scale | sequential BPTT (nonlinear recurrence) |
-| Coupling ports (read/write) | **rich** (matrix `S`, decay, delta-rule, bus) | sparse (one in, one out) |
+| Port surface to Recursion | **rich** (matrix `S`, decay, delta-rule, bus) | sparse (one in, one out) |
 | Constant-space inference | yes (`O(1)` in `T`) | yes |
 | Maturity / warm-start | pretrained checkpoints exist | bespoke |
 | Controllability / interpretability | lower | **high** (provable bounds) |
 
 The real tension: **capacity + rich ports + maturity (RWKV)** versus
-**certified control + simplicity (VRU)**. Which wins depends on what the
-substrate is *for* in the coupling (§e): if Recursion leans on provable
-substrate behavior, VRU's guarantees are load-bearing; if it leans on the
-substrate as a big queryable/writable memory, RWKV's ports and capacity win. So
-§d and §e are entangled but not identical decisions.
+**certified control + simplicity (VRU)**. Which wins depends on what Recursion
+needs *from* the RNN port (§e): if Recursion leans on provable source behavior,
+VRU's guarantees are load-bearing; if it leans on the source as a big
+queryable/writable memory, RWKV's ports and capacity win. So §d and §e are
+entangled but not identical decisions.
 
 **To slot VRU in precisely I'd need:** its state shape/capacity; whether its
 recurrence is linear (parallel-scannable) or nonlinear (sequential); and which
-read/write ports you intend to expose to the coupling layer.
+read/write ports it exposes to Recursion.
 
 ---
 
-## e) The coupling question — how Recursion joins substrate ↔ reasoner
+## e) Multi-input substrate design space
 
-This is the architecture question you're sitting with; I'm **mapping the design
-space, not choosing**. Recursion-as-application-layer has (at least) five
-roughly orthogonal degrees of freedom. The substrate choice (§d) constrains
-some of them, not all.
+Recursion is a **multi-input contractive substrate**: signal sources project
+into its σ<1 manifold through input ports, and it integrates them and evolves.
+The design space is therefore **per-source port design** layered over the
+substrate's own dynamics. I'm **mapping it, not choosing**. Five roughly
+orthogonal degrees of freedom, stated per-source:
 
-**A. Read coupling (substrate → reasoner).** How does the reasoner *see* state?
-Floor → rich: additive residual bias (current Aeon) → state as extra **KV
-memory slot(s)** the reasoner attends to (content-addressable) → state
-**gates** attention values / FFN → reasoner **cross-attends into `S`**.
-*Substrate-dependent:* RWKV's `(H,N,N)` `S` supports a true cross-attention
-read; a vector VRU supports bias/gating/KV-slot but not a rich matrix query.
+**A. Per-source read port shape** — what Recursion ingests *from* a source.
+Floor → rich: additive bias → the source's state as **KV memory slot(s)**
+Recursion attends to → the source **gates** internal computation → Recursion
+**cross-attends into the source's state**. *Source-dependent:* RWKV's `(H,N,N)`
+`S` supports a true cross-attention read; a vector source supports
+bias/gating/KV-slot but not a rich matrix query.
 
-**B. Write coupling (reasoner → substrate).** What updates the substrate?
-Reasoner hidden states projected as substrate input (cheap) → reasoner **writes
-associations into `S`** (RWKV-only) → reasoner **controls decay / learning-rate
-knobs**.
+**B. Per-source write port shape** — what Recursion pushes *back to* a source.
+None (feedforward source) → Recursion's output projected as the source's input →
+Recursion **writes directly into the source's state / controls its knobs**
+(RWKV's `S`, decay, learning-rate).
 
-**C. Clocking / schedule.** When does the substrate step relative to the
-reasoner? Once per token after the full stack (current Aeon) → per-layer
-(RWKV-native) → substrate on a **slower or faster clock** (the substrate
-"thinks" across multiple reasoner passes, or persists across turns while the
-reasoner restarts). This is where genuine three-way timing lives.
+**C. Per-source sampling rate** against Recursion's contractive clock. Each
+source can be sampled at its own cadence relative to the substrate's evolution —
+fast sources every step, slow ones sub-sampled, or the substrate run faster than
+any source.
 
-**D. Loop topology.** Feedforward (substrate informs reasoner only) vs **closed
-loop** (reasoner updates substrate → informs the next step). "Application
-layer" implies Recursion owns a closed loop; the open question is how tight.
+**D. Loop topology — per source.** Whether Recursion's output feeds **back** to
+each source (closed loop) or the source is read-only into the substrate
+(feedforward). Can differ source to source.
 
-**E. Where Recursion's intelligence lives.** Thin interface (fixed projections)
-vs **substantive controller** with its own parameters/policy deciding *what* to
-read/write and *when*. Your framing — "application layer that couples" — points
-substantive: Recursion as a learned controller over the substrate's ports, not
-glue.
+**E. Where the cognitive work lives.** The distribution between the specialized
+sources (RWKV's associative memory, the transformer's attention) and Recursion's
+**integrating** substrate — how much each source pre-computes versus how much
+integration the contractive manifold does.
 
 Two observations to carry in:
 
-* **A/B (coupling richness) and §d (substrate) are coupled.** Rich coupling
-  needs a substrate with rich ports — so "RWKV vs VRU" and "how rich is the
-  coupling" want to be decided *together*, not in sequence.
-* **C/D (clocking, loop topology) are largely substrate-independent.** You can
-  fix the three-way timing and whether Recursion runs a closed loop *before*
-  committing the substrate. Those may be the cleanest places to start.
+* **Per-source read-port richness (A) and the source choice (§d) are entangled.**
+  The richness of Recursion's RNN-input port is **capped by what the RNN source
+  exposes**: RWKV's matrix `S` admits a true cross-attention read; a vector VRU
+  admits bias/gating/KV-slot. Source choice and port shape want to be decided
+  *together*.
+* **Sampling rate (C) and loop topology (D) are source-independent at the
+  framing level, but implementation cost is not.** RWKV-7's matrix state updates
+  **per token by construction**, so sampling it slower means bypassing updates
+  or holding state; a VRU's cadence is configurable. The genuinely novel
+  property generalizes beyond two sources: **slow-clock contractive integration
+  across multiple fast-clock signal sources** is something no single source —
+  RNN or transformer — has alone.
 
-Per your division of labor I stop at the map — no coupling recommendation. The
-substrate research is in hand for the VRU-vs-RWKV call.
+### Architectural property: not limited to two sources
+
+**Load-bearing framing, not a detail.** The architecture is not structurally
+"RNN + transformer + Recursion". It is **Recursion as a multi-input contractive
+substrate** that *currently* has two sources but is not limited to two. The σ<1
+manifold and its port surface are the invariant; additional sources — other
+modalities, error signals, specialized processors — plug into new input ports
+without changing Recursion's substrate nature. "RNN + transformer" is the
+present instance, not the ceiling. Every axis above (A–E) is defined *per source*
+precisely so the frame holds as ports are added.
+
+Per the division of labor I stop at the map — no source or design-space
+recommendation. The RWKV signal-source research is in hand for the RWKV-vs-VRU
+call.
 
 ---
 
