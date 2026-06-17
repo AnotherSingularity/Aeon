@@ -4,9 +4,12 @@ A reference study of RWKV's state-propagation design, read against Aeon's
 current architecture, to inform Aeon's next-generation information-flow
 decisions.
 
-**Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM)
-(cloned locally for this study; not vendored here because of its size and
-separate license — it carries ~5 MB of images plus many model generations).
+**Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM).
+A focused, text-only subset of the studied files is vendored under
+[`../reference/RWKV-LM/`](../reference/RWKV-LM/) so the file/line citations
+below resolve in-repo (the full upstream tree carries ~5 MB of images plus many
+model generations that the study did not need — see that folder's
+`PROVENANCE.md`).
 
 **Aeon source referenced:** the `aeon/` package handed over for this work
 (`model.py`, `block.py`, `recursion.py`, `config.py`).
