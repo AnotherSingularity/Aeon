@@ -19,11 +19,25 @@ if sub.has("matrix_read"):           # optional, negotiated
 |---|---|
 | `port.py` | framework-free `SubstratePort` ABC + capability tiers (REQUIRED + OPTIONAL). Imports no torch — the contract is testable without it. |
 | `__init__.py` | exports + `make_substrate()` factory (lazy-imports cells). |
-| `rwkv_cell.py` | **RWKV-class** cell (Aeon-original): matrix state `(H,N,N)`, per-channel decay, outer-product write. Advertises `matrix_read`, `decay_control`, `assoc_write`. |
-| `vru_cell.py` | **candidate contractive-class** cell (Aeon-original, *provisional*): spectral-norm-bounded `σ<1` recurrence + EMA carry. Advertises `decay_control`. |
+| `rwkv_cell.py` | **RWKV-class** cell (Aeon-original): matrix state `(H,N,N)`, per-channel decay, outer-product write; tanh-bounded readout. Advertises `matrix_read`, `decay_control` (read-only), `assoc_write`. |
+| `vru_cell.py` | **candidate** cell (Aeon-original), disclosed spec: a single state `h` of dim `H`, recurrence `h = tanh(W_x x + scalar · W_h h)` with a fixed geometric `scalar`, no gates/carry/clamping. Output is `h` (tanh-bounded). Advertises `decay_control` (read-only). |
 
 Both cells are written from design understanding of the archetypes — **no
 external package is wrapped or imported** (the no-external-codebases principle).
+
+Two contract points the port enforces:
+
+- **Decay is substrate-owned (read-only).** `decay_control` exposes
+  `read_decay()` for the joiner to *introspect* (VRU: the fixed scalar; RWKV:
+  the per-channel learned tensor). There is no decay mutator.
+- **Bounded output is required.** `step()`/`read()` return finite values within
+  `output_bound` elementwise (both cells: `1.0`, via tanh). Rationale:
+  Recursion's σ<1 certificate gives system-wide boundedness only if its inputs
+  are bounded, so the port enforces input-boundedness at the substrate side.
+
+A structural test (`test_vru_no_recursion_class_mechanisms`) parses `vru_cell.py`
+and fails if Recursion-class mechanisms (spectral norm, carry/EMA, gates,
+clamping) reappear — a durable guard against drift.
 
 Adding a substrate later = add one `*_cell.py` + one branch in
 `make_substrate()`. The joiner never changes — it is written against `port.py`.

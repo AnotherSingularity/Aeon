@@ -5,8 +5,8 @@ A from-scratch implementation of the RWKV design *archetype* studied in
 docs/RWKV_STUDY.md — **not** a wrapper or import of BlinkDL/RWKV-LM. It realises
 the matrix-state, per-channel-decay, outer-product-write recurrence as an
 `nn.Module` that satisfies `SubstratePort`, and advertises the rich optional
-ports (matrix read, decay control, delta-rule association write) that make the
-RWKV archetype worth deploying as the RNN signal source.
+ports (matrix read, decay read-only introspection, delta-rule association
+write).
 
 State (per batch element): a matrix S of shape (H, N, N) — H heads of size N.
 Recurrence (RNN form, v6-style core):
@@ -14,17 +14,21 @@ Recurrence (RNN form, v6-style core):
     S_t   = a_t + diag(w) · S_{t-1}        # per-channel decay w∈(0,1)
     out_t = r_t · S_t                       # receptance read       (H, 1, N)
 The v7 delta-rule transition (state @ ab erase term) is a documented extension
-point on top of this core; see `assoc_write` and the note in `step`.
+point on top of this core; see `assoc_write`.
 
-NOTE: numeric behaviour is untested in the authoring environment (no torch
-available there); the conformance test in tests/ exercises it where torch is
-installed.
+Bounded output (port contract): the raw receptance read is unbounded, so the
+readout is wrapped in tanh before return ⇒ output ∈ (-1, 1)^d_state,
+output_bound = 1.0. (Alternatives considered: hard clamp, or per-head
+GroupNorm + a declared norm bound; tanh is chosen for a smooth, uniform (-1, 1)
+bound matching the other cells.)
+
+NOTE: numeric behaviour is untested in the authoring environment (no torch);
+the conformance tests exercise it where torch is installed.
 """
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .port import SubstratePort, MATRIX_READ, DECAY_CONTROL, ASSOC_WRITE
 
@@ -42,6 +46,7 @@ class RWKVCell(nn.Module, SubstratePort):
         nn.Module.__init__(self)
         self.d_in = d_in
         self.d_state = d_state
+        self.output_bound = 1.0          # tanh wrap on the readout
         self.H = n_head
         self.N = head_size
         self.dim_att = n_head * head_size
@@ -57,6 +62,7 @@ class RWKVCell(nn.Module, SubstratePort):
 
         # per-channel decay, stored as a logit; w = sigmoid(logit) ∈ (0,1).
         # Init spread across timescales (fast→slow), echoing RWKV's decay init.
+        # Substrate-owned: there is no external mutator (decay is read-only).
         lin = torch.linspace(-4.0, 4.0, self.dim_att)
         self.decay_logit = nn.Parameter(lin)
 
@@ -64,14 +70,10 @@ class RWKVCell(nn.Module, SubstratePort):
         self._S: torch.Tensor | None = None          # (B, H, N, N)
         self._read: torch.Tensor | None = None        # (B, d_state)
         self._pending_drive: torch.Tensor | None = None
-        self._decay_mod: torch.Tensor | None = None    # optional (dim_att,) logit shift
 
     # ---- helpers ----------------------------------------------------------
     def _w(self) -> torch.Tensor:
-        logit = self.decay_logit
-        if self._decay_mod is not None:
-            logit = logit + self._decay_mod
-        return torch.sigmoid(logit).view(self.H, self.N)  # (H, N)
+        return torch.sigmoid(self.decay_logit).view(self.H, self.N)  # (H, N)
 
     # ---- required tier ----------------------------------------------------
     def reset(self, batch_size: int, device=None) -> None:
@@ -99,7 +101,7 @@ class RWKVCell(nn.Module, SubstratePort):
         # (v7 delta-rule erase term would subtract S @ ab here; see assoc_write)
 
         out = (r @ self._S).reshape(B, H * N)       # receptance read, flatten heads
-        self._read = self.readout(out)
+        self._read = torch.tanh(self.readout(out))  # bounded-output contract: (-1,1)
         return self._read
 
     def read(self) -> torch.Tensor:
@@ -117,17 +119,18 @@ class RWKVCell(nn.Module, SubstratePort):
             raise RuntimeError("RWKVCell.read_matrix() before reset()/step()")
         return self._S
 
-    def set_decay(self, mod: torch.Tensor) -> None:
-        """Modulate per-channel decay: w = sigmoid(decay_logit + mod). `mod` is
-        broadcastable to (dim_att,)."""
-        self._decay_mod = mod
+    def read_decay(self) -> torch.Tensor:
+        """READ-ONLY: the per-channel learned decay w = sigmoid(decay_logit),
+        shape (H, N). The substrate owns its decay; the joiner introspects but
+        never mutates it."""
+        return self._w()
 
     def assoc_write(self, k: torch.Tensor, v: torch.Tensor, a: torch.Tensor | None = None) -> None:
         """Delta-rule-style association write: S += scale · (k ⊗ v).
 
         k, v are (B, H, N); `a` (optional, broadcastable) scales the write — the
-        v7 "in-context learning rate". This is the hook through which a closed
-        loop drives associations into the substrate (see §e-B)."""
+        v7 "in-context learning rate". This is the substrate's write port for a
+        closed loop; decay, by contrast, is read-only."""
         if self._S is None:
             raise RuntimeError("RWKVCell.assoc_write() before reset()/step()")
         B, H, N = k.shape

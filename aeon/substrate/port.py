@@ -18,13 +18,32 @@ REQUIRED — every substrate must implement:
     step(x_t) -> read                   advance one token (per-token cadence)
     read() -> (B, d_state)              current readout, without advancing
     write(drive)                        stage a (B, d_state) drive for next step
+  and must declare:
+    d_state, d_in                       readout / input widths
+    output_bound : float                elementwise bound on step()/read()
+
+  BOUNDED OUTPUT IS A CONTRACT REQUIREMENT. Every value returned by `step()`
+  and `read()` must be finite and satisfy `|output| <= output_bound`
+  elementwise. Rationale: Recursion's σ<1 certificate yields *system-wide*
+  boundedness only if Recursion's inputs are bounded. The port enforces
+  input-boundedness on the substrate side, where it is cheap and local — a
+  substrate that can emit unbounded readouts can drive the joiner's manifold
+  out of its certified regime. Cells realise the bound natively (e.g. a tanh
+  wrap, `output_bound = 1.0`) or with an explicit clamp/normalize before return.
 
 OPTIONAL — advertised via `.capabilities()`; the joiner calls `.has(cap)` and
 uses these only when present, falling back to the required tier otherwise:
     MATRIX_READ     read_matrix()           rich state read (e.g. RWKV's S)
-    DECAY_CONTROL   set_decay(mod)          modulate per-channel decay
+    DECAY_CONTROL   read_decay()            READ-ONLY decay introspection
     ASSOC_WRITE     assoc_write(k, v, a)    delta-rule association write
     PER_LAYER_READ  read_per_layer()        per-layer readouts
+
+  DECAY IS SUBSTRATE-OWNED. `DECAY_CONTROL` is a *read-only* capability:
+  `read_decay()` lets the joiner introspect a substrate's decay (for monitoring
+  and capability negotiation) but the joiner never mutates it. The substrate
+  owns its decay — VRU returns its fixed geometric scalar; RWKV returns its
+  per-channel learned tensor. There is deliberately no decay mutator in the
+  port.
 
 A substrate advertises optional capabilities by listing them in the class-level
 `CAPABILITIES` frozenset and overriding the corresponding method.
@@ -36,7 +55,7 @@ from typing import Any, Iterable
 
 # ---- optional-capability identifiers --------------------------------------
 MATRIX_READ = "matrix_read"
-DECAY_CONTROL = "decay_control"
+DECAY_CONTROL = "decay_control"      # read-only introspection (see read_decay)
 ASSOC_WRITE = "assoc_write"
 PER_LAYER_READ = "per_layer_read"
 
@@ -55,17 +74,19 @@ class SubstratePort(abc.ABC):
     """Abstract substrate port. Concrete cells subclass this (and, when they are
     neural, `torch.nn.Module` alongside it).
 
-    Required-tier contract. Concrete cells must set `d_state` (the readout
-    width `d_s`) and `d_in` (the per-token input width), and implement the four
-    required methods. Optional capabilities are opt-in via `CAPABILITIES`.
+    Required-tier contract. Concrete cells must set `d_state` (readout width
+    `d_s`), `d_in` (per-token input width), and `output_bound` (the elementwise
+    bound their readouts satisfy), and implement the four required methods.
+    Optional capabilities are opt-in via `CAPABILITIES`.
     """
 
     #: optional capabilities this class advertises; override in subclasses
     CAPABILITIES: frozenset = frozenset()
 
-    #: readout width (d_s) and input width (d_in); set by concrete cells
+    #: readout width (d_s), input width (d_in), output bound
     d_state: int
     d_in: int
+    output_bound: float
 
     # ---- required tier ----------------------------------------------------
     @abc.abstractmethod
@@ -75,12 +96,13 @@ class SubstratePort(abc.ABC):
     @abc.abstractmethod
     def step(self, x_t: Any) -> Any:
         """Advance one token. `x_t` is (B, d_in); returns the (B, d_state)
-        readout after the step. This defines the substrate's native per-token
-        cadence."""
+        readout after the step. The readout MUST be finite and bounded by
+        `output_bound` elementwise. Defines the substrate's per-token cadence."""
 
     @abc.abstractmethod
     def read(self) -> Any:
-        """Return the current (B, d_state) readout without advancing."""
+        """Return the current (B, d_state) readout without advancing. MUST be
+        finite and bounded by `output_bound` elementwise."""
 
     @abc.abstractmethod
     def write(self, drive: Any) -> None:
@@ -106,7 +128,9 @@ class SubstratePort(abc.ABC):
         self.require(MATRIX_READ)
         raise NotImplementedError  # pragma: no cover - cells override
 
-    def set_decay(self, mod: Any) -> None:
+    def read_decay(self) -> Any:
+        """READ-ONLY decay introspection (see class docstring). Returns the
+        substrate's decay descriptor; never mutates it."""
         self.require(DECAY_CONTROL)
         raise NotImplementedError  # pragma: no cover
 
