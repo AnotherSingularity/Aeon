@@ -27,12 +27,13 @@ port-spec design; (e) **takes positions** across the multi-input substrate desig
 space. The positions in (d)–(e) are **input to the architect's deliberation, not
 decisions**.
 
-**Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM).
-A focused, text-only subset of the studied files is vendored under
-[`../reference/RWKV-LM/`](../reference/RWKV-LM/) so the file/line citations
-below resolve in-repo (the full upstream tree carries ~5 MB of images plus many
-model generations that the study did not need — see that folder's
-`PROVENANCE.md`).
+**Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM),
+pinned to commit
+[`bd552d5`](https://github.com/BlinkDL/RWKV-LM/tree/bd552d5e6aaaad88196629f7eb8dc8e24a644484).
+File/line citations below link to upstream at that commit (see the Appendix). A
+read-only subset was briefly vendored for the study and has since been **removed
+under the no-external-codebases principle** — see
+[`../reference/PROVENANCE.md`](../reference/PROVENANCE.md) for the audit record.
 
 **Aeon source referenced:** the `aeon/` package — `recursion.py` is the
 **Recursion substrate** (the `σ_max<margin<1` Cayley cell), and
@@ -376,6 +377,11 @@ substrate (Dylan's prior work)** and **RWKV-class blocks** satisfy. The port
 spec is the actual architectural artifact; which implementation sits behind it
 is **deployment-time configuration**.
 
+**Both implementations referenced in §d are Aeon-original code written from
+design understanding of the referenced architectures, not wrappers or imports of
+external packages. The architectures named (RWKV-class, the candidate recurrent
+substrate) describe design archetypes; the implementations are ours.**
+
 **Default: both supported, neither preferred.** Edge / latency-bound contexts
 can configure the light, certified candidate; cloud-scale contexts can configure
 RWKV; experimental contexts can drop in any future block that satisfies the
@@ -554,20 +560,27 @@ confidence than the RWKV-side analysis.
 
 ## Appendix: key code references
 
+RWKV references are to `BlinkDL/RWKV-LM` @ commit
+[`bd552d5`](https://github.com/BlinkDL/RWKV-LM/tree/bd552d5e6aaaad88196629f7eb8dc8e24a644484);
+links resolve to that commit. Bare filenames in the body map to: `model.py` =
+`RWKV-v5/src/model.py`, `rwkv_v6_demo.py` = `RWKV-v5/rwkv_v6_demo.py`,
+`rwkv_v7_demo_rnn.py` = `RWKV-v7/rwkv_v7_demo_rnn.py`. Aeon references are to
+Dylan's `aeon/` package (not in this repo).
+
 | Concept | Location |
 |---|---|
-| RWKV block / residual stack | `RWKV-v5/rwkv_v6_demo.py:53–78`, `:457–516` |
-| WKV-6 recurrence (RNN form) | `RWKV-v5/rwkv_v6_demo.py:194–221` |
-| RWKV-6 time-mix (GPT form) | `RWKV-v5/src/model.py:325–418` |
-| RWKV-6 channel-mix (FFN) | `RWKV-v5/rwkv_v6_demo.py:83–91`; `model.py:924–951` |
-| Per-channel decay init | `rwkv_v6_demo.py:354–357`; `model.py:808–821` |
-| Dynamic token-shift ("maa") | `rwkv_v6_demo.py:108–121` |
-| RWKV-7 state object | `RWKV-v7/rwkv_v7_demo_rnn.py:285–288` |
-| RWKV-7 delta-rule update | `rwkv_v7_demo_rnn.py:143–146`; `model.py:879–886` |
-| RWKV-7 value residual (`v_first`) | `model.py:875–878`, `:1077–1085`; `rwkv_v7_demo_rnn.py:127–130` |
-| WKV-7 fused kernel | `RWKV-v5/cuda/wkv7_cuda.cu:37–41` |
-| Framing: attention-free / infinite ctx | `README.md:9, 313–315, 418` |
-| Roadmap: state ladder, mixed state | `RWKV-8.md` §1, §3 |
+| RWKV block / residual stack | [`rwkv_v6_demo.py:53–78`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L53-L78), [`:457–516`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L457-L516) |
+| WKV-6 recurrence (RNN form) | [`rwkv_v6_demo.py:194–221`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L194-L221) |
+| RWKV-6 time-mix (GPT form) | [`model.py:325–418`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L325-L418) |
+| RWKV-6 channel-mix (FFN) | [`rwkv_v6_demo.py:83–91`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L83-L91); [`model.py:924–951`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L924-L951) |
+| Per-channel decay init | [`rwkv_v6_demo.py:354–357`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L354-L357); [`model.py:808–821`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L808-L821) |
+| Dynamic token-shift ("maa") | [`rwkv_v6_demo.py:108–121`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/rwkv_v6_demo.py#L108-L121) |
+| RWKV-7 state object | [`rwkv_v7_demo_rnn.py:285–288`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v7/rwkv_v7_demo_rnn.py#L285-L288) |
+| RWKV-7 delta-rule update | [`rwkv_v7_demo_rnn.py:143–146`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v7/rwkv_v7_demo_rnn.py#L143-L146); [`model.py:879–886`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L879-L886) |
+| RWKV-7 value residual (`v_first`) | [`model.py:875–878`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L875-L878), [`:1077–1085`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/src/model.py#L1077-L1085); [`rwkv_v7_demo_rnn.py:127–130`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v7/rwkv_v7_demo_rnn.py#L127-L130) |
+| WKV-7 fused kernel | [`RWKV-v5/cuda/wkv7_cuda.cu:37–41`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-v5/cuda/wkv7_cuda.cu#L37-L41) |
+| Framing: attention-free / infinite ctx | [`README.md:9`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/README.md#L9), [`313–315`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/README.md#L313-L315), [`418`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/README.md#L418) |
+| Roadmap: state ladder, mixed state | [`RWKV-8.md`](https://github.com/BlinkDL/RWKV-LM/blob/bd552d5e6aaaad88196629f7eb8dc8e24a644484/RWKV-8.md) §1, §3 |
 | Aeon recursion cell | `aeon/recursion.py:115–170` |
 | Aeon read/write per block | `aeon/block.py:69–98` |
 | Aeon once-per-token state update | `aeon/model.py:160–197` |

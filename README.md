@@ -33,11 +33,13 @@ nature.
   across** the multi-input substrate design space — including that the
   architecture is not structurally limited to two sources. Positions are input
   to deliberation, not decisions.
-- **[`reference/RWKV-LM/`](reference/RWKV-LM/)** — a focused, text-only subset
-  of the upstream RWKV-LM source that the analysis cites, so the file/line
-  references resolve in-repo. See its `PROVENANCE.md` (upstream is Apache-2.0).
+- **[`reference/PROVENANCE.md`](reference/PROVENANCE.md)** — audit record. A
+  read-only subset of RWKV-LM was briefly vendored for the study and has been
+  **removed under the no-external-codebases principle**; the study's citations
+  now link to upstream `BlinkDL/RWKV-LM` at a pinned commit (Apache-2.0).
 
 ## Reading order
 
 1. `docs/RWKV_STUDY.md` — start here.
-2. Follow its citations into `reference/RWKV-LM/` as needed.
+2. Follow its citations out to upstream `BlinkDL/RWKV-LM` (pinned commit; see the
+   doc's Appendix).
