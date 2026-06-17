@@ -35,9 +35,36 @@ Two contract points the port enforces:
   Recursion's σ<1 certificate gives system-wide boundedness only if its inputs
   are bounded, so the port enforces input-boundedness at the substrate side.
 
-A structural test (`test_vru_no_recursion_class_mechanisms`) parses `vru_cell.py`
-and fails if Recursion-class mechanisms (spectral norm, carry/EMA, gates,
-clamping) reappear — a durable guard against drift.
+## Conformance — run this when adding a substrate
+
+`verify_substrate(cell)` is **the conformance entry point**: the single check to
+run when introducing a new substrate (the real VRU, an RWKV variant, any future
+cell). It runs the full port contract and returns a structured
+`ConformanceReport` (pass / fail / skip per check, with diagnostics).
+
+```python
+from aeon.substrate import make_substrate, verify_substrate
+report = verify_substrate(make_substrate({"kind": "vru", "d_in": 512, "d_state": 256}))
+assert report.ok, report          # report prints a per-check breakdown
+```
+
+It covers: required tier (reset/step/read/write shapes, **bounded output**),
+**decay read-only** (`read_decay` present, no `set_decay` anywhere), and
+**capability negotiation** (`capabilities`/`has`/`require` agree; advertised
+optional ports are implemented and callable; unadvertised ports gate with
+`CapabilityError`).
+
+Cells register **per-cell structural checks** via a `CONFORMANCE_CHECKS` class
+attribute (or the `extra_checks=` argument) so cell-specific guards extend the
+suite without forking the utility. `vru_cell` registers two: a torch-free **AST
+anti-drift** check (fails if Recursion-class mechanisms — spectral norm,
+carry/EMA, gates, clamping — reappear) and a torch **runtime structure** check
+(exactly one state tensor of dim `H`, no gate/carry/forget param names, fixed
+scalar, gradient flow through `W_x` and `W_h`).
+
+Torch-free where possible: static checks and the AST mechanism run without
+torch; execution and runtime checks `skip` cleanly when torch is unavailable.
+The tests in `tests/` are thin shells over `verify_substrate`.
 
 Adding a substrate later = add one `*_cell.py` + one branch in
 `make_substrate()`. The joiner never changes — it is written against `port.py`.

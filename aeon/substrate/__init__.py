@@ -22,6 +22,13 @@ from .port import (
     PER_LAYER_READ,
     ALL_CAPABILITIES,
 )
+from .conformance import (
+    verify_substrate,
+    ConformanceReport,
+    CheckResult,
+    SkipCheck,
+    make_ast_drift_check,
+)
 
 __all__ = [
     "SubstratePort",
@@ -32,6 +39,11 @@ __all__ = [
     "PER_LAYER_READ",
     "ALL_CAPABILITIES",
     "make_substrate",
+    "verify_substrate",
+    "ConformanceReport",
+    "CheckResult",
+    "SkipCheck",
+    "make_ast_drift_check",
 ]
 
 

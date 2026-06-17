@@ -1,21 +1,16 @@
 """
 Conformance tests for the substrate port (§d).
 
-Layers:
-  1. Contract tests — framework-free. Capability negotiation, required/optional
-     gating, and the bounded-output contract, via a pure-Python mock. Run
-     anywhere (no torch).
-  2. Structural anti-drift test — framework-free. Parses vru_cell.py and asserts
-     it contains no Recursion-class mechanisms (spectral norm, carry/EMA, gates,
-     clamping). Durable guard against the conflation recurring.
-  3. Cell tests — verify the concrete RWKV / VRU cells satisfy the required tier,
-     advertise the expected capabilities, keep decay read-only, return bounded
-     output, and (VRU) have the disclosed single-state structure. Skipped when
-     torch is unavailable.
+These are thin shells over `aeon.substrate.verify_substrate` — the single
+conformance entry point. The contract logic lives in the utility, not here:
+  * torch-free: the utility's static checks (capability negotiation, decay
+    read-only, contract attributes) run against pure-Python mocks, and the AST
+    anti-drift mechanism runs against the real vru_cell source;
+  * torch: the full suite (incl. execution + per-cell structural checks) runs
+    against the real cells, skipping cleanly when torch is unavailable.
 
 Runnable directly (`python3 tests/test_substrate_port.py`) and under pytest.
 """
-import ast
 import os
 import sys
 
@@ -24,15 +19,14 @@ sys.path.insert(0, REPO_ROOT)
 
 from aeon.substrate import (  # noqa: E402
     SubstratePort,
-    CapabilityError,
     make_substrate,
+    verify_substrate,
+    make_ast_drift_check,
     MATRIX_READ,
-    DECAY_CONTROL,
-    ASSOC_WRITE,
 )
 
 
-# --- a pure-Python substrate that satisfies only the required tier ----------
+# --- pure-Python substrates exercising the utility's torch-free checks ------
 def _clamp1(x):
     return max(-1.0, min(1.0, x))
 
@@ -41,27 +35,21 @@ class MockSubstrate(SubstratePort):
     CAPABILITIES = frozenset()
 
     def __init__(self, d_in=3, d_state=2):
-        self.d_in = d_in
-        self.d_state = d_state
-        self.output_bound = 1.0
+        self.d_in, self.d_state, self.output_bound = d_in, d_state, 1.0
         self._read = None
-        self._drive = None
 
     def reset(self, batch_size, device=None):
         self._read = [[0.0] * self.d_state for _ in range(batch_size)]
-        self._drive = None
 
     def step(self, x_t):
-        # readout is the (bounded) row-sum of the input — respects output_bound
         self._read = [[_clamp1(sum(row))] * self.d_state for row in x_t]
-        self._drive = None
         return self._read
 
     def read(self):
         return self._read
 
     def write(self, drive):
-        self._drive = drive
+        pass
 
 
 class MockRichSubstrate(MockSubstrate):
@@ -71,42 +59,34 @@ class MockRichSubstrate(MockSubstrate):
         return "S"
 
 
-# --- contract tests (no torch) ----------------------------------------------
-def test_required_tier_present():
-    s = MockSubstrate()
-    s.reset(2)
-    out = s.step([[1.0, 2.0, 3.0], [0.0, 0.0, 1.0]])
-    assert out == s.read()
-    assert len(out) == 2 and len(out[0]) == s.d_state
-    s.write("drive")
+# --- torch-free: utility static checks via mocks ----------------------------
+def test_verify_mock_static():
+    report = verify_substrate(MockSubstrate())
+    assert report.ok, str(report)
+    statuses = {r.name: r.status for r in report.results}
+    # static port checks pass; execution checks skip (mock is not a torch module)
+    assert statuses["capabilities_subset"] == "pass"
+    assert statuses["decay_read_only"] == "pass"
+    assert statuses["unadvertised_ports_gated"] == "pass"
+    assert statuses["required_tier_shapes"] == "skip"
 
 
-def test_capability_negotiation():
-    plain, rich = MockSubstrate(), MockRichSubstrate()
-    assert plain.capabilities() == frozenset()
-    assert not plain.has(MATRIX_READ)
-    assert rich.has(MATRIX_READ)
-    assert rich.read_matrix() == "S"
+def test_verify_rich_mock_static():
+    report = verify_substrate(MockRichSubstrate())
+    assert report.ok, str(report)
+    statuses = {r.name: r.status for r in report.results}
+    assert statuses["advertised_ports_implemented"] == "pass"
 
 
-def test_optional_gating_raises():
-    plain = MockSubstrate()
-    for call in (plain.read_matrix, plain.read_decay,
-                 lambda: plain.assoc_write(0, 0)):
-        try:
-            call()
-        except CapabilityError:
-            continue
-        raise AssertionError("expected CapabilityError on unadvertised capability")
-
-
-def test_bounded_output_contract_mock():
-    s = MockSubstrate()
-    s.reset(2)
-    out = s.step([[100.0, 100.0, 100.0], [-50.0, -50.0, 0.0]])
-    for row in out:
-        for val in row:
-            assert abs(val) <= s.output_bound + 1e-6
+# --- torch-free: AST anti-drift mechanism against the real vru source -------
+def test_vru_source_anti_drift():
+    chk = make_ast_drift_check(
+        "aeon.substrate.vru_cell",
+        forbidden={"spectral_norm", "carry", "ema", "gate",
+                   "forget", "clamp", "clip", "sigmoid"},
+        required={"tanh", "W_x", "W_h", "scalar"},
+    )
+    chk()  # raises on drift; torch-free (locates source without importing it)
 
 
 def test_factory_unknown_kind_raises():
@@ -118,50 +98,7 @@ def test_factory_unknown_kind_raises():
         raise AssertionError("expected ValueError from make_substrate")
 
 
-# --- structural anti-drift test (no torch) ----------------------------------
-def test_vru_no_recursion_class_mechanisms():
-    """STRUCTURAL guard (Issue 1). The candidate substrate must not drift back
-    into Recursion-class. Parse the source and assert no forbidden mechanisms
-    appear as identifiers, and that the disclosed recurrence form is present.
-    Source-level so comments/docstrings (which legitimately *name* the avoided
-    mechanisms) do not trip it."""
-    src = open(os.path.join(REPO_ROOT, "aeon", "substrate", "vru_cell.py")).read()
-    tree = ast.parse(src)
-
-    names = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute):
-            names.add(node.attr)
-        elif isinstance(node, ast.Name):
-            names.add(node.id)
-        elif isinstance(node, ast.arg):
-            names.add(node.arg)
-        elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-            names.add(node.name)
-        elif isinstance(node, ast.alias):
-            names.add(node.name)
-            if node.asname:
-                names.add(node.asname)
-    lowered = {n.lower() for n in names}
-
-    forbidden = {
-        "spectral_norm",   # Recursion's σ<1 bound, not the candidate's
-        "carry",           # no carry stream
-        "ema",             # no EMA carry
-        "gate", "forget",  # no gates
-        "clamp", "clip",   # fixed scalar, no clamping
-        "sigmoid",         # no gated/decay-logit mechanism
-    }
-    hit = forbidden & lowered
-    assert not hit, f"VRU drifted toward Recursion-class: forbidden {sorted(hit)}"
-    assert "_c" not in names, "VRU has a second (carry) state attribute"
-
-    # disclosed recurrence form present: tanh(W_x @ x + scalar * W_h @ h)
-    for required in ("tanh", "W_x", "W_h", "scalar"):
-        assert required in names, f"VRU missing recurrence element {required!r}"
-
-
-# --- cell tests (require torch) ---------------------------------------------
+# --- torch: full suite against the real cells -------------------------------
 def _have_torch():
     try:
         import torch  # noqa: F401
@@ -170,106 +107,14 @@ def _have_torch():
         return False
 
 
-def test_cells_required_tier_and_capabilities():
+def test_verify_real_cells():
     if not _have_torch():
-        print("  [skip] torch unavailable — cell numeric tests skipped")
+        print("  [skip] torch unavailable — real-cell conformance skipped")
         return
-    import torch
-
-    B, d_in, d_state = 2, 8, 4
-    cases = (
-        ({"kind": "rwkv", "d_in": d_in, "d_state": d_state},
-         {MATRIX_READ, DECAY_CONTROL, ASSOC_WRITE}),
-        ({"kind": "vru", "d_in": d_in, "d_state": d_state},
-         {DECAY_CONTROL}),
-    )
-    for cfg, expected in cases:
-        cell = make_substrate(cfg)
-        assert isinstance(cell, SubstratePort)
-        assert cell.capabilities() == frozenset(expected)
-        cell.reset(B)
-        out = cell.step(torch.randn(B, d_in))
-        assert out.shape == (B, d_state)
-        assert cell.read().shape == (B, d_state)
-        cell.write(torch.randn(B, d_state))
-        assert cell.step(torch.randn(B, d_in)).shape == (B, d_state)
-        if cell.has(MATRIX_READ):
-            assert cell.read_matrix().shape[0] == B and cell.read_matrix().dim() == 4
-
-
-def test_decay_is_read_only():
-    """Issue 2: decay is substrate-owned; the port exposes read-only
-    introspection and no mutator."""
-    if not _have_torch():
-        print("  [skip] torch unavailable — decay read-only test skipped")
-        return
-    # no mutator anywhere in the port surface
-    assert not hasattr(SubstratePort, "set_decay")
     for cfg in ({"kind": "rwkv", "d_in": 8, "d_state": 4},
-                {"kind": "vru", "d_in": 8, "d_state": 4}):
-        cell = make_substrate(cfg)
-        assert cell.has(DECAY_CONTROL)
-        assert not hasattr(cell, "set_decay")
-        cell.read_decay()  # callable, returns a descriptor (scalar or tensor)
-
-
-def test_bounded_output_cells():
-    """Issue 3: every cell's step output is finite and within output_bound."""
-    if not _have_torch():
-        print("  [skip] torch unavailable — cell boundedness test skipped")
-        return
-    import torch
-
-    B, d_in, d_state = 3, 8, 4
-    for cfg in ({"kind": "rwkv", "d_in": d_in, "d_state": d_state},
-                {"kind": "vru", "d_in": d_in, "d_state": d_state}):
-        cell = make_substrate(cfg)
-        cell.reset(B)
-        for _ in range(8):
-            out = cell.step(torch.randn(B, d_in) * 50.0)  # large drive
-            assert torch.isfinite(out).all()
-            assert out.abs().max().item() <= cell.output_bound + 1e-5
-
-
-def test_vru_disclosed_structure():
-    """Issue 1 (runtime half): VRU has exactly one state tensor of dim H, no
-    forbidden parameter names, a fixed-float scalar, and gradient flows through
-    both W_x and W_h (recurrence form), verified structurally — not by numeric
-    comparison to reference outputs."""
-    if not _have_torch():
-        print("  [skip] torch unavailable — VRU structure test skipped")
-        return
-    import torch
-
-    B, d_in, H = 2, 8, 6
-    cell = make_substrate({"kind": "vru", "d_in": d_in, "d_state": H})
-
-    # fixed geometric scalar, not a Parameter
-    assert isinstance(cell.scalar, float)
-    pnames = dict(cell.named_parameters())
-    assert "scalar" not in pnames
-
-    # no forbidden parameter names
-    for name in pnames:
-        low = name.lower()
-        assert not any(f in low for f in ("gate", "carry", "forget", "input", "output")), name
-
-    # exactly one runtime state tensor, of shape (B, H)
-    cell.reset(B)
-    cell.step(torch.randn(B, d_in))
-    state_tensors = {k: v for k, v in vars(cell).items()
-                     if isinstance(v, torch.Tensor)}
-    assert len(state_tensors) == 1, f"expected one state tensor, got {list(state_tensors)}"
-    (h,) = state_tensors.values()
-    assert h.shape == (B, H)
-
-    # gradient flows through both W_x and W_h (recurrence uses both)
-    cell.reset(B)
-    cell.step(torch.randn(B, d_in))            # h now non-zero
-    loss = cell.step(torch.randn(B, d_in)).sum()
-    loss.backward()
-    assert cell.W_x.weight.grad is not None
-    assert cell.W_h.weight.grad is not None and cell.W_h.weight.grad.abs().sum() > 0
+                {"kind": "vru", "d_in": 8, "d_state": 6}):
+        report = verify_substrate(make_substrate(cfg))
+        assert report.ok, "\n" + str(report)
 
 
 def _run_all():
@@ -279,6 +124,9 @@ def _run_all():
         t()
         print(f"  ok  {t.__name__}")
     print(f"\n{len(tests)} checks passed")
+    # show a sample report for visibility
+    print("\nSample report (MockSubstrate):")
+    print(verify_substrate(MockSubstrate()))
 
 
 if __name__ == "__main__":
