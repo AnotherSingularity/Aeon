@@ -1,8 +1,9 @@
 # RWKV State-Propagation Study
 
 Parallel research work: a study of [RWKV](https://github.com/BlinkDL/RWKV-LM)'s
-state-propagation design, used as a reference for understanding Aeon's own
-architectural information flow.
+state-propagation design as **substrate research** for a three-ingredient
+hybrid — a recurrent **substrate** (VRU or RWKV, slot open), a transformer
+**reasoner**, and **Recursion** as the **application layer that couples** them.
 
 > **Note on repo location.** This was meant to live in a separate repository.
 > The session's GitHub access could not create or fork a new repo (the
@@ -15,9 +16,10 @@ architectural information flow.
 - **[`docs/RWKV_STUDY.md`](docs/RWKV_STUDY.md)** — the analysis. Covers how
   state propagates in RWKV (per-block matrix state, time-mix recurrence,
   per-channel decay, token-shift, the RWKV-7 delta-rule + value-residual), the
-  structural contrast with attention/KV-cache, where Aeon currently sits in the
-  taxonomy ("transformer with sidecar recursion"), and open questions for
-  Aeon's next-generation design.
+  structural contrast with attention/KV-cache, RWKV read as a **candidate
+  recurrent substrate** (its read/write *ports*), the RWKV-vs-VRU substrate
+  decision frame (kept open), and a map of the **coupling design space** for the
+  Recursion application layer.
 - **[`reference/RWKV-LM/`](reference/RWKV-LM/)** — a focused, text-only subset
   of the upstream RWKV-LM source that the analysis cites, so the file/line
   references resolve in-repo. See its `PROVENANCE.md` (upstream is Apache-2.0).

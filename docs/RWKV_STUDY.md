@@ -1,8 +1,20 @@
-# RWKV State-Propagation Study
+# RWKV as a Recurrent Substrate — State-Propagation Study
 
-A reference study of RWKV's state-propagation design, read against Aeon's
-current architecture, to inform Aeon's next-generation information-flow
-decisions.
+Substrate research for a **three-ingredient hybrid**:
+
+1. a recurrent **substrate** — carries an evolving state (candidate fillers:
+   **VRU**, or **RWKV** studied fresh here; *the slot is open*);
+2. a transformer **reasoner** — attention-based reasoning;
+3. **Recursion** — the **application layer that couples** the substrate to the
+   reasoner. Not the substrate, not a modulator on either side: it *owns the
+   coupling*.
+
+This document studies **RWKV purely as a candidate for ingredient #1** — how a
+real, scaled recurrent architecture propagates state, and what *ports* it would
+expose to a coupling layer. It deliberately does **not** decide VRU-vs-RWKV
+(§d), nor how the three layers couple (§e); those stay open for the architect.
+Parts (a)–(b) are the substrate mechanics; (c) re-reads them as an *interface*;
+(d) frames the substrate decision; (e) maps the coupling design space.
 
 **Source studied:** [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM).
 A focused, text-only subset of the studied files is vendored under
@@ -11,8 +23,9 @@ below resolve in-repo (the full upstream tree carries ~5 MB of images plus many
 model generations that the study did not need — see that folder's
 `PROVENANCE.md`).
 
-**Aeon source referenced:** the `aeon/` package handed over for this work
-(`model.py`, `block.py`, `recursion.py`, `config.py`).
+**Aeon source referenced** as one concrete data point on a VRU-class cell — not
+as the target architecture: the `aeon/` package (`model.py`, `block.py`,
+`recursion.py`, `config.py`).
 
 **Files read, top to bottom:**
 
@@ -275,147 +288,146 @@ random access in exchange for constant-memory, linear-time inference.
 
 ---
 
-## c) Where Aeon currently sits in this taxonomy
+## c) RWKV as a candidate recurrent substrate — its state interface ("ports")
 
-Read against `aeon/model.py`, `aeon/block.py`, `aeon/recursion.py`,
-`aeon/config.py`. The brief's characterization is **accurate** — here it is,
-confirmed against the code:
+A substrate is judged on two things: how well it *holds* information (parts a–b)
+and what **ports** it exposes for a coupling layer to read from and write to.
+Read off the RNN-form code, RWKV's ports are unusually rich:
 
-* **A pretrained transformer with a sidecar recurrent state.** `AeonModel`
-  subclasses `Qwen2Model`; attention, RoPE, and the KV cache are **fully
-  intact and unchanged** (`model.py:126–204`; the per-token loop threads a
-  `DynamicCache` precisely so attention stays causal across the sequence). The
-  recurrence is *added alongside*, it does not replace anything.
+**Read ports — what a reasoner could consume:**
 
-* **Recursion is an external state that modulates each block's input.**
-  `AeonBlock.forward` (`block.py:69–98`): it reads the global state `r_t`,
-  projects it `m = U(r_t)`, scales by a per-block gate `recursion_gate`
-  (`γ_l`, **zero at init** — Stage-0 byte-identity to vanilla Qwen2), and
-  **adds it to the residual stream before the Qwen block**:
-  `hidden_states += (γ_l · m).unsqueeze(1)`. After the block it produces a
-  write `w_l = D_proj(x_post)`. The state's only influence on computation is a
-  **broadcast additive shift** — a per-token DC offset on the residual. It does
-  **not** enter the attention scores, keys, values, or the MLP.
+* **State readout** `out = state @ r` (v7) — the canned "what the substrate
+  knows now", `C`-dim per layer; already the time-mix output.
+* **Raw matrix state** `S` of shape `(H, N, N)` per layer — the full
+  associative memory. A coupling layer can expose `S` itself (or a *learned
+  query* of it) instead of only the built-in readout `r`. This is the port that
+  makes a true cross-attention-style read possible.
+* **Per-layer or pooled** — RWKV keeps one `S` per layer, so the coupling layer
+  can read at any depth, or pool across depth.
 
-* **State advances once per token, after all blocks.** `AeonModel.forward`
-  (`model.py:160–190`): for each token it runs the full `L`-block stack,
-  **sums** every block's write into `W_sum`, **averages** to
-  `W_total = W_sum / n_layers`, then runs **one** `recursion.step(W_total, r,
-  c)`. So token `t+1` reads a state that incorporates token `t`'s contribution.
-  All `L` blocks' writes are collapsed into a **single** state update per token.
+**Write ports — what a reasoner could push into the substrate:**
 
-* **The state object itself** (`recursion.py`, `RecursionChartB`): a
-  **single, global, gate-free contractive RNN cell** with hidden `h` (= `r`)
-  and a slow carry `c`, both in `R^{h_rec}` with `h_rec = 256`
-  (`config.py:10`). Update:
-  ```
-  c_{t+1} = (1-λ)·c_t + λ·tanh(W_c h_t)         # delta-decay carry, scalar λ
-  h_{t+1} = tanh(W_x x_t + W_h h_t + c_{t+1})    # contractive update
-  ```
-  with `W_h, W_c` built so `σ_max < margin < 1` by construction (Cayley
-  transform × diagonal), i.e. a **provable contraction certificate**
-  (`margin_h = 0.98`, `margin_c = 0.95`). The state is **shared across all
-  layers** and persists across tokens and across chat turns
-  (`get/set_recursion_state`).
+* **Association write** `S += v ⊗ k` — inject a key→value memory directly; a
+  reasoner can write conclusions as retrievable associations.
+* **Decay control** `w` (per channel, `∈(0,1)`) — set how long things persist;
+  modulate memory horizon per channel.
+* **Delta-rule erase / learning-rate** `a`, `kk` (v7) — drive in-context
+  write/overwrite, so the substrate is *programmable while reading*.
+* **Input mixing** — the standard token-shifted `x` input is the cheapest write.
 
-* **Verdict: "transformer with sidecar recursion", not "fully integrated
-  recurrent transformer".** Confirmed. The recurrence runs *parallel to*
-  attention and only nudges the residual additively; attention still performs
-  **all** sequence mixing.
+**Cross-layer bus.** v7's `v_first` (`model.py:875–878`) shows RWKV already
+supports a value bus threading layer 0 → all layers — a coupling layer could
+ride or extend it.
 
-**Aeon vs RWKV, side by side:**
+**Clocking.** The substrate steps **`L` times per token** (once per layer,
+inside the operator), so coupling can be per-layer or batched at a readout.
 
-| Axis | RWKV | Aeon (current) |
-|---|---|---|
-| State location | **Per block** (one matrix state per layer) | **One global** vector state, shared by all layers |
-| State shape | `(H, N, N)` matrix per layer (high capacity) | `(h_rec,) = (256,)` vector + 256-d carry (low capacity) |
-| Updates per token | `L` (one per layer) | **1** (after all blocks; writes averaged) |
-| Role of state | **IS** the sequence-mixing operator (replaces attention) | **Modulates** input additively; attention still mixes the sequence |
-| Coupling to compute | Integrated into the token-mix operator | **Additive DC shift** on the residual, gated by `γ_l` |
-| Decay | Per-channel, per-head, learnable spectrum (+ v7 matrix erase) | Single global contraction (`σ_max<margin`) + one scalar `λ` |
-| KV cache | None (`O(1)` state) | **Full Qwen KV cache** retained (`O(T)`) |
-| Stability | Bounded by `w∈(0,1)` per channel | **Certified** `σ_max<1` (Banach/Lyapunov) |
+**Net:** RWKV offers a coupling layer a **high-capacity, content-addressable,
+multi-timescale, writable** memory with linear-time / constant-space dynamics
+and a parallel-scan training path. That is a *rich* substrate — many more ports
+than a single-vector cell.
 
-On the RWKV-8 "state ladder", Aeon's recurrent state is a **vector state** (one
-rung above scalar), used as a *side channel*; RWKV sits at **matrix state** and
-is the main channel, with v7 reaching toward the "fancy evolution" rung.
+**Contrast: a VRU-class cell.** Using the certified contractive cell in
+`aeon/recursion.py` as a concrete stand-in (flag: swap in the real VRU spec when
+you fix it), the port surface is far smaller — one input `x_t` (write), one
+hidden `h_t` (read), a slow carry `c`, and a single global contraction + scalar
+`λ` for decay. Its strength is **guarantees, not interface richness**:
+`σ_max < margin < 1` (`margin_h=0.98`, `margin_c=0.95`) gives provable
+forgetting, a unique attractor per fixed input, and bounded sensitivity —
+properties a coupling layer can *rely on* rather than police. Two substrate
+philosophies: **RWKV = capacity & rich ports; VRU-class = bounded, certified,
+simple ports.**
+
+> **Where the *current* Aeon code sits is now just a data point, not the
+> target.** It fuses a transformer with a VRU-class cell used as an **additive
+> modulator**: `AeonBlock` reads the global state, gates it by `γ_l` (zero at
+> init), and adds it to the residual before the Qwen block (`block.py:69–98`);
+> the state advances **once per token** after the full stack, on the *average*
+> of all block writes (`model.py:160–197`). That is the **one-sided** design
+> being moved past — substrate and coupling are not factored apart, and the
+> recurrence only nudges the residual. The three-ingredient frame separates
+> them; this study treats the substrate slot as genuinely open.
 
 ---
 
-## d) Open architectural questions for Aeon's next generation
+## d) The substrate decision — RWKV vs VRU (kept open)
 
-Framed by what RWKV does well that Aeon currently does not. Each has a
-recommendation, not just a list of options.
+Decision deferred to the architect. These are the axes any recurrent substrate
+should be judged on *for this role*, with RWKV filled from the study and the VRU
+column filled hypothetically from `recursion.py` (flagged — replace with the
+real spec):
 
-### 1. Per-block (RWKV) vs per-token-global (Aeon current) state?
+| Axis | RWKV (studied) | VRU-class (per `recursion.py`; hypothesis) |
+|---|---|---|
+| State shape / capacity | `(H,N,N)` matrix per layer — **high** | `(h_rec,)` vector + carry — **low** |
+| State-evolution expressivity | v7 data-dependent matrix transition (delta rule) | contractive affine + `tanh` |
+| Decay / multi-timescale | per-channel learnable spectrum — **strong** | single contraction + scalar `λ` — weak |
+| Stability guarantee | bounded `w∈(0,1)`; no global cert | **certified** `σ_max<1` (Banach/Lyapunov) |
+| Trainability / parallelism | **parallel scan** ("GPT mode"), proven at scale | sequential BPTT (nonlinear recurrence) |
+| Coupling ports (read/write) | **rich** (matrix `S`, decay, delta-rule, bus) | sparse (one in, one out) |
+| Constant-space inference | yes (`O(1)` in `T`) | yes |
+| Maturity / warm-start | pretrained checkpoints exist | bespoke |
+| Controllability / interpretability | lower | **high** (provable bounds) |
 
-**Finding.** Aeon collapses all `L` block writes into one 256-d update per
-token (`W_total = W_sum / n_layers`). That averaging is a severe **depth
-bottleneck**: every layer's contribution is summed into a single shared
-register, so the recurrence cannot let layer 3's memory differ from layer 20's.
-RWKV gives every layer its own state and lets each specialize a timescale.
+The real tension: **capacity + rich ports + maturity (RWKV)** versus
+**certified control + simplicity (VRU)**. Which wins depends on what the
+substrate is *for* in the coupling (§e): if Recursion leans on provable
+substrate behavior, VRU's guarantees are load-bearing; if it leans on the
+substrate as a big queryable/writable memory, RWKV's ports and capacity win. So
+§d and §e are entangled but not identical decisions.
 
-**Recommendation: move toward per-block (or per-group) state.** Give each block
-(or each band of blocks) its own recurrence cell so depth buys capacity and
-layers can specialize. Keep the contractive certificate *per cell* — it
-composes. Cost: `L` recurrence steps per token instead of 1 (cheap relative to
-attention). A conservative first step: per-block carry, shared read/write
-projections.
+**To slot VRU in precisely I'd need:** its state shape/capacity; whether its
+recurrence is linear (parallel-scannable) or nonlinear (sequential); and which
+read/write ports you intend to expose to the coupling layer.
 
-### 2. Integrate the state into attention, or keep it as additive modulation?
+---
 
-**Finding.** Additive-shift-on-residual is the **weakest possible coupling** —
-the state is a per-token DC offset and never participates in *routing* (it
-touches neither attention scores nor the values being mixed). RWKV's state, by
-contrast, *is* the routing.
+## e) The coupling question — how Recursion joins substrate ↔ reasoner
 
-**Recommendation: a middle path — let the state participate in attention,
-short of replacing it.** Concretely, inject the state as an extra **memory
-key/value slot** the queries can attend to (a "register" token sourced from
-`r_t`), or use it to **gate/bias the value path** (`V ← V · g(r_t)` or an
-additive logit bias). This makes the state content-addressable rather than a
-constant offset, while preserving the pretrained attention. Pure additive
-modulation should be treated as the floor, not the design.
+This is the architecture question you're sitting with; I'm **mapping the design
+space, not choosing**. Recursion-as-application-layer has (at least) five
+roughly orthogonal degrees of freedom. The substrate choice (§d) constrains
+some of them, not all.
 
-### 3. Learnable per-channel decay like RWKV?
+**A. Read coupling (substrate → reasoner).** How does the reasoner *see* state?
+Floor → rich: additive residual bias (current Aeon) → state as extra **KV
+memory slot(s)** the reasoner attends to (content-addressable) → state
+**gates** attention values / FFN → reasoner **cross-attends into `S`**.
+*Substrate-dependent:* RWKV's `(H,N,N)` `S` supports a true cross-attention
+read; a vector VRU supports bias/gating/KV-slot but not a rich matrix query.
 
-**Finding.** Aeon's forgetting is a *single* global contraction plus one scalar
-`λ` on the carry — effectively one (or two) timescales for the whole model.
-RWKV's per-channel decay spectrum (init spanning fast→slow) is a major reason
-it captures multi-timescale dependencies in a bounded state.
+**B. Write coupling (reasoner → substrate).** What updates the substrate?
+Reasoner hidden states projected as substrate input (cheap) → reasoner **writes
+associations into `S`** (RWKV-only) → reasoner **controls decay / learning-rate
+knobs**.
 
-**Recommendation: yes, adopt per-channel decay.** Replace the single carry
-`λ` with a **per-channel decay vector** (diagonal, entries in `(0,1)`),
-initialized to span timescales the way RWKV does (`www`-style geometric
-spread). This is **fully compatible with the stability certificate** — a
-diagonal map with entries `<1` keeps `σ_max<1` — so Aeon gets multi-timescale
-memory *for free* relative to its current guarantees. High value, low risk.
+**C. Clocking / schedule.** When does the substrate step relative to the
+reasoner? Once per token after the full stack (current Aeon) → per-layer
+(RWKV-native) → substrate on a **slower or faster clock** (the substrate
+"thinks" across multiple reasoner passes, or persists across turns while the
+reasoner restarts). This is where genuine three-way timing lives.
 
-### 4. Replace attention entirely (full RWKV) or keep it as a parallel stream
-(hybrid)?
+**D. Loop topology.** Feedforward (substrate informs reasoner only) vs **closed
+loop** (reasoner updates substrate → informs the next step). "Application
+layer" implies Recursion owns a closed loop; the open question is how tight.
 
-**Finding.** Aeon is warm-started from a pretrained Qwen/R1-distill and its
-Stage-0 gate demands **byte-identity to vanilla Qwen2** at init
-(`block.py` gate `= 0`; `model.py` wiring notes). Full attention replacement
-throws away the pretrained weights that are the entire point of the warm start.
-Notably, **RWKV-8 itself is going hybrid** (the repo ships
-`rwkv_v8_rc00_hybrid_demo.py`, and `RWKV-8.md` lists "hybrid models" and
-"hybrid attention part" as first-class directions).
+**E. Where Recursion's intelligence lives.** Thin interface (fixed projections)
+vs **substantive controller** with its own parameters/policy deciding *what* to
+read/write and *when*. Your framing — "application layer that couples" — points
+substantive: Recursion as a learned controller over the substrate's ports, not
+glue.
 
-**Recommendation: hybrid, decisively.** Keep attention for exact recall and
-short-range routing; grow the recurrent state for cheap, persistent, long-range
-memory. This satisfies both Aeon's warm-start constraint *and* matches the
-direction RWKV's own author is taking. "Full RWKV" only makes sense if Aeon
-ever trains from scratch, which is not the current regime.
+Two observations to carry in:
 
-### Cross-cutting take
+* **A/B (coupling richness) and §d (substrate) are coupled.** Rich coupling
+  needs a substrate with rich ports — so "RWKV vs VRU" and "how rich is the
+  coupling" want to be decided *together*, not in sequence.
+* **C/D (clocking, loop topology) are largely substrate-independent.** You can
+  fix the three-way timing and whether Recursion runs a closed loop *before*
+  committing the substrate. Those may be the cleanest places to start.
 
-The single highest-leverage change suggested by this study is **#3
-(per-channel decay)** — it is cheap, certificate-preserving, and directly
-imports RWKV's multi-timescale property. The most *strategic* change is **#2
-(let the state into attention)**, because Aeon's current additive coupling is
-the binding constraint on how much the recurrence can ever matter. **#1** and
-**#4** define the longer-term shape (more per-block capacity; stay hybrid).
+Per your division of labor I stop at the map — no coupling recommendation. The
+substrate research is in hand for the VRU-vs-RWKV call.
 
 ---
 
