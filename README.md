@@ -22,9 +22,11 @@ surface without changing its substrate nature.
   per-channel decay, token-shift, the RWKV-7 delta-rule + value-residual), the
   structural contrast with attention/KV-cache, RWKV read as a **candidate RNN
   signal source** (the read/write *ports* it presents to Recursion), the
-  RWKV-vs-VRU RNN-source decision frame (kept open), and a map of the
-  **multi-input substrate design space** — including that the architecture is
-  not structurally limited to two sources.
+  an **argued position** on the RNN-source decision (RWKV-7 vs the contractive
+  recurrent substrate, with the information asymmetry between them flagged), and
+  **positions across** the multi-input substrate design space — including that
+  the architecture is not structurally limited to two sources. Positions are
+  input to deliberation, not decisions.
 - **[`reference/RWKV-LM/`](reference/RWKV-LM/)** — a focused, text-only subset
   of the upstream RWKV-LM source that the analysis cites, so the file/line
   references resolve in-repo. See its `PROVENANCE.md` (upstream is Apache-2.0).
