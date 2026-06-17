@@ -112,6 +112,12 @@ class RWKVCell(nn.Module, SubstratePort):
     def write(self, drive: torch.Tensor) -> None:
         self._pending_drive = drive
 
+    def detach_state(self) -> None:
+        if self._S is not None:
+            self._S = self._S.detach()
+        if self._read is not None:
+            self._read = self._read.detach()
+
     # ---- optional tier ----------------------------------------------------
     def read_matrix(self) -> torch.Tensor:
         """Raw (B, H, N, N) state — the rich port a joiner can cross-attend into."""

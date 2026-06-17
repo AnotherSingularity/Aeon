@@ -71,6 +71,10 @@ class VRUCell(nn.Module, SubstratePort):
     def write(self, drive: torch.Tensor) -> None:
         self._pending_drive = drive
 
+    def detach_state(self) -> None:
+        if self._h is not None:
+            self._h = self._h.detach()
+
     # ---- optional tier ----------------------------------------------------
     def read_decay(self) -> float:
         """READ-ONLY: the fixed geometric scalar. The substrate owns its decay;

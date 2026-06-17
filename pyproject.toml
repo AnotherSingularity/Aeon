@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aeon"
+version = "0.2.2"
+description = "Aeon hybrid: multi-input contractive Recursion over a recurrent substrate + Qwen2 backbone"
+requires-python = ">=3.10"
+
+# NOTE: torch is pinned to the CUDA 12.4 build. Install it from the cu124 index
+# (see README), e.g.:
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+# then `pip install -e .` for the rest.
+dependencies = [
+    "torch==2.5.1",
+    "transformers==4.46.3",
+    "accelerate>=1.0,<2.0",
+    "datasets>=3.0,<4.0",
+    "safetensors>=0.4,<1.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["aeon*"]

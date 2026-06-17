@@ -1,0 +1,31 @@
+# Stage-1 hybrid training config (UNRUN locally; runs on Vast).
+model:
+  model_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+  h_rec: 256
+  K: 16                      # slow-clock window size
+  margin_h: 0.98
+  margin_c: 0.95
+  freeze_backbone: true
+  dtype: bfloat16
+  substrate:
+    kind: rwkv               # "rwkv" | "vru" — deployment-time choice
+    d_in: 256
+    d_state: 256
+    n_head: 4
+    head_size: 64
+
+data:
+  dataset: tatsu-lab/alpaca
+  seq_len: 512
+
+train:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  max_steps: 2000
+  batch_size: 1
+  grad_clip: 1.0
+  log_every: 10              # audit: sigma values, gamma, loss
+  ckpt_every: 200
+  out_dir: runs/stage1_hybrid
+  resume: true
+  seed: 0

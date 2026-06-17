@@ -109,6 +109,12 @@ class SubstratePort(abc.ABC):
         """Stage a (B, d_state) drive from the joiner, applied at the next
         `step`. The required-tier write port is exactly this vector drive."""
 
+    def detach_state(self) -> None:
+        """Detach internal recurrent state from the autograd graph — used at
+        window boundaries for truncated BPTT (hybrid.py). Default no-op;
+        stateful cells override to detach their carried tensors."""
+        return None
+
     # ---- capability negotiation -------------------------------------------
     def capabilities(self) -> frozenset:
         return frozenset(self.CAPABILITIES)
