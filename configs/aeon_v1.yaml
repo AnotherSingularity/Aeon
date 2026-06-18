@@ -1,0 +1,46 @@
+# Aeon from-scratch training config. Everything random-initialized.
+# (Data here is synthetic for a pipeline smoke; a real corpus + Aeon tokenizer
+#  is the next step. See scripts/train.py.)
+model:
+  h_rec: 256
+  K: 16                      # slow-clock window size
+  margin_h: 0.98
+  margin_c: 0.95
+  freeze_backbone: false     # train the transformer side from scratch
+  use_embedding_input: true  # 3rd Recursion input: window mean of raw embeddings
+  dtype: bfloat16
+  transformer:               # Aeon's architecture choices
+    vocab_size: 32000
+    hidden_size: 1024
+    intermediate_size: 2816
+    num_hidden_layers: 24
+    num_attention_heads: 16
+    num_key_value_heads: 4
+    head_dim: 64
+    max_position_embeddings: 8192
+    rms_norm_eps: 1.0e-5
+    rope_theta: 10000.0
+    tie_word_embeddings: true
+    attention_bias: false
+  substrate:
+    kind: matrix             # "matrix" | "vector"
+    d_in: 256
+    d_state: 256
+    n_head: 4
+    head_size: 64
+    use_state_norm: false
+
+data:
+  seq_len: 512
+
+train:
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_steps: 2000
+  batch_size: 1
+  grad_clip: 1.0
+  log_every: 10              # audit: sigma values, gamma, loss
+  ckpt_every: 200
+  out_dir: runs/aeon_v1
+  resume: true
+  seed: 0

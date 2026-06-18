@@ -4,34 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aeon"
-version = "0.2.2"
-description = "Aeon hybrid: multi-input contractive Recursion over a recurrent substrate + Aeon-original Qwen2 backbone"
+version = "0.2.3"
+description = "Aeon: a multi-source contractive architecture — recurrent substrate + transformer side joined by a sigma<1 contractive Recursion. 100% Aeon-original."
 requires-python = ">=3.10"
 
-# The architecture package `aeon/` is Aeon-original and depends only on torch +
-# safetensors (weight I/O) + pyyaml. `transformers` is NOT a core dependency and
-# does not appear in any import reachable from HybridModel.forward(); it is an
-# optional, non-architecture dependency used only by the byte-identity gate
-# (test) and the training script's tokenizer (train).
-#
-# NOTE: install torch from the CUDA 12.4 index first (see README):
+# Core dependencies only — generic libraries, nothing model-affiliated.
+# torch from the CUDA 12.4 index (see README):
 #   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+# safetensors: Aeon checkpoint I/O (generic tensor format). sentencepiece: the
+# intended tokenizer for the from-scratch corpus step.
 dependencies = [
     "torch==2.5.1",
     "safetensors>=0.4,<1.0",
+    "sentencepiece>=0.2,<1.0",
     "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
-# transformers is confined to these extras (test-time gate + train-time
-# tokenizer/data). It is never imported by the aeon architecture.
-test = ["pytest>=8.0", "transformers==4.46.3"]
-train = [
-    "transformers==4.46.3",
-    "datasets>=3.0,<4.0",
-    "huggingface_hub>=0.25",
-    "accelerate>=1.0,<2.0",
-]
+dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
 include = ["aeon*"]

@@ -1,15 +1,13 @@
 """
-aeon/hybrid.py — three-source coupling (Stage-1 hybrid).
+aeon/hybrid.py — Aeon's multi-source coupling.
 
-⚠️ UNRUN. Written to spec; no torch in the authoring environment. Verified on
-Vast (per the agreed plan).
-
-SOURCES (all project into Recursion's σ<1 manifold; none is privileged):
-  * substrate  — per-token RNN behind the port (RWKV-class or candidate cell)
-  * transformer — frozen Qwen2 backbone (read/write surfaces train)
+Three sources project into Recursion's σ<1 contractive manifold; none is
+privileged:
+  * substrate  — the per-token recurrent signal source behind the port
+  * transformer — Aeon's transformer side (read/write surfaces)
   * Recursion  — the multi-input contractive joiner (slow clock)
 
-WIRING (relayed answers + HYBRID_DESIGN points 1–4):
+WIRING:
   fast clock (per token, within a K-window w; conditioning state = h_{w-1}):
       x_i  = emb_proj(emb_i) + cond_proj(h_{w-1})      # token emb + held slow state
       r_i  = substrate.step(x_i)                        # per-token readout
@@ -19,30 +17,27 @@ WIRING (relayed answers + HYBRID_DESIGN points 1–4):
       e_w  = mean_i emb_i                               # window mean of original embeddings
       h_w, c_w = recursion.step(s_w, t_w, h_{w-1}.detach(), c_{w-1}.detach(), e=e_w)
       # recursion update: h = tanh(W_s·s + W_t·t [+ W_e·e] + W_h·h + c);
-      # W_e·e (use_embedding_input, default ON) re-injects raw token info (Zamba-style).
-  output path (Q1 answer = Recursion slow state feeds the write port):
+      # W_e·e (use_embedding_input, default ON) re-injects raw token-level info
+      # directly into the integration step.
+  output path (Recursion's slow state feeds the write port):
       inject_signal[window w tokens] = h_{w-1}          # broadcast, held across the window
       logits = lm_head( hidden + γ · write_proj(inject_signal) )   # final-hidden inject
 
-DERIVED DESIGN DECISIONS — FLAGGED FOR CONFIRMATION against HYBRID_DESIGN.md
-(these are forced by "must train" ∧ "no future leakage" ∧ "slow clock", not
-free guesses; confirm before the Vast run):
+DESIGN NOTES:
   (D1) The HELD state conditioning window w is h_{w-1} (previous window's tick
-       output) — for BOTH the substrate input (per point 4) AND the transformer
-       inject (per the Q1 answer). Causal: h_{w-1} aggregates only past tokens,
-       so no within-window future leakage.
+       output) — for BOTH the substrate input AND the transformer inject. Causal:
+       h_{w-1} aggregates only past tokens, so no within-window future leakage.
   (D2) Truncated BPTT: the recurrence carry into each tick is detached
        (h_{w-1}.detach(), c_{w-1}.detach()) and the substrate state is detached
-       at each window boundary (substrate.detach_state()). The conditioning
-       state h_{w-1} is NOT detached when used to condition window w, so window
-       w's loss backprops one window into window w-1's substrate+recursion —
-       this is what gives those params gradient ("gradient flows within a
-       window", point 3).
+       at each window boundary (substrate.detach_state()). The conditioning state
+       h_{w-1} is NOT detached when used to condition window w, so window w's loss
+       backprops one window into window w-1's substrate+recursion — this is what
+       gives those params gradient.
   (D3) Recursion runs in fp32 to protect the σ<margin certificate (Cayley
        solve / svd lack bf16 support); s_w, t_w are cast to fp32 at the tick and
        h is cast back to the compute dtype for projection/inject.
   (D4) Minor: the final window's tick output conditions no later window, so the
-       last window's substrate readouts receive no gradient. Accepted for v1.
+       last window's substrate readouts receive no gradient.
 """
 from __future__ import annotations
 
@@ -55,12 +50,12 @@ import torch.nn.functional as F
 
 from .substrate import make_substrate
 from .recursion import RecursionJoiner
-from .transformer import HybridTransformer, AeonQwen2Config, R1_DEFAULT
+from .transformer import HybridTransformer, AeonTransformerConfig
 
 
 @dataclass
 class HybridOutput:
-    """Aeon-original forward output (no transformers dependency)."""
+    """Aeon's forward output type."""
     loss: torch.Tensor | None
     logits: torch.Tensor
 
@@ -70,11 +65,11 @@ class HybridModel(nn.Module):
         self,
         h_rec: int = 256,
         K: int = 16,
-        transformer_config: AeonQwen2Config | None = None,
+        transformer_config: AeonTransformerConfig | None = None,
         substrate: dict | None = None,
         margin_h: float = 0.98,
         margin_c: float = 0.95,
-        freeze_backbone: bool = True,
+        freeze_backbone: bool = False,
         use_embedding_input: bool = True,
         dtype: torch.dtype = torch.bfloat16,
     ):
@@ -82,16 +77,15 @@ class HybridModel(nn.Module):
         self.K = K
         self.h_rec = h_rec
 
-        # transformer side: Aeon-original Qwen2 backbone (frozen) + trainable
-        # read/write surfaces. Weights are loaded separately via
-        # `self.transformer.load_pretrained(checkpoint_dir)` (R1 init).
+        # transformer side: Aeon's transformer (random-init, trained from scratch)
+        # + trainable read/write surfaces.
         self.transformer = HybridTransformer(
             h_rec=h_rec, config=transformer_config, freeze=freeze_backbone, dtype=dtype
         )
         self.D = self.transformer.D
 
         # substrate behind the port (deployment-time choice via config)
-        sub_cfg = dict(substrate or {"kind": "rwkv", "d_in": h_rec, "d_state": h_rec})
+        sub_cfg = dict(substrate or {"kind": "matrix", "d_in": h_rec, "d_state": h_rec})
         sub_cfg.setdefault("d_in", h_rec)
         sub_cfg.setdefault("d_state", h_rec)
         self.substrate = make_substrate(sub_cfg)
@@ -99,8 +93,9 @@ class HybridModel(nn.Module):
         self.d_state = self.substrate.d_state
 
         # Recursion joiner (kept fp32 for the certificate; see D3).
-        # Optional 3rd input e = window mean of original embeddings (d_model=D),
-        # projected by W_e (D→H_rec) inside Recursion (Zamba-style re-injection).
+        # Optional 3rd input e = window mean of the original embeddings (D),
+        # projected by W_e (D→H_rec) inside Recursion: raw token-level info
+        # injected directly at integration time.
         self.recursion = RecursionJoiner(
             h_rec=h_rec, d_substrate=h_rec, d_transformer=h_rec,
             d_embedding=self.D, use_embedding_input=use_embedding_input,
@@ -120,7 +115,7 @@ class HybridModel(nn.Module):
         emb = self.transformer.embeddings(input_ids)                 # (B,T,D)
         compute_dtype = emb.dtype
         hidden = self.transformer.hidden_states(
-            input_ids=input_ids, attention_mask=attention_mask)      # (B,T,D), frozen
+            input_ids=input_ids, attention_mask=attention_mask)      # (B,T,D)
         t_all = self.transformer.read(hidden)                        # (B,T,H_rec)
         emb_in = self.emb_proj(emb)                                  # (B,T,d_in)
 

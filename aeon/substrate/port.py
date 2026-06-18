@@ -1,8 +1,8 @@
 """
 aeon/substrate/port.py — the substrate port.
 
-The substrate port is the architectural artifact from the RWKV study (§d):
-a read / write / cadence contract that *every* recurrent substrate satisfies,
+The substrate port is the architectural contract for Aeon's recurrent signal
+source: a read / write / cadence contract that *every* substrate cell satisfies,
 so the substrate is an **interface, not a commitment**. Recursion (the joiner)
 is written against this port and is substrate-agnostic; which concrete cell sits
 behind it is **deployment-time configuration** via `make_substrate()`.
@@ -33,7 +33,7 @@ REQUIRED — every substrate must implement:
 
 OPTIONAL — advertised via `.capabilities()`; the joiner calls `.has(cap)` and
 uses these only when present, falling back to the required tier otherwise:
-    MATRIX_READ     read_matrix()           rich state read (e.g. RWKV's S)
+    MATRIX_READ     read_matrix()           rich state read (e.g. a matrix state S)
     DECAY_CONTROL   read_decay()            READ-ONLY decay introspection
     ASSOC_WRITE     assoc_write(k, v, a)    delta-rule association write
     PER_LAYER_READ  read_per_layer()        per-layer readouts
@@ -41,9 +41,9 @@ uses these only when present, falling back to the required tier otherwise:
   DECAY IS SUBSTRATE-OWNED. `DECAY_CONTROL` is a *read-only* capability:
   `read_decay()` lets the joiner introspect a substrate's decay (for monitoring
   and capability negotiation) but the joiner never mutates it. The substrate
-  owns its decay — VRU returns its fixed geometric scalar; RWKV returns its
-  per-channel learned tensor. There is deliberately no decay mutator in the
-  port.
+  owns its decay — the vector cell returns its fixed geometric scalar; the
+  matrix cell returns its per-channel learned tensor. There is deliberately no
+  decay mutator in the port.
 
 A substrate advertises optional capabilities by listing them in the class-level
 `CAPABILITIES` frozenset and overriding the corresponding method.

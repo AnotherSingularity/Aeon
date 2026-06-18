@@ -26,10 +26,10 @@ where
     s = substrate readout, t = transformer readout (both at H_rec; see below),
     e = window mean of the ORIGINAL token embeddings (at d_model), projected by
         W_e (d_model → H_rec). Optional, gated by `use_embedding_input` (default
-        ON for v1): gives Recursion direct access to raw token-level information
-        at integration time (cf. Zamba's embedding re-injection). W_e is an
-        input map only — it does NOT carry the contraction certificate (only
-        W_h / W_c do), so the σ<margin guarantee is unaffected.
+        ON): gives Recursion direct access to raw token-level information at
+        integration time. W_e is an input map only — it does NOT carry the
+        contraction certificate (only W_h / W_c do), so the σ<margin guarantee
+        is unaffected.
 
 CADENCE: `step()` ticks ONCE per call. Recursion does not know about K — the
 slow-clock cadence and K-window aggregation are owned by hybrid.py. `step()` is

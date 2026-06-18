@@ -5,7 +5,7 @@ These are thin shells over `aeon.substrate.verify_substrate` — the single
 conformance entry point. The contract logic lives in the utility, not here:
   * torch-free: the utility's static checks (capability negotiation, decay
     read-only, contract attributes) run against pure-Python mocks, and the AST
-    anti-drift mechanism runs against the real vru_cell source;
+    anti-drift mechanism runs against the real vector_cell source;
   * torch: the full suite (incl. execution + per-cell structural checks) runs
     against the real cells, skipping cleanly when torch is unavailable.
 
@@ -78,10 +78,10 @@ def test_verify_rich_mock_static():
     assert statuses["advertised_ports_implemented"] == "pass"
 
 
-# --- torch-free: AST anti-drift mechanism against the real vru source -------
-def test_vru_source_anti_drift():
+# --- torch-free: AST anti-drift mechanism against the real vector_cell source -
+def test_vector_cell_source_anti_drift():
     chk = make_ast_drift_check(
-        "aeon.substrate.vru_cell",
+        "aeon.substrate.vector_cell",
         forbidden={"spectral_norm", "carry", "ema", "gate",
                    "forget", "clamp", "clip", "sigmoid"},
         required={"tanh", "W_x", "W_h", "scalar"},
@@ -111,8 +111,8 @@ def test_verify_real_cells():
     if not _have_torch():
         print("  [skip] torch unavailable — real-cell conformance skipped")
         return
-    for cfg in ({"kind": "rwkv", "d_in": 8, "d_state": 4},
-                {"kind": "vru", "d_in": 8, "d_state": 6}):
+    for cfg in ({"kind": "matrix", "d_in": 8, "d_state": 4},
+                {"kind": "vector", "d_in": 8, "d_state": 6}):
         report = verify_substrate(make_substrate(cfg))
         assert report.ok, "\n" + str(report)
 

@@ -1,22 +1,18 @@
 """
-aeon — three-source contractive architecture (implementation phase, V0.02.02).
+aeon — a multi-source contractive architecture.
 
-ALL forward-path code is Aeon-original: no external-library architecture imports
-(no `transformers`) anywhere reachable from HybridModel.forward().
+100% Aeon-original, weights and code: random-initialized, trained end-to-end,
+with no external library in any forward path.
 
-Layout (see docs/RWKV_STUDY.md for the design rationale):
+Layout:
 
-    recursion.py     # Recursion: the σ<1 contractive joiner (Aeon-original)
-    transformer.py   # transformer side: Aeon-original Qwen2 backbone + read/write
-                     #   surfaces; R1 weights loaded as init (no transformers import)
-    substrate/       # the RNN signal source behind the port
+    recursion.py     # Recursion: the σ<1 contractive joiner (Cayley certificate)
+    transformer.py   # transformer side: Aeon transformer + read/write surfaces
+    substrate/       # the recurrent signal source behind the port
         port.py          abstract port contract (read/write/step + capabilities)
-        rwkv_cell.py     RWKV-class implementation
-        vru_cell.py      candidate contractive-class implementation
+        matrix_cell.py   matrix-state cell
+        vector_cell.py   vector-state cell
+        conformance.py   verify_substrate()
         __init__.py      make_substrate() factory
-    hybrid.py        # three-source coupling (slow-clock Recursion over the sources)
-
-`transformers` is an optional, non-architecture dependency used only by the
-byte-identity gate (tests/test_byte_identity.py) and the training script's
-tokenizer — never by the architecture.
+    hybrid.py        # multi-source coupling (slow-clock Recursion over the sources)
 """

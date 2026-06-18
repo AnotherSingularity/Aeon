@@ -1,170 +1,77 @@
-# RWKV Signal-Source Study
+# Aeon
 
-Parallel research work: a study of [RWKV](https://github.com/BlinkDL/RWKV-LM)'s
-state-propagation design as **signal-source research** for a **multi-input
-contractive architecture**. In that architecture **Recursion is the substrate**
-— it has its own state and σ<1 contractive dynamics, and signal sources project
-into its manifold through input ports. **RWKV and the candidate recurrent
-substrate (Dylan's prior work) are candidates for the RNN signal-source port**
-(one input); the transformer is another source. A substrate **port spec** both
-satisfy makes that choice deployment-time configuration, with Recursion as the
-substrate-agnostic joiner. The design is **not limited to two sources** —
-further inputs plug into Recursion's port surface without changing its substrate
-nature.
+A multi-source contractive architecture. Aeon couples a recurrent **substrate**
+and a **transformer side** through **Recursion** — a multi-input contractive
+joiner whose state lives on a σ<1 manifold (a hard certificate, by construction).
+Every signal source projects into that manifold; Recursion integrates them on a
+slow clock and conditions generation.
 
-> **Note on repo location.** This was meant to live in a separate repository.
-> The session's GitHub access could not create or fork a new repo (the
-> integration lacks repo-creation permission, and forking the upstream was out
-> of session scope), so the study lives here, in the repo that was made
-> available for it. The content is self-contained.
+**100% Aeon-original, weights and code.** Random-initialized, trained end-to-end.
+No external architecture and no external library in any forward path.
 
----
+## Architecture
 
-# Stage-1 hybrid: TRAINED & VALIDATED (V100, branch `V0.02.03`)
-
-A full 2000-step run on a V100 32GB (R1-Distill-Qwen-1.5B, rwkv substrate, bf16,
-batch=1, seq=512, ~27 min) validated the architecture end-to-end:
-
-- **σ certificate held all 2000 steps** (`holds=True`); final σ_Wh≈0.699, σ_Wc≈0.749.
-- **γ moved freely** to ≈0.083 (8.3× past the bf16-trapped 0.03125) once it was a
-  true fp32 master parameter — see the dtype note below.
-- **λ** (delta-decay carry) learned ≈0.503; loss in the normal alpaca range.
-- bf16 byte-identity warm-start verified bit-identical (γ=0 ⇒ logits == base R1).
-
-**CRITICAL TRAINING REQUIREMENT — γ must be an fp32 master parameter.**
-`model.to(dtype)` casts *every* parameter regardless of its declared dtype, so γ
-becomes bf16; a bf16 γ has ULP ≈2.4e-4 near 2^-5, above the AdamW step (1e-4), so
-it snaps to 1/32 and freezes. `scripts/train.py` re-casts γ to fp32 **after**
-`model.to(dtype)` and **before** the optimizer is built. Recursion is likewise
-kept fp32 (its σ-certificate math). Substrate state tensors must follow the
-param dtype (their `reset()` does this) or `r @ S` crashes on mixed dtypes.
-
----
-
-# Stage-1 hybrid (implementation — branch `V0.02.02`)
-
-> ⚠️ **UNRUN.** The implementation modules were written to spec in an
-> environment with no torch and no HuggingFace access. **Nothing below has been
-> executed.** It is intended to be run/debugged on Vast (a rented GPU box), as
-> agreed. Treat all of `aeon/recursion.py`, `aeon/transformer.py`,
-> `aeon/hybrid.py`, and `scripts/train.py` as first-write-to-spec, not verified.
-
-**No-external-architecture principle (Meaning A):** every forward-path component
-is Aeon-original. `transformers` appears in **no import reachable from
-`HybridModel.forward()`** — it is an optional dependency used only by the
-byte-identity gate (test) and the training script's tokenizer.
-
-The hybrid couples three sources into Recursion's σ<1 contractive manifold:
-
-| file | role |
-|---|---|
-| `aeon/recursion.py` | **Recursion** — canonical two-state chart-B contractive joiner, multi-input (`W_s·s + W_t·t [+ W_e·e] + W_h·h + c`), hard `σ<margin` by Cayley construction; `step()` ticks once, `audit()` reports σ. |
-| `aeon/transformer.py` | **Transformer side — Aeon-original Qwen2** (GQA+RoPE, SwiGLU, RMSNorm, pre-norm decoder, tied lm_head; **no `transformers` import**). R1 weights loaded as init via safetensors. Frozen backbone; trainable read (D→H_rec) + γ-gated write (H_rec→D, γ=0 warm start). |
-| `aeon/substrate/` | **RNN signal source** behind the port (`rwkv` or `vru`, runtime-selected). |
-| `aeon/hybrid.py` | **Three-source coupling** — slow-clock Recursion (K=16), running-mean window aggregation, hold-and-broadcast of the slow state to the substrate input + transformer inject, truncated BPTT at window boundaries. |
-| `scripts/train.py` | YAML-driven, alpaca, bf16, batch=1, seq=512, σ/γ/loss audit logging, checkpoint + resume. |
-
-**Config knobs added from published hybrids (both additive):**
-- `model.use_embedding_input` (**default `true`**) — adds a 3rd Recursion input
-  `W_e·e`, the window mean of the *original* token embeddings, giving Recursion
-  direct raw-token access at integration time (Zamba-style re-injection). `W_e`
-  is an input map only — the σ<margin certificate is unaffected.
-- `model.substrate.use_state_norm` (**default `false`**) — optional RMSNorm on
-  the RWKV-class cell's per-head state before the receptance read, to control
-  matrix-state magnitude drift at scale (cf. Jamba). Read-path only; the stored
-  accumulator keeps its raw dynamics. A debug knob if Vast shows S drift.
+| component | file | role |
+|---|---|---|
+| **Recursion** | `aeon/recursion.py` | the σ<1 contractive joiner. Two-state cell (`h` + delta-decay carry `c`); recurrent weights `W = sigmoid(s)·MARGIN·Cayley(A)·diag(tanh(d))` give `σ < MARGIN` by construction. Multi-input: `h = tanh(W_s·s + W_t·t + W_e·e + W_h·h + c)`. `audit()` reports σ. |
+| **Substrate** | `aeon/substrate/` | the recurrent signal source behind a read/write/cadence **port**. Two cells: `matrix_cell` (matrix state, per-channel decay, outer-product write) and `vector_cell` (single-vector state). Cell choice is deployment-time config via `make_substrate()`. `verify_substrate()` is the conformance gate. |
+| **Transformer side** | `aeon/transformer.py` | Aeon's own transformer: RMSNorm, rotary embeddings, grouped-query attention, SwiGLU MLP, pre-norm decoder stack, tied head. Read surface (hidden→manifold) and γ-gated write surface (manifold→hidden). |
+| **Coupling** | `aeon/hybrid.py` | slow-clock Recursion (`K`-token windows): running-mean window aggregation, hold-and-broadcast of the previous window's state to the substrate input and the transformer inject, truncated BPTT at window boundaries. |
 
 ## Install (CUDA 12.4)
 
 ```bash
-# torch must come from the cu124 index (pinned 2.5.1)
 pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-pip install -e .            # core architecture: torch + safetensors + pyyaml (NO transformers)
-pip install -e ".[train]"   # + transformers (tokenizer), datasets, huggingface_hub, accelerate
-pip install -e ".[test]"    # + transformers + pytest (for the byte-identity gate)
+pip install -e .            # safetensors, sentencepiece, pyyaml
 ```
 
-`transformers` is an optional extra, never imported by the `aeon/` architecture.
-
-## Byte-identity gate (run FIRST — load-bearing proof before any training)
-
-The R1 warm-start is only trustworthy if Aeon's transformer reproduces HF Qwen2
-exactly. Download R1 locally, then:
+## Run
 
 ```bash
-pip install -e ".[test]"
-AEON_R1_DIR=/path/to/DeepSeek-R1-Distill-Qwen-1.5B python tests/test_byte_identity.py
+python scripts/train.py --config configs/aeon_v1.yaml
 ```
 
-Pass criteria: **bf16 bit-identical** (the warm-start dtype — verified max|Δ| =
-0.0 on a V100 once RoPE was computed in fp32); **fp32 within 1e-3** (~5.5e-4 is
-the eager-kernel reduction-order noise floor, not a bug — fp32 is not a training
-dtype). The bf16-at-γ=0 guarantee is the load-bearing one and it holds exactly.
+Everything is random-initialized. The config ships with a **synthetic random-token
+data source** so the full pipeline runs end-to-end (forward / loss / backward /
+optimizer step / certificate audit / checkpoint, resumable). A real training run
+needs a real corpus and an Aeon tokenizer — that is the next step.
 
-## Running Stage-1 hybrid on Vast
+Healthy audit lines look like:
+`[step N] loss=… sigma_Wh=… sigma_Wc=… holds=True lambda=… gamma=…` — `holds`
+stays `True` every step (the certificate is structural); `gamma` starts at 0 and
+moves off it (γ is a true fp32 master parameter, so it is not quantization-locked).
+
+## Precision notes (baked into the code)
+
+- **Recursion stays fp32** — protects the σ-certificate (Cayley solve / SVD).
+- **γ is an fp32 master parameter**, re-cast after any global dtype cast — a bf16
+  γ has ULP above the optimizer step near 2^-5 and freezes at 1/32.
+- **`inject()` adds in fp32** — keeps γ's gradient path fp32 end-to-end.
+- **Rotary `inv_freq` is computed fresh in fp32 each forward** — never a buffer a
+  cast could degrade.
+- **Substrate state follows the parameter dtype** — fp32 state vs bf16 params
+  crashes the read matmul.
+- **`write_proj` is randomly initialized** — with both γ=0 and `write_proj`=0 the
+  write path is gradient-dead; random `write_proj` + γ=0 keeps the start
+  contribution zero while letting γ learn.
+
+## Tests
 
 ```bash
-python scripts/train.py --config configs/stage1_hybrid.yaml
+pip install -e ".[dev]"
+python tests/test_substrate_port.py     # substrate port conformance
+python tests/test_aeon_sanity.py        # forward shapes, certificate, gradient flow, determinism
 ```
 
-The first run downloads the R1-Distill-Qwen-1.5B checkpoint and the alpaca
-dataset (needs HF egress — blocked in the authoring sandbox, available on Vast).
-Training is resumable: re-running picks up the latest `runs/stage1_hybrid/ckpt_*.pt`.
+Substrate port conformance runs without torch (contract + AST checks); the rest
+require torch and skip cleanly otherwise.
 
-## Expected outputs (what a healthy run looks like)
+## Status
 
-- `[init] audit @ start: {... 'holds': True, 'gamma': 0.0}` — at init γ=0, so the
-  hybrid is byte-identical to plain R1 (warm start); the σ certificate holds.
-- Per-step audit lines:
-  `[step N] loss=… sigma_Wh=… sigma_Wc=… holds=True lambda=… gamma=…`
-  — `holds` must stay `True` every step (the certificate is structural; a
-  `False` is a bug, flagged with `[WARN]`). `gamma` should grow away from 0 as
-  the recurrent signal starts to matter.
-- Checkpoints every `ckpt_every` steps in `runs/stage1_hybrid/`.
+The integration architecture — substrate port, Recursion joiner with its
+certificate, multi-source coupling, and the fp32-γ / fp32-Recursion training
+pattern — has been exercised end-to-end. The transformer side is Aeon-original
+and random-initialized. A from-scratch training run on a real corpus (corpus,
+tokenizer, scale, compute) is the next step.
 
-## Verification to do on a GPU/CPU box with the checkpoint (deferred per plan)
-
-0. **Byte-identity gate (FIRST, load-bearing):** Aeon transformer == HF Qwen2 on
-   identical weights+inputs (`tests/test_byte_identity.py`). Gate everything else
-   on this.
-1. R1 checkpoint loads cleanly into the Aeon backbone (`load_pretrained`).
-2. `model(input_ids, labels=…)` forward runs; loss computes; `loss.backward()`;
-   `opt.step()` — one end-to-end step.
-3. γ=0 warm-start check: hybrid logits == `transformer.plain_logits(...)`.
-4. σ certificate holds across steps.
-
-## Open design decisions flagged in-code (confirm against HYBRID_DESIGN.md)
-
-See the module docstrings (`hybrid.py` D1–D4, `recursion.py` interpretations
-(1)–(2)) for the design choices I **derived** from the relayed answers rather
-than received verbatim — chiefly: the held conditioning state is the *previous*
-window's tick output (causal, no leakage), and truncated BPTT flows gradient one
-window back. Confirm before a long training run.
-
----
-
-## Contents
-
-- **[`docs/RWKV_STUDY.md`](docs/RWKV_STUDY.md)** — the analysis. Covers how
-  state propagates in RWKV (per-block matrix state, time-mix recurrence,
-  per-channel decay, token-shift, the RWKV-7 delta-rule + value-residual), the
-  structural contrast with attention/KV-cache, RWKV read as a **candidate RNN
-  signal source** (the read/write *ports* it presents to Recursion), a
-  **substrate port spec** that both the candidate recurrent substrate (Dylan's
-  prior work) and RWKV-class blocks satisfy — so substrate choice is
-  deployment-time configuration, not an architectural commitment, with Recursion
-  as the substrate-agnostic joiner — an **argued position** on the port-spec
-  design (minimal-common vs required+optional capability tiers), and **positions
-  across** the multi-input substrate design space — including that the
-  architecture is not structurally limited to two sources. Positions are input
-  to deliberation, not decisions.
-- **[`reference/PROVENANCE.md`](reference/PROVENANCE.md)** — audit record. A
-  read-only subset of RWKV-LM was briefly vendored for the study and has been
-  **removed under the no-external-codebases principle**; the study's citations
-  now link to upstream `BlinkDL/RWKV-LM` at a pinned commit (Apache-2.0).
-
-## Reading order
-
-1. `docs/RWKV_STUDY.md` — start here.
-2. Follow its citations out to upstream `BlinkDL/RWKV-LM` (pinned commit; see the
-   doc's Appendix).
+`reference/` holds **sealed exploratory background** — not part of Aeon.

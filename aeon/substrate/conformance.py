@@ -2,8 +2,8 @@
 aeon/substrate/conformance.py — the substrate conformance utility.
 
 `verify_substrate(cell)` is **the conformance check to run when introducing a
-new substrate** (the real VRU, an RWKV variant, or any future cell). It runs the
-full port contract (§d) against an arbitrary cell and returns a structured
+new substrate** (a new cell of any kind). It runs the
+full port contract against an arbitrary cell and returns a structured
 `ConformanceReport` (pass / fail / skip per check, with diagnostics on failure).
 
 It is the single source of truth for "does this thing satisfy the port?" — the
@@ -17,7 +17,7 @@ Design:
     unavailable or the cell is not a torch module, mirroring the test pattern.
   * Per-cell structural checks register via a `CONFORMANCE_CHECKS` class
     attribute on the cell (or the `extra_checks` argument), so cell-specific
-    guards (e.g. VRU's anti-drift AST check) extend the suite without forking
+    guards (e.g. the vector cell's anti-drift AST check) extend the suite without forking
     this utility. A registered check is `callable(cell)`; it passes by
     returning, fails by raising, and skips by raising `SkipCheck`.
 """
