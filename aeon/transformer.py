@@ -307,7 +307,7 @@ class HybridTransformer(nn.Module):
         nn.init.normal_(self.read_proj.weight, std=read_proj_std)
         # write surface: manifold (H_rec) -> hidden (D), γ-gated from 0 (warm start)
         self.write_proj = nn.Linear(h_rec, self.D, bias=False)
-        nn.init.zeros_(self.write_proj.weight)
+        nn.init.normal_(self.write_proj.weight, std=0.02)
         self.gamma = nn.Parameter(torch.zeros(1))
 
     # ---- weight init from R1 ---------------------------------------------
