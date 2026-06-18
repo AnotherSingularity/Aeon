@@ -124,19 +124,26 @@ def _repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
 
 
 class AeonRotary(nn.Module):
+    """RoPE cos/sin. inv_freq is computed FRESH in fp32 on every forward — NOT
+    stored as a buffer — so `model.to(bfloat16)` can never degrade the rope
+    frequencies. (A bf16 inv_freq buffer was the prime suspect for the bf16
+    byte-identity divergence: HF computes rope in fp32 by design.) Angles are
+    fp32; cos/sin are cast to the activation dtype at the end, matching HF."""
+
     def __init__(self, cfg: AeonQwen2Config):
         super().__init__()
-        inv = 1.0 / (cfg.rope_theta ** (
-            torch.arange(0, cfg.head_dim, 2, dtype=torch.int64).float() / cfg.head_dim))
-        self.register_buffer("inv_freq", inv, persistent=False)
+        self.head_dim = cfg.head_dim
+        self.rope_theta = cfg.rope_theta
 
     @torch.no_grad()
     def forward(self, x: torch.Tensor, position_ids: torch.Tensor):
-        # position_ids (B,T) -> cos/sin (B,T,head_dim), computed in fp32
-        inv = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
+        inv_freq = 1.0 / (self.rope_theta ** (
+            torch.arange(0, self.head_dim, 2, dtype=torch.int64, device=x.device).float()
+            / self.head_dim))                                   # (hd/2,) fp32
+        inv = inv_freq[None, :, None].expand(position_ids.shape[0], -1, 1)
         pos = position_ids[:, None, :].float()
-        freqs = (inv @ pos).transpose(1, 2)            # (B, T, hd/2)
-        emb = torch.cat((freqs, freqs), dim=-1)        # (B, T, hd)
+        freqs = (inv @ pos).transpose(1, 2)            # (B, T, hd/2) fp32
+        emb = torch.cat((freqs, freqs), dim=-1)        # (B, T, hd) fp32
         return emb.cos().to(x.dtype), emb.sin().to(x.dtype)
 
 
