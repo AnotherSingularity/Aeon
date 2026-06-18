@@ -16,7 +16,10 @@ WIRING (relayed answers + HYBRID_DESIGN points 1–4):
   slow clock (once at end of window w):
       s_w  = s_proj( mean_i r_i )                       # running mean over the K readouts
       t_w  = transformer.read(hidden)[:, last_i, :]     # K-th transformer readout
-      h_w, c_w = recursion.step(s_w, t_w, h_{w-1}.detach(), c_{w-1}.detach())
+      e_w  = mean_i emb_i                               # window mean of original embeddings
+      h_w, c_w = recursion.step(s_w, t_w, h_{w-1}.detach(), c_{w-1}.detach(), e=e_w)
+      # recursion update: h = tanh(W_s·s + W_t·t [+ W_e·e] + W_h·h + c);
+      # W_e·e (use_embedding_input, default ON) re-injects raw token info (Zamba-style).
   output path (Q1 answer = Recursion slow state feeds the write port):
       inject_signal[window w tokens] = h_{w-1}          # broadcast, held across the window
       logits = lm_head( hidden + γ · write_proj(inject_signal) )   # final-hidden inject
@@ -63,6 +66,7 @@ class HybridModel(nn.Module):
         margin_h: float = 0.98,
         margin_c: float = 0.95,
         freeze_backbone: bool = True,
+        use_embedding_input: bool = True,
         dtype: torch.dtype = torch.bfloat16,
     ):
         super().__init__()
@@ -83,9 +87,12 @@ class HybridModel(nn.Module):
         self.d_in = self.substrate.d_in
         self.d_state = self.substrate.d_state
 
-        # Recursion joiner (kept fp32 for the certificate; see D3)
+        # Recursion joiner (kept fp32 for the certificate; see D3).
+        # Optional 3rd input e = window mean of original embeddings (d_model=D),
+        # projected by W_e (D→H_rec) inside Recursion (Zamba-style re-injection).
         self.recursion = RecursionJoiner(
             h_rec=h_rec, d_substrate=h_rec, d_transformer=h_rec,
+            d_embedding=self.D, use_embedding_input=use_embedding_input,
             margin_h=margin_h, margin_c=margin_c,
         )
 
@@ -128,10 +135,13 @@ class HybridModel(nn.Module):
             mean_readout = torch.stack(window_readouts, dim=0).mean(dim=0)   # (B, d_state)
             s_w = self.s_proj(mean_readout)                          # (B, H_rec)
             t_w = t_all[:, end - 1, :]                               # (B, H_rec) K-th readout
+            # optional 3rd input: window mean of the ORIGINAL embeddings (B, D)
+            e_w = emb[:, start:end, :].mean(dim=1) if self.recursion.use_embedding_input else None
 
             # slow-clock tick; truncate carry + substrate state at the boundary (D2)
             h, c = self.recursion.step(
-                s_w.float(), t_w.float(), h.detach(), c.detach())
+                s_w.float(), t_w.float(), h.detach(), c.detach(),
+                e=e_w.float() if e_w is not None else None)
             self.substrate.detach_state()
 
         inject_signal = torch.stack(inject_cols, dim=1).to(compute_dtype)    # (B,T,H_rec)

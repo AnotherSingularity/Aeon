@@ -16,14 +16,20 @@ structural, not statistical: there is no setting of the parameters that violates
 
 CANONICAL TWO-STATE FORM (chart B), extended to multi-input
 -----------------------------------------------------------
-    c_next = (1 - λ) · c + λ · tanh(h @ W_cᵀ)                   # delta-decay carry
-    h_next = tanh( W_s(s) + W_t(t) + h @ W_hᵀ + c_next )        # contractive update
+    c_next = (1 - λ) · c + λ · tanh(h @ W_cᵀ)                       # delta-decay carry
+    h_next = tanh( W_s(s) + W_t(t) [+ W_e(e)] + h @ W_hᵀ + c_next ) # contractive update
 with
     W_h = sigmoid(s_h) · MARGIN_H · Cayley(A_h) · diag(tanh(d_h))   ⇒ σ(W_h) < MARGIN_H
     W_c = sigmoid(s_c) · MARGIN_C · Cayley(A_c) · diag(tanh(d_c))   ⇒ σ(W_c) < MARGIN_C
     λ   = sigmoid(log_lambda)
 where
-    s = substrate readout, t = transformer readout (both at H_rec; see below).
+    s = substrate readout, t = transformer readout (both at H_rec; see below),
+    e = window mean of the ORIGINAL token embeddings (at d_model), projected by
+        W_e (d_model → H_rec). Optional, gated by `use_embedding_input` (default
+        ON for v1): gives Recursion direct access to raw token-level information
+        at integration time (cf. Zamba's embedding re-injection). W_e is an
+        input map only — it does NOT carry the contraction certificate (only
+        W_h / W_c do), so the σ<margin guarantee is unaffected.
 
 CADENCE: `step()` ticks ONCE per call. Recursion does not know about K — the
 slow-clock cadence and K-window aggregation are owned by hybrid.py. `step()` is
@@ -78,6 +84,8 @@ class RecursionJoiner(nn.Module):
         h_rec: int = 256,
         d_substrate: int | None = None,
         d_transformer: int | None = None,
+        d_embedding: int | None = None,
+        use_embedding_input: bool = True,
         margin_h: float = 0.98,
         margin_c: float = 0.95,
         learnable_init: bool = True,
@@ -87,6 +95,8 @@ class RecursionJoiner(nn.Module):
         self.H = h_rec
         self.d_substrate = d_substrate or h_rec
         self.d_transformer = d_transformer or h_rec
+        self.use_embedding_input = use_embedding_input
+        self.d_embedding = d_embedding or h_rec
         self.MARGIN_H = margin_h
         self.MARGIN_C = margin_c
 
@@ -103,6 +113,9 @@ class RecursionJoiner(nn.Module):
         # separate input projections, summed into the tanh update
         self.W_s = nn.Linear(self.d_substrate, h_rec, bias=True)
         self.W_t = nn.Linear(self.d_transformer, h_rec, bias=False)
+        # optional third input: window mean of the original embeddings (d_model)
+        if use_embedding_input:
+            self.W_e = nn.Linear(self.d_embedding, h_rec, bias=False)
 
         if learnable_init:
             self.h_init = nn.Parameter(torch.zeros(h_rec))
@@ -132,15 +145,27 @@ class RecursionJoiner(nn.Module):
         return h, c
 
     # ---- one tick ---------------------------------------------------------
-    def step(self, s: torch.Tensor, t: torch.Tensor, h: torch.Tensor, c: torch.Tensor):
+    def step(self, s: torch.Tensor, t: torch.Tensor, h: torch.Tensor,
+             c: torch.Tensor, e: torch.Tensor | None = None):
         """One Recursion tick. s (B, d_substrate), t (B, d_transformer),
-        h, c (B, H_rec). Returns (h_next, c_next). Ticks exactly once; hybrid.py
-        owns the K-window cadence and may detach (h, c) at window boundaries."""
+        h, c (B, H_rec); e (B, d_embedding) is the window's embedding mean, used
+        iff use_embedding_input. Returns (h_next, c_next). Ticks exactly once;
+        hybrid.py owns the K-window cadence and may detach (h, c) at boundaries.
+
+            h_next = tanh(W_s·s + W_t·t [+ W_e·e] + h·W_hᵀ + c_next)
+        """
         Wh = self.W_h_mat()
         Wc = self.W_c_mat()
         lam = torch.sigmoid(self.log_lambda)
         c_next = (1.0 - lam) * c + lam * torch.tanh(h @ Wc.T)
-        h_next = torch.tanh(self.W_s(s) + self.W_t(t) + h @ Wh.T + c_next)
+        pre = self.W_s(s) + self.W_t(t) + h @ Wh.T + c_next
+        if self.use_embedding_input:
+            if e is None:
+                raise ValueError(
+                    "RecursionJoiner.step: use_embedding_input=True but e is None"
+                )
+            pre = pre + self.W_e(e)
+        h_next = torch.tanh(pre)
         return h_next, c_next
 
     # ---- audit hook -------------------------------------------------------

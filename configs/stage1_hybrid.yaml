@@ -6,6 +6,7 @@ model:
   margin_h: 0.98
   margin_c: 0.95
   freeze_backbone: true
+  use_embedding_input: true  # 3rd Recursion input: window mean of raw embeddings (Zamba-style)
   dtype: bfloat16
   substrate:
     kind: rwkv               # "rwkv" | "vru" — deployment-time choice
@@ -13,6 +14,7 @@ model:
     d_state: 256
     n_head: 4
     head_size: 64
+    use_state_norm: false    # optional RMSNorm on RWKV state before readout (debug knob)
 
 data:
   dataset: tatsu-lab/alpaca

@@ -42,6 +42,7 @@ class RWKVCell(nn.Module, SubstratePort):
         d_state: int,
         n_head: int = 4,
         head_size: int = 16,
+        use_state_norm: bool = False,
     ):
         nn.Module.__init__(self)
         self.d_in = d_in
@@ -50,6 +51,16 @@ class RWKVCell(nn.Module, SubstratePort):
         self.H = n_head
         self.N = head_size
         self.dim_att = n_head * head_size
+
+        # optional RMSNorm on the per-head state before the receptance read,
+        # to control matrix-state magnitude drift at scale (cf. Jamba's Mamba
+        # normalization). OFF by default; a debug knob if Vast shows S drift.
+        # Normalises only the READ path — the stored accumulator self._S keeps
+        # its raw decay/accumulation dynamics.
+        self.use_state_norm = use_state_norm
+        if use_state_norm:
+            self.state_norm_weight = nn.Parameter(torch.ones(head_size))
+            self.state_norm_eps = 1e-5
 
         # projections: input -> receptance / key / value
         self.receptance = nn.Linear(d_in, self.dim_att, bias=False)
@@ -100,8 +111,13 @@ class RWKVCell(nn.Module, SubstratePort):
         self._S = a + w * self._S                   # per-channel decayed accumulate
         # (v7 delta-rule erase term would subtract S @ ab here; see assoc_write)
 
-        out = (r @ self._S).reshape(B, H * N)       # receptance read, flatten heads
-        self._read = torch.tanh(self.readout(out))  # bounded-output contract: (-1,1)
+        S_read = self._S
+        if self.use_state_norm:                      # RMSNorm over the value axis N
+            S_read = (S_read * torch.rsqrt(S_read.pow(2).mean(-1, keepdim=True)
+                                           + self.state_norm_eps)
+                      * self.state_norm_weight)
+        out = (r @ S_read).reshape(B, H * N)         # receptance read, flatten heads
+        self._read = torch.tanh(self.readout(out))   # bounded-output contract: (-1,1)
         return self._read
 
     def read(self) -> torch.Tensor:

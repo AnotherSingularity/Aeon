@@ -112,6 +112,7 @@ def main():
         h_rec=mcfg["h_rec"], K=mcfg["K"], model_name=mcfg["model_name"],
         substrate=mcfg.get("substrate"), margin_h=mcfg["margin_h"],
         margin_c=mcfg["margin_c"], freeze_backbone=mcfg["freeze_backbone"],
+        use_embedding_input=mcfg.get("use_embedding_input", True),
         dtype=dtype,
     ).to(device)
     model.to(dtype=dtype)        # cast everything to compute dtype...

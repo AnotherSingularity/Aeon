@@ -32,11 +32,21 @@ The hybrid couples three sources into Recursion's σ<1 contractive manifold:
 
 | file | role |
 |---|---|
-| `aeon/recursion.py` | **Recursion** — canonical two-state chart-B contractive joiner, multi-input (`W_s·s + W_t·t + W_h·h + c`), hard `σ<margin` by Cayley construction; `step()` ticks once, `audit()` reports σ. |
+| `aeon/recursion.py` | **Recursion** — canonical two-state chart-B contractive joiner, multi-input (`W_s·s + W_t·t [+ W_e·e] + W_h·h + c`), hard `σ<margin` by Cayley construction; `step()` ticks once, `audit()` reports σ. |
 | `aeon/transformer.py` | **Transformer side** — wraps HF Qwen2 (`deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`), frozen backbone; trainable read (D→H_rec) + γ-gated write (H_rec→D, γ=0 warm start). |
 | `aeon/substrate/` | **RNN signal source** behind the port (`rwkv` or `vru`, runtime-selected). |
 | `aeon/hybrid.py` | **Three-source coupling** — slow-clock Recursion (K=16), running-mean window aggregation, hold-and-broadcast of the slow state to the substrate input + transformer inject, truncated BPTT at window boundaries. |
 | `scripts/train.py` | YAML-driven, alpaca, bf16, batch=1, seq=512, σ/γ/loss audit logging, checkpoint + resume. |
+
+**Config knobs added from published hybrids (both additive):**
+- `model.use_embedding_input` (**default `true`**) — adds a 3rd Recursion input
+  `W_e·e`, the window mean of the *original* token embeddings, giving Recursion
+  direct raw-token access at integration time (Zamba-style re-injection). `W_e`
+  is an input map only — the σ<margin certificate is unaffected.
+- `model.substrate.use_state_norm` (**default `false`**) — optional RMSNorm on
+  the RWKV-class cell's per-head state before the receptance read, to control
+  matrix-state magnitude drift at scale (cf. Jamba). Read-path only; the stored
+  accumulator keeps its raw dynamics. A debug knob if Vast shows S drift.
 
 ## Install (CUDA 12.4)
 
