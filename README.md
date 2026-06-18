@@ -28,12 +28,17 @@ nature.
 > agreed. Treat all of `aeon/recursion.py`, `aeon/transformer.py`,
 > `aeon/hybrid.py`, and `scripts/train.py` as first-write-to-spec, not verified.
 
+**No-external-architecture principle (Meaning A):** every forward-path component
+is Aeon-original. `transformers` appears in **no import reachable from
+`HybridModel.forward()`** — it is an optional dependency used only by the
+byte-identity gate (test) and the training script's tokenizer.
+
 The hybrid couples three sources into Recursion's σ<1 contractive manifold:
 
 | file | role |
 |---|---|
 | `aeon/recursion.py` | **Recursion** — canonical two-state chart-B contractive joiner, multi-input (`W_s·s + W_t·t [+ W_e·e] + W_h·h + c`), hard `σ<margin` by Cayley construction; `step()` ticks once, `audit()` reports σ. |
-| `aeon/transformer.py` | **Transformer side** — wraps HF Qwen2 (`deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`), frozen backbone; trainable read (D→H_rec) + γ-gated write (H_rec→D, γ=0 warm start). |
+| `aeon/transformer.py` | **Transformer side — Aeon-original Qwen2** (GQA+RoPE, SwiGLU, RMSNorm, pre-norm decoder, tied lm_head; **no `transformers` import**). R1 weights loaded as init via safetensors. Frozen backbone; trainable read (D→H_rec) + γ-gated write (H_rec→D, γ=0 warm start). |
 | `aeon/substrate/` | **RNN signal source** behind the port (`rwkv` or `vru`, runtime-selected). |
 | `aeon/hybrid.py` | **Three-source coupling** — slow-clock Recursion (K=16), running-mean window aggregation, hold-and-broadcast of the slow state to the substrate input + transformer inject, truncated BPTT at window boundaries. |
 | `scripts/train.py` | YAML-driven, alpaca, bf16, batch=1, seq=512, σ/γ/loss audit logging, checkpoint + resume. |
@@ -53,8 +58,25 @@ The hybrid couples three sources into Recursion's σ<1 contractive manifold:
 ```bash
 # torch must come from the cu124 index (pinned 2.5.1)
 pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-pip install -e .            # transformers 4.46.3, accelerate, datasets, safetensors, pyyaml
+pip install -e .            # core architecture: torch + safetensors + pyyaml (NO transformers)
+pip install -e ".[train]"   # + transformers (tokenizer), datasets, huggingface_hub, accelerate
+pip install -e ".[test]"    # + transformers + pytest (for the byte-identity gate)
 ```
+
+`transformers` is an optional extra, never imported by the `aeon/` architecture.
+
+## Byte-identity gate (run FIRST — load-bearing proof before any training)
+
+The R1 warm-start is only trustworthy if Aeon's transformer reproduces HF Qwen2
+exactly. Download R1 locally, then:
+
+```bash
+pip install -e ".[test]"
+AEON_R1_DIR=/path/to/DeepSeek-R1-Distill-Qwen-1.5B python tests/test_byte_identity.py
+```
+
+Pass criteria: fp32 max|Δlogits| bit-exact (tight tolerance), bf16 within 1e-3.
+Until this passes, **do not trust the warm-start or spend on training.**
 
 ## Running Stage-1 hybrid on Vast
 
@@ -77,9 +99,12 @@ Training is resumable: re-running picks up the latest `runs/stage1_hybrid/ckpt_*
   the recurrent signal starts to matter.
 - Checkpoints every `ckpt_every` steps in `runs/stage1_hybrid/`.
 
-## First-run verification to do on Vast (was to be local; deferred per plan)
+## Verification to do on a GPU/CPU box with the checkpoint (deferred per plan)
 
-1. R1 checkpoint loads cleanly into `HybridTransformer`.
+0. **Byte-identity gate (FIRST, load-bearing):** Aeon transformer == HF Qwen2 on
+   identical weights+inputs (`tests/test_byte_identity.py`). Gate everything else
+   on this.
+1. R1 checkpoint loads cleanly into the Aeon backbone (`load_pretrained`).
 2. `model(input_ids, labels=…)` forward runs; loss computes; `loss.backward()`;
    `opt.step()` — one end-to-end step.
 3. γ=0 warm-start check: hybrid logits == `transformer.plain_logits(...)`.

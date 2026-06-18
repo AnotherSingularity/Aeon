@@ -26,6 +26,7 @@ import yaml
 import torch
 
 from aeon.hybrid import HybridModel
+from aeon.transformer import config_from_pretrained
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
 
@@ -107,9 +108,17 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = _DTYPES[mcfg.get("dtype", "bfloat16")]
 
-    # ---- model -----------------------------------------------------------
+    # ---- checkpoint dir (local path, or download via huggingface_hub) ----
+    ckpt_dir = mcfg.get("checkpoint_dir")
+    if not ckpt_dir:
+        from huggingface_hub import snapshot_download   # I/O only, not architecture
+        ckpt_dir = snapshot_download(mcfg["model_name"])
+    qcfg = config_from_pretrained(ckpt_dir)              # Aeon config from config.json
+    print(f"[init] Aeon Qwen2 config: {qcfg}")
+
+    # ---- model (Aeon-original transformer; R1 weights as init) -----------
     model = HybridModel(
-        h_rec=mcfg["h_rec"], K=mcfg["K"], model_name=mcfg["model_name"],
+        h_rec=mcfg["h_rec"], K=mcfg["K"], transformer_config=qcfg,
         substrate=mcfg.get("substrate"), margin_h=mcfg["margin_h"],
         margin_c=mcfg["margin_c"], freeze_backbone=mcfg["freeze_backbone"],
         use_embedding_input=mcfg.get("use_embedding_input", True),
@@ -117,11 +126,16 @@ def main():
     ).to(device)
     model.to(dtype=dtype)        # cast everything to compute dtype...
     model.recursion.float()      # ...except Recursion (fp32 certificate; see note)
+    info = model.transformer.load_pretrained(ckpt_dir)  # R1 init into the Aeon backbone
+    print(f"[init] R1 weights loaded: {info['loaded']} tensors | "
+          f"missing={len(info['missing'])} unexpected={len(info['unexpected'])}")
+    if info["unexpected"]:
+        print(f"  [WARN] unexpected keys (first few): {info['unexpected'][:5]}")
 
     # ---- data ------------------------------------------------------------
     from transformers import AutoTokenizer
     from datasets import load_dataset
-    tok = AutoTokenizer.from_pretrained(mcfg["model_name"])
+    tok = AutoTokenizer.from_pretrained(ckpt_dir)
     if tok.pad_token_id is None:
         tok.pad_token = tok.eos_token
     split = load_dataset(dcfg["dataset"], split="train")

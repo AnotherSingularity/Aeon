@@ -1,6 +1,7 @@
 # Stage-1 hybrid training config (UNRUN locally; runs on Vast).
 model:
   model_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+  checkpoint_dir: null       # local R1 dir; if null, downloaded via huggingface_hub
   h_rec: 256
   K: 16                      # slow-clock window size
   margin_h: 0.98

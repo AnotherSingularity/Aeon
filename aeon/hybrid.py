@@ -47,13 +47,22 @@ free guesses; confirm before the Vast run):
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from .substrate import make_substrate
 from .recursion import RecursionJoiner
-from .transformer import HybridTransformer, R1_DEFAULT
+from .transformer import HybridTransformer, AeonQwen2Config, R1_DEFAULT
+
+
+@dataclass
+class HybridOutput:
+    """Aeon-original forward output (no transformers dependency)."""
+    loss: torch.Tensor | None
+    logits: torch.Tensor
 
 
 class HybridModel(nn.Module):
@@ -61,7 +70,7 @@ class HybridModel(nn.Module):
         self,
         h_rec: int = 256,
         K: int = 16,
-        model_name: str = R1_DEFAULT,
+        transformer_config: AeonQwen2Config | None = None,
         substrate: dict | None = None,
         margin_h: float = 0.98,
         margin_c: float = 0.95,
@@ -73,9 +82,11 @@ class HybridModel(nn.Module):
         self.K = K
         self.h_rec = h_rec
 
-        # transformer side (frozen backbone + trainable read/write surfaces)
+        # transformer side: Aeon-original Qwen2 backbone (frozen) + trainable
+        # read/write surfaces. Weights are loaded separately via
+        # `self.transformer.load_pretrained(checkpoint_dir)` (R1 init).
         self.transformer = HybridTransformer(
-            h_rec=h_rec, model_name=model_name, freeze=freeze_backbone, dtype=dtype
+            h_rec=h_rec, config=transformer_config, freeze=freeze_backbone, dtype=dtype
         )
         self.D = self.transformer.D
 
@@ -158,11 +169,7 @@ class HybridModel(nn.Module):
                 ignore_index=-100,
             )
 
-        try:
-            from transformers.modeling_outputs import CausalLMOutputWithPast
-            return CausalLMOutputWithPast(loss=loss, logits=logits)
-        except Exception:
-            return {"loss": loss, "logits": logits}
+        return HybridOutput(loss=loss, logits=logits)
 
     # ---- training helpers -------------------------------------------------
     def trainable_parameters(self):
