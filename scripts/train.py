@@ -126,6 +126,12 @@ def main():
     ).to(device)
     model.to(dtype=dtype)        # cast everything to compute dtype...
     model.recursion.float()      # ...except Recursion (fp32 certificate; see note)
+    # γ MUST be an fp32 master parameter. model.to(dtype) above casts EVERY param
+    # regardless of its declared dtype, so γ becomes bf16; a bf16 γ has ULP
+    # 2^-12≈2.4e-4 near 2^-5 (> the 1e-4 AdamW step), snaps to 1/32 and freezes.
+    # Re-cast here, BEFORE the optimizer is built, so AdamW allocates fp32 state
+    # and γ updates freely. (Verified: γ sailed past 0.03125 on the V100 run.)
+    model.transformer.gamma.data = model.transformer.gamma.data.float()
     info = model.transformer.load_pretrained(ckpt_dir)  # R1 init into the Aeon backbone
     print(f"[init] R1 weights loaded: {info['loaded']} tensors | "
           f"missing={len(info['missing'])} unexpected={len(info['unexpected'])}")

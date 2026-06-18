@@ -20,6 +20,27 @@ nature.
 
 ---
 
+# Stage-1 hybrid: TRAINED & VALIDATED (V100, branch `V0.02.03`)
+
+A full 2000-step run on a V100 32GB (R1-Distill-Qwen-1.5B, rwkv substrate, bf16,
+batch=1, seq=512, ~27 min) validated the architecture end-to-end:
+
+- **σ certificate held all 2000 steps** (`holds=True`); final σ_Wh≈0.699, σ_Wc≈0.749.
+- **γ moved freely** to ≈0.083 (8.3× past the bf16-trapped 0.03125) once it was a
+  true fp32 master parameter — see the dtype note below.
+- **λ** (delta-decay carry) learned ≈0.503; loss in the normal alpaca range.
+- bf16 byte-identity warm-start verified bit-identical (γ=0 ⇒ logits == base R1).
+
+**CRITICAL TRAINING REQUIREMENT — γ must be an fp32 master parameter.**
+`model.to(dtype)` casts *every* parameter regardless of its declared dtype, so γ
+becomes bf16; a bf16 γ has ULP ≈2.4e-4 near 2^-5, above the AdamW step (1e-4), so
+it snaps to 1/32 and freezes. `scripts/train.py` re-casts γ to fp32 **after**
+`model.to(dtype)` and **before** the optimizer is built. Recursion is likewise
+kept fp32 (its σ-certificate math). Substrate state tensors must follow the
+param dtype (their `reset()` does this) or `r @ S` crashes on mixed dtypes.
+
+---
+
 # Stage-1 hybrid (implementation — branch `V0.02.02`)
 
 > ⚠️ **UNRUN.** The implementation modules were written to spec in an

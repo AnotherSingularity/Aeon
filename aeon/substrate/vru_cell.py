@@ -50,8 +50,11 @@ class VRUCell(nn.Module, SubstratePort):
 
     # ---- required tier ----------------------------------------------------
     def reset(self, batch_size: int, device=None) -> None:
+        # state dtype follows the params (same fix as rwkv_cell): fp32 state
+        # against bf16 params crashes W_h(self._h) with a mixed-dtype matmul.
         device = device or self.W_x.weight.device
-        self._h = torch.zeros(batch_size, self.H, device=device)
+        dtype = self.W_x.weight.dtype
+        self._h = torch.zeros(batch_size, self.H, device=device, dtype=dtype)
         self._pending_drive = None
 
     def step(self, x_t: torch.Tensor) -> torch.Tensor:

@@ -88,9 +88,12 @@ class RWKVCell(nn.Module, SubstratePort):
 
     # ---- required tier ----------------------------------------------------
     def reset(self, batch_size: int, device=None) -> None:
+        # state dtype must follow the params (bf16 under training); fp32 zeros
+        # against bf16 params crash `r @ S` with a mixed-dtype matmul error.
         device = device or self.receptance.weight.device
-        self._S = torch.zeros(batch_size, self.H, self.N, self.N, device=device)
-        self._read = torch.zeros(batch_size, self.d_state, device=device)
+        dtype = self.receptance.weight.dtype
+        self._S = torch.zeros(batch_size, self.H, self.N, self.N, device=device, dtype=dtype)
+        self._read = torch.zeros(batch_size, self.d_state, device=device, dtype=dtype)
         self._pending_drive = None
 
     def step(self, x_t: torch.Tensor) -> torch.Tensor:

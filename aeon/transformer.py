@@ -308,7 +308,12 @@ class HybridTransformer(nn.Module):
         # write surface: manifold (H_rec) -> hidden (D), γ-gated from 0 (warm start)
         self.write_proj = nn.Linear(h_rec, self.D, bias=False)
         nn.init.normal_(self.write_proj.weight, std=0.02)
-        self.gamma = nn.Parameter(torch.zeros(1))
+        # γ is an fp32 MASTER parameter. It must stay fp32: a bf16 γ has ULP
+        # 2^-12≈2.4e-4 near 2^-5, above the AdamW step (1e-4), so it snaps to
+        # 1/32 and freezes. Declared fp32 here (belt-and-suspenders); train.py
+        # also re-casts to fp32 AFTER model.to(dtype), which is the load-bearing
+        # fix (model.to casts every param regardless of declared dtype).
+        self.gamma = nn.Parameter(torch.zeros(1, dtype=torch.float32))
 
     # ---- weight init from R1 ---------------------------------------------
     def load_pretrained(self, checkpoint_dir: str) -> dict:
@@ -330,7 +335,10 @@ class HybridTransformer(nn.Module):
         return self.read_proj(hidden)
 
     def inject(self, hidden, signal):
-        return hidden + self.gamma * self.write_proj(signal)
+        # fp32 residual add keeps γ's gradient path fp32 from loss back to the
+        # parameter (protect the gate signal from bf16 quantization). At γ=0 this
+        # is identity: hidden.float() + 0, cast back to hidden's dtype exactly.
+        return (hidden.float() + self.gamma * self.write_proj(signal).float()).to(hidden.dtype)
 
     def logits(self, hidden):
         return self.model.logits(hidden)
