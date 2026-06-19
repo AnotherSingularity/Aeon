@@ -308,7 +308,7 @@ class HybridTransformer(nn.Module):
         # write surface: manifold (H_rec) -> hidden (D), γ-gated from 0 (warm start)
         self.write_proj = nn.Linear(h_rec, self.D, bias=False)
         nn.init.normal_(self.write_proj.weight, std=0.02)
-        self.gamma = nn.Parameter(torch.zeros(1))
+        self.gamma = nn.Parameter(torch.zeros(1, dtype=torch.float32))
 
     # ---- weight init from R1 ---------------------------------------------
     def load_pretrained(self, checkpoint_dir: str) -> dict:
@@ -330,7 +330,7 @@ class HybridTransformer(nn.Module):
         return self.read_proj(hidden)
 
     def inject(self, hidden, signal):
-        return hidden + self.gamma * self.write_proj(signal)
+        return (hidden.float() + self.gamma * self.write_proj(signal).float()).to(hidden.dtype)
 
     def logits(self, hidden):
         return self.model.logits(hidden)

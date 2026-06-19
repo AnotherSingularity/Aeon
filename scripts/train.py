@@ -125,6 +125,9 @@ def main():
         dtype=dtype,
     ).to(device)
     model.to(dtype=dtype)        # cast everything to compute dtype...
+    # Force gamma back to fp32 after bf16 cast (OpenAI/Google diagnosis: bf16 ULP
+    # underflow at 2^-5 locks gamma at 0.03125. fp32 master parameter avoids the trap).
+    model.transformer.gamma.data = model.transformer.gamma.data.float()
     model.recursion.float()      # ...except Recursion (fp32 certificate; see note)
     info = model.transformer.load_pretrained(ckpt_dir)  # R1 init into the Aeon backbone
     print(f"[init] R1 weights loaded: {info['loaded']} tensors | "
@@ -176,7 +179,7 @@ def main():
             loss.backward()
             if tcfg.get("grad_clip"):
                 torch.nn.utils.clip_grad_norm_(params, tcfg["grad_clip"])
-            opt.step()
+            gg = model.transformer.gamma.grad; print(f"  [gamma.grad] step={step+1} val={gg.item() if gg is not None else None} dtype={gg.dtype if gg is not None else None}"); opt.step()
             step += 1
 
             if step % tcfg["log_every"] == 0:

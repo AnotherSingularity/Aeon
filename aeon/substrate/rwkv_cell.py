@@ -89,8 +89,8 @@ class RWKVCell(nn.Module, SubstratePort):
     # ---- required tier ----------------------------------------------------
     def reset(self, batch_size: int, device=None) -> None:
         device = device or self.receptance.weight.device
-        self._S = torch.zeros(batch_size, self.H, self.N, self.N, device=device)
-        self._read = torch.zeros(batch_size, self.d_state, device=device)
+        self._S = torch.zeros(batch_size, self.H, self.N, self.N, device=device, dtype=self.receptance.weight.dtype)
+        self._read = torch.zeros(batch_size, self.d_state, device=device, dtype=self.receptance.weight.dtype)
         self._pending_drive = None
 
     def step(self, x_t: torch.Tensor) -> torch.Tensor:
