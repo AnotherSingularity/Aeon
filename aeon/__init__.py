@@ -15,4 +15,6 @@ Layout:
         conformance.py   verify_substrate()
         __init__.py      make_substrate() factory
     hybrid.py        # multi-source coupling (slow-clock Recursion over the sources)
+    tokenizer.py     # AeonTokenizer: Aeon's own from-scratch SentencePiece wrapper
+    data.py          # corpus reader (.txt / .jsonl / directory), shared by training
 """
