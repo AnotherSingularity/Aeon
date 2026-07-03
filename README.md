@@ -22,7 +22,7 @@ No external architecture and no external library in any forward path.
 
 ```bash
 pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-pip install -e .            # safetensors, sentencepiece, pyyaml
+pip install -e .            # safetensors, pyyaml, numpy
 ```
 
 ## Run
@@ -40,6 +40,33 @@ Healthy audit lines look like:
 `[step N] loss=… sigma_Wh=… sigma_Wc=… holds=True lambda=… gamma=…` — `holds`
 stays `True` every step (the certificate is structural); `gamma` starts at 0 and
 moves off it (γ is a true fp32 master parameter, so it is not quantization-locked).
+
+Inference (single-GPU, greedy) from a trained checkpoint:
+
+```bash
+python scripts/infer.py --config configs/aeon_v1.yaml --ckpt runs/aeon_v1/ckpt_2000.pt \
+    --prompt-ids "1" --max-new-tokens 32
+```
+
+`infer.py` rebuilds the model from Aeon's own config and applies the same
+precision rules as training (`model.recursion.float()` after the bf16 cast). It
+operates on integer token ids for now — see **Tokenizer** below.
+
+## Tokenizer (decision pending)
+
+No tokenizer is wired into the forward path yet; a real tokenizer is part of the
+from-scratch corpus step (out of scope here). Two candidate backends are flagged
+as optional extras — neither is a default, and the choice is Dylan's:
+
+- **Option A — Aeon tokenizer, trained from scratch** on the corpus
+  (`pip install -e ".[tokenizer-spm]"`, sentencepiece). Best provenance, most
+  work, no external affiliations.
+- **Option B — a public-domain tokenizer** with no model affiliation
+  (`pip install -e ".[tokenizer-bpe]"`, the `tokenizers` library). Faster path,
+  minor provenance compromise.
+
+Until one lands, `scripts/train.py` uses a synthetic token source and
+`scripts/infer.py` takes raw token ids (`--prompt-ids`).
 
 ## Precision notes (baked into the code)
 
@@ -60,7 +87,8 @@ moves off it (γ is a true fp32 master parameter, so it is not quantization-lock
 ```bash
 pip install -e ".[dev]"
 python tests/test_substrate_port.py     # substrate port conformance
-python tests/test_aeon_sanity.py        # forward shapes, certificate, gradient flow, determinism
+python tests/test_aeon_sanity.py        # shapes, certificate, gradient flow, determinism,
+                                        # γ-updates (bf16-trap regression), no external lib in forward
 ```
 
 Substrate port conformance runs without torch (contract + AST checks); the rest

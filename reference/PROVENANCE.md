@@ -6,7 +6,7 @@ vendored here during the RWKV study and has since been **removed**.
 ## What was here
 
 A focused, text-only subset of [`BlinkDL/RWKV-LM`](https://github.com/BlinkDL/RWKV-LM)
-— the files read for [`../docs/RWKV_STUDY.md`](../docs/RWKV_STUDY.md): the v6
+— the files read for [`RWKV_STUDY.md`](RWKV_STUDY.md): the v6
 demo, the training-form `model.py`, the v7 demos (GPT / RNN / fast), the WKV CUDA
 kernels, and the `README.md` / `RWKV-8.md` framing docs. It lived at
 `reference/RWKV-LM/` and was unmodified upstream source (Apache-2.0).
@@ -30,5 +30,5 @@ The study's citations now point at upstream GitHub directly, pinned to a commit
 - **Browse the studied files at that commit:**
   https://github.com/BlinkDL/RWKV-LM/tree/bd552d5e6aaaad88196629f7eb8dc8e24a644484
 
-All original analysis lives in `docs/RWKV_STUDY.md`; nothing of substance was
-lost by removing the vendored copy.
+All original analysis lives in `RWKV_STUDY.md` (this directory); nothing of
+substance was lost by removing the vendored copy.

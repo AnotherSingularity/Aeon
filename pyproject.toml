@@ -11,17 +11,24 @@ requires-python = ">=3.10"
 # Core dependencies only — generic libraries, nothing model-affiliated.
 # torch from the CUDA 12.4 index (see README):
 #   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-# safetensors: Aeon checkpoint I/O (generic tensor format). sentencepiece: the
-# intended tokenizer for the from-scratch corpus step.
+# safetensors: Aeon checkpoint I/O (generic tensor format). No external model or
+# architecture library appears here or on any forward path.
 dependencies = [
     "torch==2.5.1",
     "safetensors>=0.4,<1.0",
-    "sentencepiece>=0.2,<1.0",
     "pyyaml>=6.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# Tokenizer — DECISION PENDING (see README, REBUILD §2). No tokenizer is wired
+# into the forward path yet (the from-scratch corpus step is out of scope here).
+# Two candidate backends; install whichever Dylan picks — neither is a default:
+#   Option A — an Aeon tokenizer trained from scratch (best provenance):
+tokenizer-spm = ["sentencepiece>=0.2,<1.0"]
+#   Option B — a public-domain tokenizer with no model affiliation (faster path):
+tokenizer-bpe = ["tokenizers>=0.15,<1.0"]
 
 [tool.setuptools.packages.find]
 include = ["aeon*"]
