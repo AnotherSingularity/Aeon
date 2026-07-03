@@ -1,8 +1,10 @@
-# Aeon V0.02.03 — 250M from-scratch prototype config.
+# Aeon V0.02.03 — 350M multilingual from-scratch prototype config.
 #
-# Sized to ~251.7M trainable at the dimensions below (transformer-dominated;
-# substrate + Recursion + projections add ~3.9M). Everything random-initialized;
-# the tokenizer is Aeon's own (scripts/train_tokenizer.py), 32k vocab.
+# Sized to ~350.0M trainable at the dimensions below. Only the vocab (and hence
+# the tied I/O embedding) grew vs the earlier 251.7M build: everything-else is
+# 218.94M unchanged; the 128k×1024 embedding is 131.07M. Everything random-
+# initialized; the tokenizer is Aeon's own (scripts/train_tokenizer.py), 128k
+# multilingual vocab (top-50 languages).
 #
 # To run a real corpus, set data.tokenizer to a trained .model and data.corpus to
 # the text/jsonl corpus. With neither set, train.py falls back to a synthetic
@@ -15,10 +17,10 @@ model:
   freeze_backbone: false     # train the transformer side from scratch
   use_embedding_input: true  # 3rd Recursion input: window mean of raw embeddings
   dtype: bfloat16
-  transformer:               # Aeon's architecture choices (250M target)
-    vocab_size: 32000        # matched to the from-scratch tokenizer
+  transformer:               # Aeon's architecture choices (350M target)
+    vocab_size: 128000       # multilingual, matched to the from-scratch tokenizer
     hidden_size: 1024
-    intermediate_size: 2048  # the free knob → 251.7M trainable
+    intermediate_size: 2048  # unchanged; everything-else stays 218.94M
     num_hidden_layers: 24
     num_attention_heads: 16
     num_key_value_heads: 4   # grouped-query attention
@@ -49,6 +51,6 @@ train:
   grad_clip: 1.0
   log_every: 20              # audit: sigma values, gamma, loss
   ckpt_every: 1000
-  out_dir: runs/aeon_250m
+  out_dir: runs/aeon_350m
   resume: true
   seed: 0

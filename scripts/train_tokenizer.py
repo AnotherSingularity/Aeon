@@ -28,11 +28,16 @@ from aeon.data import corpus_files, iter_text_records
 from aeon.tokenizer import PAD_ID, UNK_ID, BOS_ID, EOS_ID
 
 
-def train_tokenizer(corpus, out, name="aeon", vocab_size=32000, model_type="unigram",
-                    character_coverage=0.9995, input_sentence_size=0, quiet=False):
+def train_tokenizer(corpus, out, name="aeon", vocab_size=128000, model_type="unigram",
+                    character_coverage=0.9999, input_sentence_size=0,
+                    byte_fallback=True, quiet=False):
     """Train an Aeon SentencePiece tokenizer from `corpus`, writing
     `<out>/<name>.model` (+ `.vocab`). Returns the `.model` path. Importable so
-    tests and pipelines can call it directly (main() is a thin CLI wrapper)."""
+    tests and pipelines can call it directly (main() is a thin CLI wrapper).
+
+    Multilingual defaults (top-50 languages): 128k vocab, character_coverage
+    0.9999, and byte_fallback so any code point (CJK/Indic/Arabic/…) that misses
+    the piece vocabulary decomposes to UTF-8 bytes instead of <unk>."""
     import sentencepiece as spm  # deferred so importing this module needs no backend
 
     os.makedirs(out, exist_ok=True)
@@ -50,7 +55,7 @@ def train_tokenizer(corpus, out, name="aeon", vocab_size=32000, model_type="unig
         raise ValueError("corpus produced 0 non-empty records")
     if not quiet:
         print(f"[tok] {len(files)} file(s) -> {n} records; training {model_type} "
-              f"vocab={vocab_size}")
+              f"vocab={vocab_size} byte_fallback={byte_fallback}")
 
     prefix = os.path.join(out, name)
     spm.SentencePieceTrainer.train(
@@ -61,6 +66,7 @@ def train_tokenizer(corpus, out, name="aeon", vocab_size=32000, model_type="unig
         character_coverage=character_coverage,
         input_sentence_size=input_sentence_size,
         shuffle_input_sentence=bool(input_sentence_size),
+        byte_fallback=byte_fallback,          # multilingual: no <unk>, bytes instead
         # fixed special-id layout — must match aeon/tokenizer.py
         pad_id=PAD_ID, unk_id=UNK_ID, bos_id=BOS_ID, eos_id=EOS_ID,
         pad_piece="<pad>", unk_piece="<unk>", bos_piece="<bos>", eos_piece="<eos>",
@@ -76,17 +82,19 @@ def main():
     ap.add_argument("--corpus", required=True, help="text file, .jsonl file, or a directory of them")
     ap.add_argument("--out", default="tokenizer", help="output directory for the .model/.vocab")
     ap.add_argument("--name", default="aeon", help="model prefix (produces <name>.model/.vocab)")
-    ap.add_argument("--vocab-size", type=int, default=32000)
+    ap.add_argument("--vocab-size", type=int, default=128000)
     ap.add_argument("--model-type", default="unigram", choices=["unigram", "bpe"])
-    ap.add_argument("--character-coverage", type=float, default=0.9995)
+    ap.add_argument("--character-coverage", type=float, default=0.9999)
     ap.add_argument("--input-sentence-size", type=int, default=0,
                     help="cap sentences sampled for training (0 = all)")
+    ap.add_argument("--no-byte-fallback", dest="byte_fallback", action="store_false",
+                    help="disable UTF-8 byte fallback (on by default for multilingual)")
     args = ap.parse_args()
 
     model_path = train_tokenizer(
         args.corpus, args.out, name=args.name, vocab_size=args.vocab_size,
         model_type=args.model_type, character_coverage=args.character_coverage,
-        input_sentence_size=args.input_sentence_size)
+        input_sentence_size=args.input_sentence_size, byte_fallback=args.byte_fallback)
 
     # sanity: round-trip through the Aeon wrapper
     from aeon.tokenizer import AeonTokenizer

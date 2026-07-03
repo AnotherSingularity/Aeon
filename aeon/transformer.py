@@ -29,7 +29,7 @@ import torch.nn.functional as F
 # ---------------------------------------------------------------------------
 @dataclass
 class AeonTransformerConfig:
-    vocab_size: int = 32000
+    vocab_size: int = 128000              # multilingual (top-50 languages); tied I/O embedding
     hidden_size: int = 1024
     intermediate_size: int = 2816
     num_hidden_layers: int = 24

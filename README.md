@@ -27,19 +27,23 @@ pip install -e .            # safetensors, pyyaml, numpy
 
 ## Model scale
 
-`configs/aeon_250m.yaml` is the from-scratch prototype target: **~251.7M
+`configs/aeon_350m.yaml` is the from-scratch prototype target: **~350.0M
 trainable** (hidden 1024, 24 layers, 16 heads × 64, GQA with 4 KV heads,
-intermediate 2048, substrate/manifold `h_rec`=512, slow clock K=16, 32k vocab).
+intermediate 2048, substrate/manifold `h_rec`=512, slow clock K=16, **128k
+multilingual vocab**). Only the vocab drives the size vs the earlier 251.7M build:
+everything-else is 218.94M unchanged; the 128k×1024 tied embedding is 131.07M.
 `configs/aeon_v1.yaml` is a smaller smoke config. Everything is random-initialized.
 
 ## Tokenizer (Aeon's own, from scratch)
 
-Aeon trains its **own** 32k tokenizer — nothing adopted, nothing downloaded. The
-backend is SentencePiece; the produced `.model` is versioned alongside the weights.
+Aeon trains its **own** 128k **multilingual** tokenizer (top-50 languages) —
+nothing adopted, nothing downloaded. The backend is SentencePiece with UTF-8
+byte-fallback (so any CJK/Indic/Arabic code point decomposes to bytes rather than
+`<unk>`); the produced `.model` is versioned alongside the weights.
 
 ```bash
 python scripts/train_tokenizer.py --corpus data/aeon_corpus \
-    --out tokenizer --name aeon --vocab-size 32000
+    --out tokenizer --name aeon --vocab-size 128000
 ```
 
 The corpus is a `.txt` file (one record per line), a `.jsonl` file (records under
@@ -51,7 +55,7 @@ by both training and tokenizer training). Special-id layout is fixed —
 
 ```bash
 # real run: point the config's data.tokenizer + data.corpus at your artifacts
-python scripts/train.py --config configs/aeon_250m.yaml
+python scripts/train.py --config configs/aeon_350m.yaml
 ```
 
 Set `data.tokenizer` (an Aeon `.model`) and `data.corpus` (text/jsonl/dir) in the
@@ -68,7 +72,7 @@ moves off it (γ is a true fp32 master parameter, so it is not quantization-lock
 Inference (single-GPU, greedy) from a trained checkpoint:
 
 ```bash
-python scripts/infer.py --config configs/aeon_250m.yaml --ckpt runs/aeon_250m/ckpt_1000.pt \
+python scripts/infer.py --config configs/aeon_350m.yaml --ckpt runs/aeon_350m/ckpt_1000.pt \
     --tokenizer tokenizer/aeon.model --prompt "Aeon" --max-new-tokens 64
 ```
 
@@ -112,7 +116,8 @@ certificate, multi-source coupling, and the fp32-γ / fp32-Recursion training
 pattern — is exercised end-to-end, and the **from-scratch pipeline is wired and
 proven at small scale**: Aeon-trained tokenizer → tokenized-corpus training (loss
 decreasing, certificate holding, γ lifting) → checkpoint → text inference. The
-250M prototype config is set. The remaining external input is **Dylan's curated
-corpus**; when it lands, the small sanity run precedes the full single-epoch run.
+350M multilingual prototype config is set (128k vocab). The remaining external
+input is **Dylan's curated corpus**; when it lands, the small sanity run precedes
+the full single-epoch run.
 
 `reference/` holds **sealed exploratory background** — not part of Aeon.

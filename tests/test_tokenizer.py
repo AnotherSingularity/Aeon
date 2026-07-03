@@ -52,8 +52,11 @@ def test_train_and_roundtrip():
     with tempfile.TemporaryDirectory() as d:
         corpus = os.path.join(d, "corpus.txt")
         _varied_corpus(corpus)
+        # byte_fallback (the multilingual default) reserves 256 byte tokens and
+        # needs a large vocab; this tiny-corpus round-trip test uses the plain
+        # small-vocab path. The byte-fallback path is exercised on the real 128k run.
         model_path = train_tokenizer(corpus, os.path.join(d, "tok"),
-                                     vocab_size=90, quiet=True)
+                                     vocab_size=90, byte_fallback=False, quiet=True)
         assert os.path.exists(model_path)
         tok = AeonTokenizer(model_path)
 
