@@ -80,9 +80,24 @@ class AdaptiveFeedbackController(nn.Module):
         self._ewma: torch.Tensor | None = None
         self._load: torch.Tensor | None = None
         self._gate: torch.Tensor | None = None
+        # differentiable per-forward gate accumulator (for L_aux = β·mean g(L))
+        self._gate_sum: torch.Tensor | None = None
+        self._gate_steps: int = 0
+        # optional per-step trajectory recording (for diagnostics T1/T5)
+        self.history_enabled: bool = False
+        self._load_hist: list[float] = []
+        self._gate_hist: list[float] = []
+        self._last_base: torch.Tensor | None = None    # last plain readout (diagnostic T3)
+        # diagnostic overrides (default OFF — no effect on training):
+        self.force_gate: float | None = None           # override g with a constant in [0,1]
+        self.inject_noise_std: float = 0.0             # add matched noise to output (T4 floor)
 
     def reset(self) -> None:
+        # per-forward: sensor carry + differentiable gate accumulator. History is
+        # NOT cleared here (the diagnostic harness owns it via clear_history()).
         self._prev = self._ewma = self._load = self._gate = None
+        self._gate_sum = None
+        self._gate_steps = 0
 
     def detach(self) -> None:
         if self._prev is not None:
@@ -99,22 +114,37 @@ class AdaptiveFeedbackController(nn.Module):
         ewma = delta if self._ewma is None else (
             self.ewma_rho * self._ewma + (1.0 - self.ewma_rho) * delta)
 
-        # ---- gate: smooth threshold in [0,1], computed in fp32 then cast --------
-        g = torch.sigmoid(self.gate_alpha * (ewma.float() - self.gate_threshold))
-        g = g.to(base.dtype)                                         # (B,)
+        # ---- gate: smooth threshold in [0,1]; keep an fp32 copy for the penalty -
+        g_fp32 = torch.sigmoid(self.gate_alpha * (ewma.float() - self.gate_threshold))
+        if self.force_gate is not None:              # diagnostic override (T4 / tests)
+            g_fp32 = torch.full_like(g_fp32, float(self.force_gate))
+        g = g_fp32.to(base.dtype)                                    # (B,) for the blend
 
         # ---- actuator: convex blend of normal + stressed, bound-preserving ------
         stressed = self.output_bound * torch.tanh(self.W_stressed(base))
         out = (1.0 - g).unsqueeze(-1) * base + g.unsqueeze(-1) * stressed
+        if self.inject_noise_std > 0.0:              # diagnostic: matched-noise floor (T4)
+            out = (out + self.inject_noise_std * torch.randn_like(out)).clamp(
+                -self.output_bound, self.output_bound)
+
+        # differentiable gate accumulator (fp32): L_aux penalises mean firing, so
+        # the gate must justify itself by reducing the primary loss.
+        step_gate = g_fp32.mean()
+        self._gate_sum = step_gate if self._gate_sum is None else self._gate_sum + step_gate
+        self._gate_steps += 1
 
         # carry sensor state as a detached running statistic; stash introspection
         self._prev = base.detach()
         self._ewma = ewma.detach()
         self._load = ewma.detach()
         self._gate = g.detach()
+        self._last_base = base.detach()
+        if self.history_enabled:
+            self._load_hist.append(float(self._load.mean()))
+            self._gate_hist.append(float(self._gate.mean()))
         return out
 
-    # ---- introspection (for monitoring and a possible auxiliary loss) ----------
+    # ---- introspection (for monitoring, the auxiliary loss, and diagnostics) ---
     def load(self) -> torch.Tensor | None:
         """Last per-batch load L(t) (EWMA of readout rate-of-change), or None."""
         return self._load
@@ -122,3 +152,34 @@ class AdaptiveFeedbackController(nn.Module):
     def gate(self) -> torch.Tensor | None:
         """Last per-batch gate value g(L) ∈ [0,1], or None."""
         return self._gate
+
+    def gate_penalty(self) -> torch.Tensor | None:
+        """Differentiable mean gate activation over this forward (for L_aux), or
+        None if no step ran. Cleared by reset() at the next forward's start."""
+        if self._gate_sum is None or self._gate_steps == 0:
+            return None
+        return self._gate_sum / self._gate_steps
+
+    # ---- trajectory recording (diagnostics own the lifecycle) ------------------
+    def enable_history(self) -> None:
+        self.history_enabled = True
+
+    def disable_history(self) -> None:
+        self.history_enabled = False
+
+    def clear_history(self) -> None:
+        self._load_hist = []
+        self._gate_hist = []
+
+    def history(self) -> tuple[list[float], list[float]]:
+        """(load trajectory, gate trajectory) recorded since the last clear."""
+        return list(self._load_hist), list(self._gate_hist)
+
+    def last_base(self) -> torch.Tensor | None:
+        """Last plain (pre-gate) readout batch — the normal-path output (T3)."""
+        return self._last_base
+
+    def normal_and_stressed(self, base: torch.Tensor):
+        """The two output projections on the same states `base` (diagnostic T3):
+        normal path (identity — the plain readout) and stressed path."""
+        return base, self.output_bound * torch.tanh(self.W_stressed(base))

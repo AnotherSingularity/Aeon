@@ -53,8 +53,9 @@ train:
   max_steps: 100000
   batch_size: 4
   grad_clip: 1.0
-  log_every: 20              # audit: sigma values, gamma, loss
+  log_every: 20              # audit: sigma values, gamma, loss, gate
   ckpt_every: 1000
   out_dir: runs/aeon_350m
   resume: true
   seed: 0
+  aux_gate_penalty: 0.01     # L_aux = β·mean g(L): gate must justify firing by cutting loss

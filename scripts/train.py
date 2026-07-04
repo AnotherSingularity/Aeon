@@ -150,6 +150,7 @@ def main():
         gen = torch.Generator(device=device).manual_seed(tcfg["seed"])
         batches = iter_synthetic_batches(tcfg_model.vocab_size, dcfg["seq_len"],
                                          tcfg["batch_size"], device, gen)
+    beta = float(tcfg.get("aux_gate_penalty", 0.0))   # L_aux = β·mean g(L); 0 disables
     model.train()
     step = start_step
     t0 = time.time()
@@ -158,8 +159,11 @@ def main():
             break
         out = model(input_ids=batch["input_ids"],
                     attention_mask=batch["attention_mask"], labels=batch["labels"])
+        loss = out.loss
+        if beta and out.gate_mean is not None:
+            loss = loss + beta * out.gate_mean        # penalise gate firing (self-justifying)
         opt.zero_grad(set_to_none=True)
-        out.loss.backward()
+        loss.backward()
         if tcfg.get("grad_clip"):
             torch.nn.utils.clip_grad_norm_(params, tcfg["grad_clip"])
         opt.step()
@@ -167,10 +171,12 @@ def main():
 
         if step % tcfg["log_every"] == 0:
             a = model.audit()
+            gate_str = (f" gate={out.gate_mean.item():.3f}"
+                        if out.gate_mean is not None else "")
             print(f"[step {step}] loss={out.loss.item():.4f} "
                   f"sigma_Wh={a['sigma_Wh']:.4f} sigma_Wc={a['sigma_Wc']:.4f} "
-                  f"holds={a['holds']} lambda={a['lambda']:.3f} gamma={a['gamma']:.4e} "
-                  f"({time.time()-t0:.1f}s)")
+                  f"holds={a['holds']} lambda={a['lambda']:.3f} gamma={a['gamma']:.4e}"
+                  f"{gate_str} ({time.time()-t0:.1f}s)")
             if not a["holds"]:
                 print("  [WARN] sigma certificate does NOT hold — investigate")
         if step % tcfg["ckpt_every"] == 0:

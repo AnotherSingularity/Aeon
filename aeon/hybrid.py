@@ -58,6 +58,7 @@ class HybridOutput:
     """Aeon's forward output type."""
     loss: torch.Tensor | None
     logits: torch.Tensor
+    gate_mean: torch.Tensor | None = None   # differentiable mean g(L) over the forward (for L_aux)
 
 
 class HybridModel(nn.Module):
@@ -164,7 +165,11 @@ class HybridModel(nn.Module):
                 ignore_index=-100,
             )
 
-        return HybridOutput(loss=loss, logits=logits)
+        # differentiable mean gate activation (for the aux gate-activation penalty)
+        fb = getattr(self.substrate, "feedback", None)
+        gate_mean = fb.gate_penalty() if fb is not None else None
+
+        return HybridOutput(loss=loss, logits=logits, gate_mean=gate_mean)
 
     # ---- training helpers -------------------------------------------------
     def trainable_parameters(self):

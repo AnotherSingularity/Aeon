@@ -18,4 +18,5 @@ Layout:
     hybrid.py        # multi-source coupling (slow-clock Recursion over the sources)
     tokenizer.py     # AeonTokenizer: Aeon's own from-scratch SentencePiece wrapper
     data.py          # corpus reader (.txt / .jsonl / directory), shared by training
+    diagnostics.py   # fault-isolation diagnostics for the feedback control loop
 """

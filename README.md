@@ -119,9 +119,30 @@ convex combination of two `output_bound`-bounded signals, so it is **bounded
 elementwise in every mode** — the port's bounded-output contract and Recursion's
 σ<margin certificate hold gate-off, gate-on, and mid-transition. Only the
 *direction* of the substrate's output changes under stress, never its magnitude.
-The gate (`α`, `θ`) is learned; the load reduction is currently left to emerge
-from the primary loss (no auxiliary term). `substrate.load()` / `substrate.gate()`
-expose the live signals for monitoring.
+The gate (`α`, `θ`) is learned. A **minimal auxiliary loss** `L_aux = β·mean g(L)`
+(β=0.01, `train.aux_gate_penalty`) penalises gate firing so the gate must *justify*
+itself by cutting the primary loss — it prescribes nothing about what firing should
+accomplish. `substrate.load()` / `substrate.gate()` expose the live signals.
+
+### Diagnostics (fault isolation)
+
+The extension's correctness is defined by five diagnostics — one per component of
+the loop — that isolate *which* part fails rather than reporting one opaque score
+(`aeon/diagnostics.py`, run on any checkpoint via `scripts/diagnose_feedback.py`):
+
+| # | component | diagnostic | passes when |
+|---|---|---|---|
+| 1 | load sensor | `sensor_correlation` | `L(t)` tracks input complexity (and not merely length) |
+| 2 | signal gate | `gate_response` | gate is a real threshold, θ inside the observed-load range |
+| 3 | actuator | `signal_divergence` | stressed output is directionally distinct from normal (not a scaled copy) |
+| 4 | plant | `plant_response` | output distribution shifts under stressed conditioning, beyond matched noise |
+| 5 | loop closure | `loop_closure` | load falls after the gate fires, beyond the non-fire baseline |
+
+Each reports `pass` / `fail` / `inconclusive`. On an untrained checkpoint only the
+unlearned parts are conclusive (sensor passes; plant/loop are `inconclusive` until
+γ lifts and the gate fires) — the diagnostics report that honestly instead of
+false-failing. The decision logic of every diagnostic is itself unit-tested against
+controlled pass/fail scenarios (`tests/test_feedback_diagnostics.py`).
 
 ## Tests
 
@@ -133,6 +154,7 @@ python tests/test_aeon_sanity.py        # shapes, certificate, gradient flow, de
 python tests/test_tokenizer.py          # tokenizer train + round-trip, special ids, corpus reader
 python tests/test_feedback.py           # adaptive feedback: load bound, gate range/grad,
                                         # gate-off reduction, bounded stressed mode, certificate all modes
+python tests/test_feedback_diagnostics.py  # the 5 diagnostics catch their own failure modes
 ```
 
 Substrate port conformance runs without torch (contract + AST checks); the model
@@ -146,10 +168,11 @@ certificate, multi-source coupling, and the fp32-γ / fp32-Recursion training
 pattern — is exercised end-to-end, and the **from-scratch pipeline is wired and
 proven at small scale**: Aeon-trained tokenizer → tokenized-corpus training (loss
 decreasing, certificate holding, γ lifting) → checkpoint → text inference. The
-350M multilingual prototype config is set (128k vocab, adaptive feedback on;
-350.28M trainable), and the closed-loop feedback control engages under load in
-practice (gate ≈0 at low load, ≈1 under stress) while the certificate holds in
-every mode. The remaining external input is **Dylan's curated corpus**; when it
-lands, the small sanity run precedes the full single-epoch run.
+350M multilingual prototype config is set (128k vocab, adaptive feedback on with
+the β=0.01 gate penalty; 350.28M trainable), the closed-loop control engages under
+load in practice (gate ≈0 at low load, ≈1 under stress) with the certificate
+holding in every mode, and the **five fault-isolation diagnostics** ship ready to
+run on the first checkpoint. The remaining external input is **Dylan's curated
+corpus**; when it lands, the small sanity run precedes the full single-epoch run.
 
 `reference/` holds **sealed exploratory background** — not part of Aeon.
