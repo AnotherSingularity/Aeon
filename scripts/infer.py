@@ -42,6 +42,10 @@ def build_model(mcfg, dtype, device):
     model.to(dtype=dtype)        # cast compute path to the run dtype...
     model.recursion.float()      # ...except Recursion (fp32 σ-certificate)
     model.transformer.gamma.data = model.transformer.gamma.data.float()  # fp32 master γ
+    fb = getattr(model.substrate, "feedback", None)                      # fp32 gate scalars
+    if fb is not None and isinstance(fb.gate_alpha, torch.nn.Parameter):
+        fb.gate_alpha.data = fb.gate_alpha.data.float()
+        fb.gate_threshold.data = fb.gate_threshold.data.float()
     model.eval()
     return model, tcfg_model
 

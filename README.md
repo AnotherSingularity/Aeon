@@ -14,7 +14,8 @@ No external architecture and no external library in any forward path.
 | component | file | role |
 |---|---|---|
 | **Recursion** | `aeon/recursion.py` | the σ<1 contractive joiner. Two-state cell (`h` + delta-decay carry `c`); recurrent weights `W = sigmoid(s)·MARGIN·Cayley(A)·diag(tanh(d))` give `σ < MARGIN` by construction. Multi-input: `h = tanh(W_s·s + W_t·t + W_e·e + W_h·h + c)`. `audit()` reports σ. |
-| **Substrate** | `aeon/substrate/` | the recurrent signal source behind a read/write/cadence **port**. Two cells: `matrix_cell` (matrix state, per-channel decay, outer-product write) and `vector_cell` (single-vector state). Cell choice is deployment-time config via `make_substrate()`. `verify_substrate()` is the conformance gate. |
+| **Substrate** | `aeon/substrate/` | the recurrent signal source behind a read/write/cadence **port**. Two cells: `matrix_cell` (matrix state, per-channel decay, outer-product write) and `vector_cell` (single-vector state, deliberately simple). Cell choice is deployment-time config via `make_substrate()`. `verify_substrate()` is the conformance gate. |
+| **Adaptive feedback** | `aeon/substrate/feedback.py` | closed-loop load control on the `matrix_cell` readout: a load sensor `L(t)`, a smooth gate `g(L)=σ(α(L−θ))`, and a bound-preserving stressed-mode blend. Open-loop at low load; under stress it sharpens the substrate's output direction so Recursion drives a correction. Certificate holds in every mode (see below). |
 | **Transformer side** | `aeon/transformer.py` | Aeon's own transformer: RMSNorm, rotary embeddings, grouped-query attention, SwiGLU MLP, pre-norm decoder stack, tied head. Read surface (hidden→manifold) and γ-gated write surface (manifold→hidden). |
 | **Coupling** | `aeon/hybrid.py` | slow-clock Recursion (`K`-token windows): running-mean window aggregation, hold-and-broadcast of the previous window's state to the substrate input and the transformer inject, truncated BPTT at window boundaries. |
 
@@ -27,12 +28,13 @@ pip install -e .            # safetensors, pyyaml, numpy
 
 ## Model scale
 
-`configs/aeon_350m.yaml` is the from-scratch prototype target: **~350.0M
+`configs/aeon_350m.yaml` is the from-scratch prototype target: **~350.28M
 trainable** (hidden 1024, 24 layers, 16 heads × 64, GQA with 4 KV heads,
 intermediate 2048, substrate/manifold `h_rec`=512, slow clock K=16, **128k
-multilingual vocab**). Only the vocab drives the size vs the earlier 251.7M build:
-everything-else is 218.94M unchanged; the 128k×1024 tied embedding is 131.07M.
-`configs/aeon_v1.yaml` is a smaller smoke config. Everything is random-initialized.
+multilingual vocab**, adaptive feedback on). The 128k×1024 tied embedding is
+131.07M; everything-else-transformer is 218.94M; adaptive feedback adds 0.26M
+(`W_stressed` + gate scalars). `configs/aeon_v1.yaml` is a smaller smoke config.
+Everything is random-initialized.
 
 ## Tokenizer (Aeon's own, from scratch)
 
@@ -94,6 +96,32 @@ Without `--tokenizer` it operates on raw ids (`--prompt-ids "2 …"`, 2 = `<bos>
 - **`write_proj` is randomly initialized** — with both γ=0 and `write_proj`=0 the
   write path is gradient-dead; random `write_proj` + γ=0 keeps the start
   contribution zero while letting γ learn.
+- **Feedback gate scalars (α, θ) are fp32 master parameters** — a learned bf16
+  θ≈0.5 has ULP above the optimizer step and would freeze (the same trap γ hit);
+  re-cast to fp32 after the global dtype cast. `W_stressed` trains in bf16.
+
+## Adaptive feedback control
+
+The `matrix_cell` substrate runs a closed loop on its own readout
+(`aeon/substrate/feedback.py`): it **senses** load `L(t)` (an EWMA of the
+readout's per-step rate of change — cheap, bounded), **gates** on it
+(`g(L)=sigmoid(α(L−θ))`, smooth and in [0,1]), and **acts** by blending a
+stressed transform into the output:
+
+```
+output = (1 − g)·base + g·(output_bound · tanh(W_stressed · base))
+```
+
+At low load `g≈0` and the output is exactly the plain readout (the extension
+reduces cleanly to prior behaviour). Under stress `g→1` and the output direction
+sharpens so Recursion drives a correction back into both streams. The blend is a
+convex combination of two `output_bound`-bounded signals, so it is **bounded
+elementwise in every mode** — the port's bounded-output contract and Recursion's
+σ<margin certificate hold gate-off, gate-on, and mid-transition. Only the
+*direction* of the substrate's output changes under stress, never its magnitude.
+The gate (`α`, `θ`) is learned; the load reduction is currently left to emerge
+from the primary loss (no auxiliary term). `substrate.load()` / `substrate.gate()`
+expose the live signals for monitoring.
 
 ## Tests
 
@@ -103,6 +131,8 @@ python tests/test_substrate_port.py     # substrate port conformance
 python tests/test_aeon_sanity.py        # shapes, certificate, gradient flow, determinism,
                                         # γ-updates (bf16-trap regression), no external lib in forward
 python tests/test_tokenizer.py          # tokenizer train + round-trip, special ids, corpus reader
+python tests/test_feedback.py           # adaptive feedback: load bound, gate range/grad,
+                                        # gate-off reduction, bounded stressed mode, certificate all modes
 ```
 
 Substrate port conformance runs without torch (contract + AST checks); the model
@@ -116,8 +146,10 @@ certificate, multi-source coupling, and the fp32-γ / fp32-Recursion training
 pattern — is exercised end-to-end, and the **from-scratch pipeline is wired and
 proven at small scale**: Aeon-trained tokenizer → tokenized-corpus training (loss
 decreasing, certificate holding, γ lifting) → checkpoint → text inference. The
-350M multilingual prototype config is set (128k vocab). The remaining external
-input is **Dylan's curated corpus**; when it lands, the small sanity run precedes
-the full single-epoch run.
+350M multilingual prototype config is set (128k vocab, adaptive feedback on;
+350.28M trainable), and the closed-loop feedback control engages under load in
+practice (gate ≈0 at low load, ≈1 under stress) while the certificate holds in
+every mode. The remaining external input is **Dylan's curated corpus**; when it
+lands, the small sanity run precedes the full single-epoch run.
 
 `reference/` holds **sealed exploratory background** — not part of Aeon.

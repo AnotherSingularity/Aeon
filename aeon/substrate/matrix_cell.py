@@ -16,6 +16,12 @@ output_bound = 1.0 (the port requires bounded readouts).
 Optional ports advertised: matrix_read (raw S), decay_control (read-only decay),
 assoc_write (direct association write). Optional RMSNorm on the read path is
 available (off by default) for state-magnitude control at scale.
+
+Adaptive feedback control (on by default): the cell monitors its own load and,
+under stress, blends a stressed-mode transform into its readout — a closed-loop
+correction that Recursion broadcasts back to both streams. It is bound-preserving
+by construction (see feedback.py), so the certificate holds in every mode; with
+load low the gate is ~0 and the readout is exactly the plain readout.
 """
 from __future__ import annotations
 
@@ -23,6 +29,7 @@ import torch
 import torch.nn as nn
 
 from .port import SubstratePort, MATRIX_READ, DECAY_CONTROL, ASSOC_WRITE
+from .feedback import AdaptiveFeedbackController
 
 
 class MatrixStateCell(nn.Module, SubstratePort):
@@ -35,6 +42,11 @@ class MatrixStateCell(nn.Module, SubstratePort):
         n_head: int = 4,
         head_size: int = 16,
         use_state_norm: bool = False,
+        adaptive_feedback: bool = True,
+        gate_alpha_init: float = 8.0,
+        gate_threshold_init: float = 0.5,
+        gate_ewma_rho: float = 0.9,
+        learn_gate: bool = True,
     ):
         nn.Module.__init__(self)
         self.d_in = d_in
@@ -63,6 +75,14 @@ class MatrixStateCell(nn.Module, SubstratePort):
         # decay mutator (decay is read-only).
         self.decay_logit = nn.Parameter(torch.linspace(-4.0, 4.0, self.dim_att))
 
+        # closed-loop adaptive feedback over the (bounded) readout — see feedback.py.
+        self.feedback = (
+            AdaptiveFeedbackController(
+                d_state, output_bound=self.output_bound,
+                alpha_init=gate_alpha_init, threshold_init=gate_threshold_init,
+                ewma_rho=gate_ewma_rho, learn_gate=learn_gate)
+            if adaptive_feedback else None)
+
         self._S: torch.Tensor | None = None
         self._read: torch.Tensor | None = None
         self._pending_drive: torch.Tensor | None = None
@@ -79,6 +99,8 @@ class MatrixStateCell(nn.Module, SubstratePort):
         self._S = torch.zeros(batch_size, self.H, self.N, self.N, device=device, dtype=dtype)
         self._read = torch.zeros(batch_size, self.d_state, device=device, dtype=dtype)
         self._pending_drive = None
+        if self.feedback is not None:
+            self.feedback.reset()
 
     def step(self, x_t: torch.Tensor) -> torch.Tensor:
         if self._S is None:
@@ -103,7 +125,10 @@ class MatrixStateCell(nn.Module, SubstratePort):
                                            + self.state_norm_eps)
                       * self.state_norm_weight)
         out = (r @ S_read).reshape(B, H * N)
-        self._read = torch.tanh(self.readout(out))  # bounded-output contract: (-1,1)
+        base = torch.tanh(self.readout(out))        # plain readout — bounded (-1,1)
+        # adaptive feedback: gate-off (low load) returns `base` verbatim; under
+        # stress it blends in a bound-preserving stressed transform (feedback.py).
+        self._read = self.feedback(base) if self.feedback is not None else base
         return self._read
 
     def read(self) -> torch.Tensor:
@@ -119,6 +144,17 @@ class MatrixStateCell(nn.Module, SubstratePort):
             self._S = self._S.detach()
         if self._read is not None:
             self._read = self._read.detach()
+        if self.feedback is not None:
+            self.feedback.detach()
+
+    # ---- feedback introspection (monitoring; optional auxiliary loss) ---------
+    def load(self) -> torch.Tensor | None:
+        """Last per-batch load L(t), or None (feedback disabled / before step)."""
+        return self.feedback.load() if self.feedback is not None else None
+
+    def gate(self) -> torch.Tensor | None:
+        """Last per-batch gate value g(L) ∈ [0,1], or None."""
+        return self.feedback.gate() if self.feedback is not None else None
 
     # ---- optional tier ----------------------------------------------------
     def read_matrix(self) -> torch.Tensor:

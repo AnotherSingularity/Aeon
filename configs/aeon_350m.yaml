@@ -37,6 +37,10 @@ model:
     n_head: 8
     head_size: 64            # 8 × 64 = 512 = h_rec
     use_state_norm: false
+    adaptive_feedback: true  # closed-loop load-sensing feedback control (feedback.py)
+    gate_alpha_init: 8.0     # gate sharpness  g(L)=sigmoid(α·(L−θ))
+    gate_threshold_init: 0.5 # gate centre θ (tune from observed load after early steps)
+    learn_gate: true         # α, θ learned (fp32 master params, re-cast in train.py)
 
 data:
   seq_len: 2048

@@ -117,6 +117,12 @@ def main():
     # γ must be an fp32 master parameter (see module docstring). Re-cast AFTER
     # model.to(dtype) and BEFORE the optimizer is built.
     model.transformer.gamma.data = model.transformer.gamma.data.float()
+    # Same trap for the substrate's learned feedback gate scalars (α, θ): a bf16
+    # θ≈0.5 has ULP above the optimizer step and would freeze. Keep them fp32.
+    fb = getattr(model.substrate, "feedback", None)
+    if fb is not None and isinstance(fb.gate_alpha, torch.nn.Parameter):
+        fb.gate_alpha.data = fb.gate_alpha.data.float()
+        fb.gate_threshold.data = fb.gate_threshold.data.float()
 
     params = model.trainable_parameters()
     opt = torch.optim.AdamW(params, lr=tcfg["lr"], weight_decay=tcfg.get("weight_decay", 0.0))
