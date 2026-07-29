@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "phase": "F2",
+  "description": "Aeon Trusted Computing Base — every runtime dependency, why it is required, its version pin, and its integrity posture. Absent from automatic model-controlled installation paths.",
+  "python_runtime": {
+    "requires": ">=3.10",
+    "reason": "structural pattern matching, dataclasses, and modern typing used across aeon/",
+    "integrity_posture": "operator-controlled OS package"
+  },
+  "runtime_dependencies": [
+    {"name": "torch", "pinned": "torch==2.5.1", "index_url": "https://download.pytorch.org/whl/cu124", "reason": "AeonTransformer, RecursionJoiner, matrix/vector cells, feedback controller — the entire numerical forward/backward path.", "integrity_posture": "PyPI + operator-verified index; no auto-install from Aeon runtime.", "used_in": ["aeon/transformer.py", "aeon/recursion.py", "aeon/hybrid.py", "aeon/substrate/*", "scripts/*"]},
+    {"name": "safetensors", "pinned": "safetensors>=0.4,<1.0", "reason": "Aeon checkpoint I/O — generic tensor format, no external model affiliation.", "integrity_posture": "PyPI; version-pinned range.", "used_in": ["aeon/checkpoint.py (optional path)"]},
+    {"name": "sentencepiece", "pinned": "sentencepiece>=0.2,<1.0", "reason": "Aeon's OWN tokenizer trained on Aeon's corpus. Nothing downloaded at runtime.", "integrity_posture": "PyPI; version-pinned range; no runtime downloads.", "used_in": ["aeon/tokenizer.py", "scripts/train_tokenizer.py"]},
+    {"name": "pyyaml", "pinned": "pyyaml>=6.0", "reason": "YAML config parsing (configs/*.yaml).", "integrity_posture": "PyPI; wide adoption; parsed with safe_load only.", "used_in": ["scripts/train.py", "scripts/infer.py", "scripts/diagnose.py", "scripts/e5_certify.py"]},
+    {"name": "numpy", "pinned": "numpy>=1.24", "reason": "Torch dependency; also used for tokenizer/text helpers.", "integrity_posture": "PyPI.", "used_in": ["implicit via torch"]}
+  ],
+  "test_only_dependencies": [
+    {"name": "pytest", "pinned": "pytest>=8.0 (extras=dev)", "reason": "test runner (not required for training/inference).", "integrity_posture": "PyPI; not on training runtime path.", "used_in": ["tests/ (optional)"]}
+  ],
+  "install_policy": {
+    "auto_install_from_aeon_runtime": false,
+    "note": "Dependencies are installed outside runtime execution (F2.3). Aeon's training/inference/diagnostics scripts do NOT call pip/subprocess to install anything. The primary campaign expects operator-provisioned dependencies matching the pins above."
+  },
+  "unused_dependencies_removed": [
+    "transformers", "accelerate", "huggingface_hub", "datasets"
+  ],
+  "notes": [
+    "The environment in which the F0-F9 upgrade was authored uses torch 2.13 as a fallback (the pinned index was not reachable). Documented in docs/E0_REPOSITORY_AUDIT.md; primary training uses the pinned versions."
+  ]
+}

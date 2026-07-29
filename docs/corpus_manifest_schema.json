@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "phase": "F2",
+  "description": "Schema for the Aeon corpus source manifest. Every source contributing to the certified training path MUST populate every required field. Unidentified sources are refused entry per §F2.4.",
+  "required_source_fields": [
+    "source_id",
+    "origin",
+    "acquired_at",
+    "license_status",
+    "content_sha256",
+    "preprocessing_version",
+    "filtering_version",
+    "deduplication_version",
+    "partition_assignment",
+    "inclusion_status",
+    "rejection_reason_if_rejected",
+    "trust_level"
+  ],
+  "trust_levels": ["trusted", "untrusted", "quarantined"],
+  "inclusion_status_values": ["included", "excluded", "quarantined_pending"],
+  "partition_values": ["train", "validation", "held_out", "eval_only"],
+  "example_source": {
+    "source_id": "example_corpus_a_v1",
+    "origin": "operator-provided-URL-or-media",
+    "acquired_at": "YYYY-MM-DD",
+    "license_status": "operator_recorded_license_string",
+    "content_sha256": "hex-64",
+    "preprocessing_version": "aeon-preprocess-v1",
+    "filtering_version": "aeon-filter-v1",
+    "deduplication_version": "aeon-dedup-v1",
+    "partition_assignment": "train",
+    "inclusion_status": "included",
+    "rejection_reason_if_rejected": null,
+    "trust_level": "trusted"
+  },
+  "refusal_rules": [
+    "Missing any required field for an included source ⇒ ProvenanceError.",
+    "trust_level=quarantined AND partition_assignment IN (train,validation) ⇒ ProvenanceError.",
+    "inclusion_status=excluded MUST provide rejection_reason_if_rejected.",
+    "A source with content_sha256 whose recomputation disagrees ⇒ ProvenanceError."
+  ]
+}
