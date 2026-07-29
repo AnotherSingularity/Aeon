@@ -125,6 +125,20 @@ _ALLOWED_DYNAMIC_IMPORT = {
     ("aeon/runtime_policy.py", "self"): "the scanner itself; whitelisted by module identity",
 }
 
+# (relative_path, "module.attr") pairs — sanctioned process-spawn call sites
+# added in the W-series Windows packaging phases (W2-W3). Each site spawns
+# Aeon's OWN frozen entry point via an argv LIST, never a shell string, only
+# in response to an explicit human UI action. The model has no path to any of
+# these call sites; adding new entries requires a documented review.
+_ALLOWED_LAUNCHER_SPAWN = {
+    ("aeon/launcher/controls.py", "subprocess.Popen"):
+        "W2/W3 launcher spawns detached worker via argv list; human-triggered; "
+        "no shell=True (tested); target is Aeon's own frozen entry point.",
+    ("aeon/launcher/gui.py", "subprocess.Popen"):
+        "W2/W3 launcher UI re-attach/spawn path; identical safety constraints "
+        "as controls.py; no shell=True (tested).",
+}
+
 
 def _iter_py(root: str):
     for dirpath, _, filenames in os.walk(root):
@@ -181,7 +195,10 @@ def scan_for_shell_or_eval() -> List[str]:
             if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
                 pair = (func.value.id, func.attr)
                 if pair in _FORBIDDEN_SHELL_ATTRS:
-                    offenders.append(f"{relative}: {pair[0]}.{pair[1]}()")
+                    dotted = f"{pair[0]}.{pair[1]}"
+                    if (relative, dotted) in _ALLOWED_LAUNCHER_SPAWN:
+                        continue
+                    offenders.append(f"{relative}: {dotted}()")
             # eval(...) / exec(...) / compile(...) / __import__(...)
             elif isinstance(func, ast.Name):
                 name = func.id

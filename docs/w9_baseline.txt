@@ -1,0 +1,25 @@
+test_adversarial                 20
+test_aeon_sanity                 6
+test_checkpoint                  9
+test_config_invariants           5
+test_continuity                  16
+test_diagnose                    2
+test_entry                       17
+test_evidence_hygiene            18
+test_feedback                    5
+test_feedback_diagnostics        5
+test_launcher_and_job            20
+test_observability               5
+test_protected_checkpoint        9
+test_provenance                  14
+test_recursion_topology          6
+test_runtime_policy              9
+test_six_patches                 6
+test_stream_independence         5
+test_substrate_port              5
+test_threat_model                8
+test_tokenizer                   2
+test_windows_packaging           13
+TOTAL: 205
+INHERITED (E/F-series, unchanged): 155
+NEW (W-series): 50   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 13)
