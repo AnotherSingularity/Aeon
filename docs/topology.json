@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "base_commit": "d40ee13e571edb2c738d3609585e52b63bc89733",
+  "phase": "E0",
+  "streams": {
+    "substrate": {
+      "entry_point": "aeon/hybrid.py::HybridModel.forward calls self.substrate.step per token",
+      "cells": {
+        "matrix": "aeon/substrate/matrix_cell.py::MatrixStateCell",
+        "vector": "aeon/substrate/vector_cell.py::VectorStateCell"
+      },
+      "recursion_input": {"projection": "s_proj", "value": "s_proj(mean_i r_i)", "location": "aeon/hybrid.py:141-142"},
+      "broadcast_consumption": {"projection": "cond_proj", "of": "h_{w-1}", "location": "aeon/hybrid.py:131-132,136"},
+      "feedback_controller": {"file": "aeon/substrate/feedback.py", "reads": "own readout only", "autonomy": true}
+    },
+    "transformer": {
+      "entry_point": "aeon/hybrid.py::HybridModel.forward calls self.transformer.hidden_states once per forward",
+      "model": "aeon/transformer.py::AeonTransformer",
+      "recursion_input": {"projection": "read_proj", "value": "t_all[:, end-1, :]", "location": "aeon/hybrid.py:119,143"},
+      "broadcast_consumption": {"applier": "HybridTransformer.inject", "of": "h_{w-1} broadcast per token", "location": "aeon/hybrid.py:139,153,154"}
+    }
+  },
+  "recursion": {
+    "file": "aeon/recursion.py::RecursionJoiner",
+    "inputs": ["s", "t", "e (optional embedding side-input)", "h (carried, detached)", "c (carried, detached)"],
+    "update": "h = tanh(W_s s + W_t t + W_e e + W_h h + c);  c = 0.5 c + 0.5 h",
+    "certificate": {"structural": true, "form": "sigmoid(s)*MARGIN*Cayley(A)*diag(tanh(d))", "MARGIN_H": 0.98, "MARGIN_C": 0.95, "audit_method": "audit()"},
+    "precision": "fp32 (recursion.float() in train/infer)",
+    "cadence": "one step per K-window; NEVER per token"
+  },
+  "slow_clock": {"K": 16, "adaptive": false, "locations": ["aeon/hybrid.py:68", "configs/aeon_350m.yaml:14", "configs/aeon_v1.yaml:6"]},
+  "single_broadcast": {"source": "h_{w-1} from RecursionJoiner.step in previous window", "consumers": ["substrate via cond_proj", "transformer via inject"], "dual_head": false},
+  "entry_points": {
+    "train": "scripts/train.py::main",
+    "infer": "scripts/infer.py::main",
+    "tokenizer_train": "scripts/train_tokenizer.py::main",
+    "diagnose_feedback": "scripts/diagnose_feedback.py::main"
+  },
+  "checkpoint": {
+    "pre_E3": {"save": "scripts/train.py::save_checkpoint", "format": "torch.save({step, model, optim})"},
+    "post_E3": {"save": "aeon/checkpoint.py::atomic_save", "load": "aeon/checkpoint.py::load", "atomic": true, "weights_only": true}
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "recorded_at_commit": "d40ee13e571edb2c738d3609585e52b63bc89733",
+  "phase": "E0",
+  "environment": {
+    "python": "3.11.15",
+    "torch": "2.13.0+cu130 (CPU-effective in this container)",
+    "sentencepiece": "0.2.1",
+    "numpy": "2.4.6"
+  },
+  "suites": [
+    {"file": "tests/test_substrate_port.py", "checks": 5, "pass": 5, "fail": 0, "notes": "3 torch-runtime skips inside the mock conformance report (structural), all real-cell checks pass"},
+    {"file": "tests/test_aeon_sanity.py", "checks": 6, "pass": 6, "fail": 0},
+    {"file": "tests/test_tokenizer.py", "checks": 2, "pass": 2, "fail": 0},
+    {"file": "tests/test_feedback.py", "checks": 5, "pass": 5, "fail": 0},
+    {"file": "tests/test_feedback_diagnostics.py", "checks": 5, "pass": 5, "fail": 0}
+  ],
+  "totals": {"checks": 23, "pass": 23, "fail": 0, "wall_clock_seconds_approx": 8.63},
+  "pre_existing_failures": [],
+  "blocking_failures": []
+}
