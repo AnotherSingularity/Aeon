@@ -1,0 +1,359 @@
+{
+  "suites": {
+    "test_substrate_port": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_aeon_sanity": {
+      "checks": 6,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_tokenizer": {
+      "checks": 2,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_feedback": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_feedback_diagnostics": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_six_patches": {
+      "checks": 6,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_recursion_topology": {
+      "checks": 6,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_stream_independence": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_config_invariants": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_observability": {
+      "checks": 5,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_checkpoint": {
+      "checks": 9,
+      "pass": true,
+      "returncode": 0
+    },
+    "test_diagnose": {
+      "checks": 2,
+      "pass": true,
+      "returncode": 0
+    }
+  },
+  "totals": {
+    "checks": 61,
+    "pass": 61,
+    "fail": 0
+  },
+  "timestamp": 1785338093.4460926,
+  "head_commit": "1a1fd90166f3d2fac1e77ec8629f906e39f763b5",
+  "base_commit": "d40ee13e571edb2c738d3609585e52b63bc89733",
+  "baseline_at_e0": {
+    "recorded_at_commit": "d40ee13e571edb2c738d3609585e52b63bc89733",
+    "phase": "E0",
+    "environment": {
+      "python": "3.11.15",
+      "torch": "2.13.0+cu130 (CPU-effective in this container)",
+      "sentencepiece": "0.2.1",
+      "numpy": "2.4.6"
+    },
+    "suites": [
+      {
+        "file": "tests/test_substrate_port.py",
+        "checks": 5,
+        "pass": 5,
+        "fail": 0,
+        "notes": "3 torch-runtime skips inside the mock conformance report (structural), all real-cell checks pass"
+      },
+      {
+        "file": "tests/test_aeon_sanity.py",
+        "checks": 6,
+        "pass": 6,
+        "fail": 0
+      },
+      {
+        "file": "tests/test_tokenizer.py",
+        "checks": 2,
+        "pass": 2,
+        "fail": 0
+      },
+      {
+        "file": "tests/test_feedback.py",
+        "checks": 5,
+        "pass": 5,
+        "fail": 0
+      },
+      {
+        "file": "tests/test_feedback_diagnostics.py",
+        "checks": 5,
+        "pass": 5,
+        "fail": 0
+      }
+    ],
+    "totals": {
+      "checks": 23,
+      "pass": 23,
+      "fail": 0,
+      "wall_clock_seconds_approx": 8.63
+    },
+    "pre_existing_failures": [],
+    "blocking_failures": []
+  },
+  "parameter_accounting_primary": {
+    "campaign": "V0.02.03-primary-01",
+    "trainable_parameters": 350277638,
+    "by_component": {
+      "transformer": {
+        "parameters": 346080257,
+        "bytes": 1384321028
+      },
+      "substrate": {
+        "parameters": 1573378,
+        "bytes": 6293512
+      },
+      "recursion": {
+        "parameters": 1575427,
+        "bytes": 6301708
+      },
+      "emb_proj": {
+        "parameters": 524288,
+        "bytes": 2097152
+      },
+      "cond_proj": {
+        "parameters": 262144,
+        "bytes": 1048576
+      },
+      "s_proj": {
+        "parameters": 262144,
+        "bytes": 1048576
+      }
+    },
+    "optimizer_bytes_estimate": 2802221104,
+    "state_bytes": {
+      "recursion_state_bytes": 0,
+      "substrate_state_bytes": 0,
+      "recursion_state_bytes_per_batch": 4096,
+      "substrate_state_bytes_per_batch": 133120
+    },
+    "checkpoint_bytes_estimate": 1401110552,
+    "notes": "Adaptive-feedback controller adds ~0.26M via W_stressed + gate scalars."
+  },
+  "e5_evidence": {
+    "config": "/home/user/AeonV0.02/configs/aeon_smoke_e5.yaml",
+    "scenarios": {
+      "01_fresh_init": {
+        "status": "pass",
+        "trainable_params": 102918,
+        "audit_at_init": {
+          "sigma_Wh": 0.5935611724853516,
+          "sigma_Wc": 0.5596853494644165,
+          "margin_h": 0.98,
+          "margin_c": 0.95,
+          "lambda": 0.5,
+          "holds": 1.0,
+          "gamma": 0.0
+        }
+      },
+      "02_baseline_training": {
+        "status": "pass",
+        "median_step_s": 0.0571500714999047
+      },
+      "03_instrumented_training": {
+        "status": "pass",
+        "median_step_s": 0.041351555000005646,
+        "overhead_frac": -0.27643913796197783,
+        "overhead_ceiling": 0.15
+      },
+      "04_checkpoint_save": {
+        "status": "pass",
+        "path": "/home/user/AeonV0.02/runs/aeon_e5/instrumented/ckpt_e5.pt",
+        "bytes": 1289163,
+        "save_duration_s": 0.03073756100002356,
+        "sha256_recorded": true
+      },
+      "05_process_stop": {
+        "status": "pass",
+        "note": "in-process reset used to model a clean stop"
+      },
+      "06_checkpoint_resume": {
+        "status": "pass",
+        "resumed_step": 20,
+        "resume_duration_s": 0.01638151299994206
+      },
+      "07_continued_after_resume": {
+        "status": "pass",
+        "losses": [
+          4.881326675415039,
+          4.872676372528076,
+          4.84808874130249,
+          4.8969011306762695,
+          4.890777587890625
+        ],
+        "audit_after_resume": {
+          "sigma_Wh": 0.5933029651641846,
+          "sigma_Wc": 0.5596755743026733,
+          "margin_h": 0.98,
+          "margin_c": 0.95,
+          "lambda": 0.5001679062843323,
+          "holds": true,
+          "gamma": -0.0006358211976476014
+        },
+        "certificate_holds_after_resume": true
+      },
+      "08_offline_diagnostics": {
+        "status": "pass",
+        "duration_s": 2.109859968999899,
+        "returncode": 0,
+        "report_path": "/home/user/AeonV0.02/runs/aeon_e5/instrumented/ckpt_e5.pt.diagnostics.json",
+        "stderr_tail": ""
+      },
+      "09_inference": {
+        "status": "pass",
+        "final_ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5
+        ]
+      },
+      "10_reject_incompatible": {
+        "status": "pass",
+        "reason": "vocab_size mismatch: ckpt=128 runtime=999999 \u2014 reject rather than silently swap tokenizer semantics"
+      }
+    },
+    "timings": {
+      "baseline_step_s": 0.0571500714999047,
+      "instrumented_step_s": 0.041351555000005646,
+      "overhead_frac": -0.27643913796197783
+    },
+    "audits": {
+      "at_init": {
+        "sigma_Wh": 0.5935611724853516,
+        "sigma_Wc": 0.5596853494644165,
+        "margin_h": 0.98,
+        "margin_c": 0.95,
+        "lambda": 0.5,
+        "holds": true,
+        "gamma": 0.0
+      },
+      "after_resume": {
+        "sigma_Wh": 0.5933029651641846,
+        "sigma_Wc": 0.5596755743026733,
+        "margin_h": 0.98,
+        "margin_c": 0.95,
+        "lambda": 0.5001679062843323,
+        "holds": true,
+        "gamma": -0.0006358211976476014
+      }
+    },
+    "peak_resident_mb": 686.06640625,
+    "non_finite_events": 0,
+    "recursion_updates_total_from_metrics": 0,
+    "certificate_held_every_recorded_step": true,
+    "test_totals": {
+      "suites": {
+        "test_substrate_port": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_aeon_sanity": {
+          "checks": 6,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_tokenizer": {
+          "checks": 2,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_feedback": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_feedback_diagnostics": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_six_patches": {
+          "checks": 6,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_recursion_topology": {
+          "checks": 6,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_stream_independence": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_config_invariants": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_observability": {
+          "checks": 5,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_checkpoint": {
+          "checks": 9,
+          "returncode": 0,
+          "pass": true
+        },
+        "test_diagnose": {
+          "checks": 2,
+          "returncode": 0,
+          "pass": true
+        }
+      },
+      "checks": 61,
+      "pass": 61,
+      "fail": 0
+    },
+    "e5_verdict": "PASS",
+    "conditions": {
+      "all_scenarios_pass": true,
+      "overhead_under_15pct": true,
+      "certificate_held_every_step": true,
+      "test_suite_totals_pass": true
+    }
+  },
+  "configuration_identity": {
+    "primary_config": "configs/aeon_350m_primary.yaml",
+    "certification_config": "configs/aeon_smoke_e5.yaml"
+  }
+}

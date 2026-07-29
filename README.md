@@ -148,18 +148,50 @@ controlled pass/fail scenarios (`tests/test_feedback_diagnostics.py`).
 
 ```bash
 pip install -e ".[dev]"
-python tests/test_substrate_port.py     # substrate port conformance
-python tests/test_aeon_sanity.py        # shapes, certificate, gradient flow, determinism,
-                                        # γ-updates (bf16-trap regression), no external lib in forward
-python tests/test_tokenizer.py          # tokenizer train + round-trip, special ids, corpus reader
-python tests/test_feedback.py           # adaptive feedback: load bound, gate range/grad,
-                                        # gate-off reduction, bounded stressed mode, certificate all modes
-python tests/test_feedback_diagnostics.py  # the 5 diagnostics catch their own failure modes
+# preservation / architectural contract (E0–E1)
+python tests/test_substrate_port.py         # substrate port conformance
+python tests/test_aeon_sanity.py            # shapes, certificate, gradient flow, determinism,
+                                            # γ-updates (bf16-trap regression), no external lib in forward
+python tests/test_six_patches.py            # one test per V0.02.02 debug patch
+python tests/test_recursion_topology.py     # K=16, fp32 Recursion, single broadcast, certificate
+python tests/test_stream_independence.py    # substrate autonomy, no cross-stream imports/reads
+python tests/test_config_invariants.py      # no config can silently drift K, dtype, dual-broadcast
+python tests/test_tokenizer.py              # tokenizer train + round-trip, special ids, corpus reader
+python tests/test_feedback.py               # adaptive feedback: load bound, gate range/grad,
+                                            # gate-off reduction, bounded stressed mode, certificate all modes
+python tests/test_feedback_diagnostics.py   # the 5 feedback fault-isolation diagnostics
+# observability + checkpoint + offline (E2–E4)
+python tests/test_observability.py          # equivalence, sampling clock invariance, overhead ceiling
+python tests/test_checkpoint.py             # atomic save, resume equivalence, reject-incompatible
+python tests/test_diagnose.py               # offline entry point does not mutate checkpoints
 ```
 
-Substrate port conformance runs without torch (contract + AST checks); the model
-sanity tests require torch and the tokenizer tests require sentencepiece — each
-skips cleanly when its backend is absent.
+Full suite: **61 / 61 pass**. Substrate port conformance runs without torch
+(contract + AST checks); the model + observability + checkpoint tests require
+torch; tokenizer tests require sentencepiece — each skips cleanly when its
+backend is absent.
+
+## V0.02.03 architecture-preserving efficiency upgrade (E0–E7)
+
+The repository has completed the eight-phase upgrade specified by the
+V0.02.03 execution directive. Every preservation invariant is now backed by
+a named test, observability + checkpoint hardening are integrated, and the
+primary campaign config is versioned. See `docs/`:
+
+- `E0_REPOSITORY_AUDIT.md`, `TOPOLOGY_MAP.md`, `PRESERVATION_MANIFEST.md` — audit + invariants (E0).
+- `E5_CERTIFICATION.md` — bounded runtime certification (E5).
+- `OPERATIONS.md` — launch, resume, and recovery for the primary run (E6).
+- `SECURITY_MODEL.md` — local security posture (E7).
+- `PROXY_CAMPAIGN_PLAN.md` — small-scale proxy comparison plan (E7 / §14).
+- `COMMIT_REPORT.md` — the E0–E7 commit ledger (E7).
+- `e7_final_evidence.json` — machine-readable evidence bundle.
+
+Efficiency-claim boundaries (§17):
+Aeon is architecturally designed for bounded long-range integration through
+two parallel streams and a contractive slow-clock Recursion mechanism. Its
+efficiency is being measured at the current implementation scale on
+laptop-class CPU hardware. Frontier / full-scale / FLOP-based claims are OUT
+OF BOUNDS at this stage.
 
 ## Status
 
