@@ -1,3 +1,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Training + diagnostics artefacts (evidence lives under docs/)
+# runs/ contains checkpoints, metrics.jsonl, and per-checkpoint diagnostics
+# reports. The docs/e5_evidence.json is the durable, machine-readable summary
+# used for certification. runs/ contents are ephemeral and rebuildable by
+# re-running scripts/e5_certify.py or scripts/train.py.
+runs/
+tokenizer/
