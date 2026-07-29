@@ -1,0 +1,83 @@
+{
+  "suites": {
+    "test_substrate_port": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_aeon_sanity": {
+      "checks": 6,
+      "pass": true
+    },
+    "test_tokenizer": {
+      "checks": 2,
+      "pass": true
+    },
+    "test_feedback": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_feedback_diagnostics": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_six_patches": {
+      "checks": 6,
+      "pass": true
+    },
+    "test_recursion_topology": {
+      "checks": 6,
+      "pass": true
+    },
+    "test_stream_independence": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_config_invariants": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_observability": {
+      "checks": 5,
+      "pass": true
+    },
+    "test_checkpoint": {
+      "checks": 9,
+      "pass": true
+    },
+    "test_diagnose": {
+      "checks": 2,
+      "pass": true
+    }
+  },
+  "totals": {
+    "checks": 61,
+    "pass": 61,
+    "fail": 0
+  },
+  "artefact_hashes": {
+    "docs/PRESERVATION_MANIFEST.md": "29c6fcb75f167a09ec7bd9cd9bbeca6c3e5ef830a9f3f7edebcf75e87811cab9",
+    "docs/preservation.json": "5b191169a21b5adfabd77abf4c5b38d0737fd9fc9047204e55126c27ea16c8a3",
+    "docs/DEFINITION_OF_DONE.md": "08e587814ae9fefd81eaec790b33b5f6a9b5f716aa3f8ed396253a727b44a27e",
+    "docs/E5_CERTIFICATION.md": "973c957c0d252fa2dacf05d2d90dad6c7fe4feca59f10328ae64055137d085ab",
+    "docs/e5_evidence.json": "d7137ddcfb71021aa490c9a226ce16124ad0c4bb3edf812a0727d813cc8f4982",
+    "docs/e7_final_evidence.json": "3b31d3b156a25c4078536e0dbd95c01392e87f3fe6daf37d475f0da6999b3803",
+    "docs/TOPOLOGY_MAP.md": "1f51583f612cfad2cf0780a0ff8c10f79d7b9262c7802f10563b7cdac1857124",
+    "docs/topology.json": "c954d45486b67739a55709062e047bf39064d59a6391535ad1e2cba20c546007",
+    "docs/COMMIT_REPORT.md": "22692aa2e88a7ecd92b9b78beff8c911375bccdb47521e4352a61b4154f97b51",
+    "docs/OPERATIONS.md": "a46f4a4904ee4e79a256e9739b1474f3c9f946970bb7842e14a66758bc263180",
+    "docs/SECURITY_MODEL.md": "2d6e45780c181ae5c621cf0c78f380843ccf7fc3c3f343988788d2d822084b78",
+    "docs/e6_parameter_accounting.json": "71df02f2ee69c2d300d8d930c98d5c3dc891ef03a5ae2bdccdd0815d03144205",
+    "docs/F0_INHERITANCE_AUDIT.md": "919676914081093bfe52fed71efd8aa159c3190b60fcd860f35de9c94751f957"
+  },
+  "timestamp": 1785338734.8949928,
+  "base_commit": "fbdc1d9",
+  "environment": {
+    "python": "3.11.15",
+    "torch": "2.13.0+cu130 (container fallback)",
+    "sentencepiece": "0.2.2",
+    "pyyaml": "6.0.1",
+    "numpy": "2.4.6",
+    "primary_config_pins": "torch==2.5.1 (via pyproject.toml + README cu124 install line)"
+  },
+  "recomputed_trainable_params": 350281282
+}

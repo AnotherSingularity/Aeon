@@ -137,7 +137,14 @@ def main():
         shutil.rmtree(out_dir)
     os.makedirs(out_dir, exist_ok=True)
 
-    evidence = {"config": CONFIG, "scenarios": {}, "timings": {}, "audits": {}}
+    # Evidence records portable, repo-relative paths (F0 corrective hygiene);
+    # absolute-user paths must never appear in committed evidence.
+    def _rel(p):
+        try:
+            return os.path.relpath(p, ROOT)
+        except Exception:
+            return p
+    evidence = {"config": _rel(CONFIG), "scenarios": {}, "timings": {}, "audits": {}}
     scen = evidence["scenarios"]
 
     # ----- Scenario 1: fresh init (build, no train) --------------------------
@@ -188,7 +195,7 @@ def main():
     ckpt_size = os.path.getsize(ckpt)
     scen["04_checkpoint_save"] = {
         "status": "pass",
-        "path": ckpt, "bytes": ckpt_size, "save_duration_s": save_dt,
+        "path": _rel(ckpt), "bytes": ckpt_size, "save_duration_s": save_dt,
         "sha256_recorded": bool(md.get("sha256")),
     }
 
@@ -245,7 +252,7 @@ def main():
         "status": "pass" if r.returncode == 0 else "fail",
         "duration_s": diag_dt,
         "returncode": r.returncode,
-        "report_path": diag_out,
+        "report_path": _rel(diag_out),
         "stderr_tail": r.stderr[-300:] if r.stderr else "",
     }
 

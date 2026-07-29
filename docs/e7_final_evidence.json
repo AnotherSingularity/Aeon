@@ -160,7 +160,7 @@
     "notes": "Adaptive-feedback controller adds ~0.26M via W_stressed + gate scalars."
   },
   "e5_evidence": {
-    "config": "/home/user/AeonV0.02/configs/aeon_smoke_e5.yaml",
+    "config": "<repo>/configs/aeon_smoke_e5.yaml",
     "scenarios": {
       "01_fresh_init": {
         "status": "pass",
@@ -187,7 +187,7 @@
       },
       "04_checkpoint_save": {
         "status": "pass",
-        "path": "/home/user/AeonV0.02/runs/aeon_e5/instrumented/ckpt_e5.pt",
+        "path": "<repo>/runs/aeon_e5/instrumented/ckpt_e5.pt",
         "bytes": 1289163,
         "save_duration_s": 0.03073756100002356,
         "sha256_recorded": true
@@ -225,7 +225,7 @@
         "status": "pass",
         "duration_s": 2.109859968999899,
         "returncode": 0,
-        "report_path": "/home/user/AeonV0.02/runs/aeon_e5/instrumented/ckpt_e5.pt.diagnostics.json",
+        "report_path": "<repo>/runs/aeon_e5/instrumented/ckpt_e5.pt.diagnostics.json",
         "stderr_tail": ""
       },
       "09_inference": {
