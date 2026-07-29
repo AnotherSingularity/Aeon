@@ -1,0 +1,39 @@
+{
+  "campaign": "V0.02.03-primary-01",
+  "trainable_parameters": 350277638,
+  "by_component": {
+    "transformer": {
+      "parameters": 346080257,
+      "bytes": 1384321028
+    },
+    "substrate": {
+      "parameters": 1573378,
+      "bytes": 6293512
+    },
+    "recursion": {
+      "parameters": 1575427,
+      "bytes": 6301708
+    },
+    "emb_proj": {
+      "parameters": 524288,
+      "bytes": 2097152
+    },
+    "cond_proj": {
+      "parameters": 262144,
+      "bytes": 1048576
+    },
+    "s_proj": {
+      "parameters": 262144,
+      "bytes": 1048576
+    }
+  },
+  "optimizer_bytes_estimate": 2802221104,
+  "state_bytes": {
+    "recursion_state_bytes": 0,
+    "substrate_state_bytes": 0,
+    "recursion_state_bytes_per_batch": 4096,
+    "substrate_state_bytes_per_batch": 133120
+  },
+  "checkpoint_bytes_estimate": 1401110552,
+  "notes": "Adaptive-feedback controller adds ~0.26M via W_stressed + gate scalars."
+}
