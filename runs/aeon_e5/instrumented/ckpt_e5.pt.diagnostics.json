@@ -1,0 +1,111 @@
+{
+  "ckpt": "/home/user/AeonV0.02/runs/aeon_e5/instrumented/ckpt_e5.pt",
+  "ckpt_step": 20,
+  "config_path": "/home/user/AeonV0.02/configs/aeon_smoke_e5.yaml",
+  "subcommand": "all",
+  "timestamp": 1785337642.108703,
+  "certificate_holds_on_load": true,
+  "certificate": {
+    "audit": {
+      "sigma_Wh": 0.5932708978652954,
+      "sigma_Wc": 0.5596303343772888,
+      "margin_h": 0.98,
+      "margin_c": 0.95,
+      "lambda": 0.5000722408294678,
+      "holds": true,
+      "gamma": -0.0007866148953326046
+    },
+    "holds_and_within_margins": true
+  },
+  "gradients": {
+    "loss": 4.85930871963501,
+    "per_component": {
+      "transformer": {
+        "grad_l2": 1.1366451872778143,
+        "weight_l2": 18.828744795242695,
+        "update_to_weight_est": 0.06036754970331006
+      },
+      "substrate": {
+        "grad_l2": 3.6453532453163845e-09,
+        "weight_l2": 17.304962800877345,
+        "update_to_weight_est": 2.1065363082614419e-10
+      },
+      "recursion": {
+        "grad_l2": 1.4558783984433458e-06,
+        "weight_l2": 7.610804668046303,
+        "update_to_weight_est": 1.9129099509748412e-07
+      },
+      "emb_proj": {
+        "grad_l2": 1.7788644168792445e-10,
+        "weight_l2": 3.2380456924438477,
+        "update_to_weight_est": 5.493635933025189e-11
+      },
+      "cond_proj": {
+        "grad_l2": 2.1985397946622243e-09,
+        "weight_l2": 3.280273199081421,
+        "update_to_weight_est": 6.70230697637384e-10
+      },
+      "s_proj": {
+        "grad_l2": 2.2721340364739717e-09,
+        "weight_l2": 3.2908129692077637,
+        "update_to_weight_est": 6.904476364149856e-10
+      }
+    }
+  },
+  "interventions": {
+    "baseline_loss": 4.85930871963501,
+    "interventions": {
+      "hold_first_boundary": 4.859308242797852,
+      "attenuate_broadcast_0.5": 4.859308242797852,
+      "broadcast_batch_mean": 4.859308242797852,
+      "mask_embedding_input": 4.85930871963501
+    }
+  },
+  "feedback": {
+    "results": [
+      {
+        "component": "sensor",
+        "name": "sensor_correlation",
+        "status": "fail",
+        "metric": 0.17357701313505838,
+        "detail": "corr(complexity, load)=0.174, corr(length, load)=0.000"
+      },
+      {
+        "component": "gate",
+        "name": "gate_response",
+        "status": "fail",
+        "metric": 0.9640172775834799,
+        "detail": "\u03b1=8.00 \u03b8=0.500 g(0)=0.02 g(\u03b8)=0.50 g(hi)=0.98 obs[5%,95%]=[0.000,0.000]"
+      },
+      {
+        "component": "actuator",
+        "name": "signal_divergence",
+        "status": "pass",
+        "metric": -0.0741095319390297,
+        "detail": "mean_cos=-0.074, |stressed|/|normal|=0.099"
+      },
+      {
+        "component": "plant",
+        "name": "plant_response",
+        "status": "fail",
+        "metric": 6.377447903105349e-09,
+        "detail": "KL(off||on)=0.0000, KL(off||noise)=-0.0000"
+      },
+      {
+        "component": "loop",
+        "name": "loop_closure",
+        "status": "inconclusive",
+        "metric": 0.0,
+        "detail": "gate never fired on this trajectory"
+      }
+    ],
+    "summary": {
+      "pass": 1,
+      "fail": 3,
+      "inconclusive": 1
+    }
+  },
+  "probes": {
+    "skipped": "requires --tokenizer and --prompt"
+  }
+}
