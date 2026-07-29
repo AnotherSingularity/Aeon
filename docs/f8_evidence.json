@@ -1,0 +1,156 @@
+{
+  "phase": "F8",
+  "results": [
+    {
+      "name": "corrupted_newest_ckpt",
+      "ts": 1785341642.7143497,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "possible",
+      "architecture_manifest_preserved": true,
+      "six_patch_manifest_preserved": true,
+      "K_after": 16,
+      "recursion_fp32_after": true,
+      "certificate_after": true,
+      "detection_time_s": 0.00022054400005799835,
+      "recovery_time_s": 0.005419876999894768,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "interrupted_save",
+      "ts": 1785341642.7366946,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "not_required",
+      "detection_time_s": 0.0026341039999806526,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "unauthorized_rollback",
+      "ts": 1785341642.75104,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "requires_operator_decision",
+      "detection_time_s": 0.0004298299998026778,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "authorized_rollback",
+      "ts": 1785341642.7634366,
+      "passed": true,
+      "detection": "n/a",
+      "containment": "n/a",
+      "recovery": "possible",
+      "recovery_time_s": 0.0032297709999511426,
+      "architecture_manifest_preserved": true,
+      "K_after": 16,
+      "recursion_fp32_after": true,
+      "certificate_after": true,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "invalid_runtime_config",
+      "ts": 1785341642.7655466,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "fix_config",
+      "detection_time_s": 0.00011272799997641414,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "missing_required_artifact",
+      "ts": 1785341642.7743154,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "restore_meta",
+      "detection_time_s": 1.799599999685597e-05,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "certificate_failure_fails_closed",
+      "ts": 1785341642.7760272,
+      "passed": true,
+      "detection": "detected",
+      "containment": "n/a",
+      "recovery": "not_required",
+      "certificate_after": false,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "resource_exhaustion_halt",
+      "ts": 1785341642.7790186,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "requires_operator_restart",
+      "containment_time_s": 4.040599992549687e-05,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "audit_output_failure",
+      "ts": 1785341642.7798169,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "requires_operator",
+      "detection_time_s": 4.102299999431125e-05,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "abrupt_termination_recovery",
+      "ts": 1785341642.9948337,
+      "passed": true,
+      "detection": "n/a",
+      "containment": "contained",
+      "recovery": "possible",
+      "recovery_time_s": 0.01997923399994761,
+      "K_after": 16,
+      "recursion_fp32_after": true,
+      "certificate_after": true,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "restore_from_prev",
+      "ts": 1785341643.0399506,
+      "passed": true,
+      "detection": "n/a",
+      "containment": "n/a",
+      "recovery": "possible",
+      "recovery_time_s": 0.00832677599987619,
+      "K_after": 16,
+      "recursion_fp32_after": true,
+      "certificate_after": true,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "provenance_mismatch_refused",
+      "ts": 1785341643.044339,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "restore_provenance",
+      "detection_time_s": 9.394000016982318e-06,
+      "audit_chain_ok": true
+    },
+    {
+      "name": "protected_state_auth_failure",
+      "ts": 1785341643.057553,
+      "passed": true,
+      "detection": "detected",
+      "containment": "contained",
+      "recovery": "use_correct_key",
+      "detection_time_s": 0.00047938700004124257,
+      "audit_chain_ok": true
+    }
+  ],
+  "summary": {
+    "total": 13,
+    "pass": 13,
+    "fail": 0
+  }
+}
