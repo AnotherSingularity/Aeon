@@ -278,8 +278,8 @@ def main():
             report["probes"] = {"skipped": "requires --tokenizer and --prompt"}
 
     out_path = args.out or (args.ckpt + ".diagnostics.json")
-    with open(out_path, "w") as fh:
-        json.dump(report, fh, indent=2, default=str)
+    from aeon.evidence import write_evidence
+    write_evidence(out_path, report)
     print(f"[diag] wrote {out_path}")
 
     # ASSERTION: the checkpoint bytes must be untouched

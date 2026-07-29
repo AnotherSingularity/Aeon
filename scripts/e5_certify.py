@@ -342,8 +342,8 @@ def main():
     }
 
     ev_path = os.path.join(ROOT, "docs", "e5_evidence.json")
-    with open(ev_path, "w") as fh:
-        json.dump(evidence, fh, indent=2, default=str)
+    from aeon.evidence import write_evidence
+    write_evidence(ev_path, evidence)
     print(f"[E5] verdict: {verdict}")
     print(f"[E5] evidence -> {ev_path}")
     print(f"[E5] baseline={baseline_median*1000:.2f}ms  instrumented={inst_median*1000:.2f}ms  "

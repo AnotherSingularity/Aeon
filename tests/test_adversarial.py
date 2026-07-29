@@ -542,14 +542,16 @@ def test_f6_5_corrupted_latest_with_valid_prev():
 # ---- report emission --------------------------------------------------------
 def _emit_report():
     from aeon.adversarial import summarise
+    from aeon.evidence import write_evidence
     out = {
         "phase": "F6",
         "cases": [c.as_dict() for c in CASES],
         "summary": summarise(CASES),
     }
     os.makedirs("docs", exist_ok=True)
-    with open("docs/f6_adversarial_results.json", "w") as fh:
-        json.dump(out, fh, indent=2, default=str)
+    # write_evidence sanitises every string leaf through aeon/evidence.py — no
+    # manual scrubbing required (F9.1).
+    write_evidence("docs/f6_adversarial_results.json", out)
 
 
 def _run_all():

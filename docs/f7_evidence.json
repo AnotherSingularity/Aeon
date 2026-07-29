@@ -1,1 +1,133 @@
-{"config": "configs/aeon_smoke_e5.yaml", "profiles": {"01_baseline_no_observability": {"median_step_s": 0.06013468249989273, "mean_step_s": 0.0625573872499956, "tail_step_s": 0.08082606800007852, "step_count": 16, "auxiliary_cost_s": {"observability_s": 0.0, "audit_s": 0.0, "containment_s": 0.0}, "peak_resident_mb": 669.89453125}, "02_observability_enabled": {"median_step_s": 0.05823251000003893, "mean_step_s": 0.05886930825001002, "tail_step_s": 0.06755859300005795, "step_count": 16, "auxiliary_cost_s": {"observability_s": 0.004571504999830722, "audit_s": 0.0, "containment_s": 0.0}, "peak_resident_mb": 674.4296875}, "03_artifact_auth_and_provenance": {"median_step_s": 0.05914783649996025, "mean_step_s": 0.060063412937495286, "tail_step_s": 0.07687017499983995, "step_count": 16, "auxiliary_cost_s": {"observability_s": 0.004170899000655481, "audit_s": 0.0, "containment_s": 0.0}, "ckpt_save_s": 0.0472062400001505, "ckpt_load_s": 0.01894764199983001, "peak_resident_mb": 680.26953125, "provenance_build_s": 0.010361168999907022}, "04_full_protection_envelope": {"median_step_s": 0.059547890000089865, "mean_step_s": 0.058492787874982355, "tail_step_s": 0.06822560799992061, "step_count": 16, "auxiliary_cost_s": {"observability_s": 0.004569722999804071, "audit_s": 0.0016062619995409477, "containment_s": 0.00251600200044777}, "ckpt_save_s": 0.019611717000088902, "ckpt_load_s": 0.01020887100003165, "peak_resident_mb": 683.46875}, "05_degraded_mode": {"median_step_s": 0.031223490499996842, "mean_step_s": 0.03149760299999116, "tail_step_s": 0.03947095800003808, "step_count": 16, "auxiliary_cost_s": {"observability_s": 0.0040002749997256615, "audit_s": 0.001258155000186889, "containment_s": 0.0023455179998563835}, "peak_resident_mb": 683.5390625}, "06_recovery_verification": {"protected_load_s": 0.01020887100003165}}, "cost_categories": {"base_s_per_step": 0.06013468249989273, "observability_s_per_step": -0.0019021724998538048, "artifact_verification_s_per_step": 0.0009153264999213206, "cryptographic_s_per_step": 0.0004000535001296157, "audit_s_per_step": 0.00010039137497130923, "runtime_containment_s_per_step": 0.00015725012502798563, "recovery_s_full_load": 0.01020887100003165, "total_protected_s_per_step": 0.059547890000089865, "note": "Per-step deltas are noise-dominated at this tiny CPU model scale. Costs are reported honestly and never combined into a single unexplained percentage."}, "parameter_accounting": {"total_parameters": 102918, "total_bytes": 411672, "trainable_parameters": 102918, "by_component": {"transformer": {"parameters": 86337, "bytes": 345348}, "substrate": {"parameters": 6178, "bytes": 24712}, "recursion": {"parameters": 6307, "bytes": 25228}, "emb_proj": {"parameters": 2048, "bytes": 8192}, "cond_proj": {"parameters": 1024, "bytes": 4096}, "s_proj": {"parameters": 1024, "bytes": 4096}}, "note": "bytes reflect parameter dtypes at accounting time"}, "static_accounting": {"optimizer_bytes_estimate": 823344, "recursion_state_bytes": 0, "substrate_state_bytes": 0, "recursion_state_bytes_per_batch": 256, "substrate_state_bytes_per_batch": 2176, "checkpoint_bytes_estimate": 411672}, "protection_envelope_active_during_measurement": {"artifact_authentication": true, "provenance": true, "cryptographic": true, "audit": true, "containment_enforcement": true, "certificate": true, "recursion_fp32": true}}
+{
+  "config": "configs/aeon_smoke_e5.yaml",
+  "cost_categories": {
+    "artifact_verification_s_per_step": 0.009168622999936815,
+    "audit_s_per_step": 8.896406251324152e-05,
+    "base_s_per_step": 0.09368321749991537,
+    "cryptographic_s_per_step": -0.016622290499981318,
+    "note": "Per-step deltas are noise-dominated at this tiny CPU model scale. Costs are reported honestly and never combined into a single unexplained percentage.",
+    "observability_s_per_step": -0.0123827549998623,
+    "recovery_s_full_load": 0.012644000999898708,
+    "runtime_containment_s_per_step": 0.00015832675001092866,
+    "total_protected_s_per_step": 0.07384679500000857
+  },
+  "parameter_accounting": {
+    "by_component": {
+      "cond_proj": {
+        "bytes": 4096,
+        "parameters": 1024
+      },
+      "emb_proj": {
+        "bytes": 8192,
+        "parameters": 2048
+      },
+      "recursion": {
+        "bytes": 25228,
+        "parameters": 6307
+      },
+      "s_proj": {
+        "bytes": 4096,
+        "parameters": 1024
+      },
+      "substrate": {
+        "bytes": 24712,
+        "parameters": 6178
+      },
+      "transformer": {
+        "bytes": 345348,
+        "parameters": 86337
+      }
+    },
+    "note": "bytes reflect parameter dtypes at accounting time",
+    "total_bytes": 411672,
+    "total_parameters": 102918,
+    "trainable_parameters": 102918
+  },
+  "profiles": {
+    "01_baseline_no_observability": {
+      "auxiliary_cost_s": {
+        "audit_s": 0.0,
+        "containment_s": 0.0,
+        "observability_s": 0.0
+      },
+      "mean_step_s": 0.09534851862497362,
+      "median_step_s": 0.09368321749991537,
+      "peak_resident_mb": 669.9765625,
+      "step_count": 16,
+      "tail_step_s": 0.16053163499987022
+    },
+    "02_observability_enabled": {
+      "auxiliary_cost_s": {
+        "audit_s": 0.0,
+        "containment_s": 0.0,
+        "observability_s": 0.005512248999821168
+      },
+      "mean_step_s": 0.08218888831248705,
+      "median_step_s": 0.08130046250005307,
+      "peak_resident_mb": 674.5859375,
+      "step_count": 16,
+      "tail_step_s": 0.10132927699987704
+    },
+    "03_artifact_auth_and_provenance": {
+      "auxiliary_cost_s": {
+        "audit_s": 0.0,
+        "containment_s": 0.0,
+        "observability_s": 0.0062958880002952355
+      },
+      "ckpt_load_s": 0.02001130500002546,
+      "ckpt_save_s": 0.05430350599999656,
+      "mean_step_s": 0.09275106750001783,
+      "median_step_s": 0.09046908549998989,
+      "peak_resident_mb": 680.43359375,
+      "provenance_build_s": 0.021779872000024625,
+      "step_count": 16,
+      "tail_step_s": 0.1268486369999664
+    },
+    "04_full_protection_envelope": {
+      "auxiliary_cost_s": {
+        "audit_s": 0.0014234250002118642,
+        "containment_s": 0.0025332280001748586,
+        "observability_s": 0.004560403999676055
+      },
+      "ckpt_load_s": 0.012644000999898708,
+      "ckpt_save_s": 0.01884446500002923,
+      "mean_step_s": 0.07573051437502443,
+      "median_step_s": 0.07384679500000857,
+      "peak_resident_mb": 683.58203125,
+      "step_count": 16,
+      "tail_step_s": 0.09377963600013572
+    },
+    "05_degraded_mode": {
+      "auxiliary_cost_s": {
+        "audit_s": 0.001509232000216798,
+        "containment_s": 0.0022585240003536455,
+        "observability_s": 0.0043178449996048585
+      },
+      "mean_step_s": 0.0373155335000348,
+      "median_step_s": 0.03699604650000765,
+      "peak_resident_mb": 683.65234375,
+      "step_count": 16,
+      "tail_step_s": 0.046906011999908515
+    },
+    "06_recovery_verification": {
+      "protected_load_s": 0.012644000999898708
+    }
+  },
+  "protection_envelope_active_during_measurement": {
+    "artifact_authentication": true,
+    "audit": true,
+    "certificate": true,
+    "containment_enforcement": true,
+    "cryptographic": true,
+    "provenance": true,
+    "recursion_fp32": true
+  },
+  "static_accounting": {
+    "checkpoint_bytes_estimate": 411672,
+    "optimizer_bytes_estimate": 823344,
+    "recursion_state_bytes": 0,
+    "recursion_state_bytes_per_batch": 256,
+    "substrate_state_bytes": 0,
+    "substrate_state_bytes_per_batch": 2176
+  }
+}

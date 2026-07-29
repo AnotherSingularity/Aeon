@@ -275,8 +275,8 @@ def main():
         },
     }
     ev_path = os.path.join(ROOT, "docs", "f7_evidence.json")
-    with open(ev_path, "w") as fh:
-        json.dump(evidence, fh, indent=2, default=str)
+    from aeon.evidence import write_evidence
+    write_evidence(ev_path, evidence)
 
     print("\n[F7] cost breakdown (seconds per step, unless noted):")
     for k, v in cost_categories.items():

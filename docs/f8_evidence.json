@@ -2,155 +2,155 @@
   "phase": "F8",
   "results": [
     {
+      "K_after": 16,
+      "architecture_manifest_preserved": true,
+      "audit_chain_ok": true,
+      "certificate_after": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 0.00021084599995901954,
       "name": "corrupted_newest_ckpt",
-      "ts": 1785342554.7343721,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "possible",
-      "architecture_manifest_preserved": true,
+      "recovery_time_s": 0.009578996999948686,
+      "recursion_fp32_after": true,
       "six_patch_manifest_preserved": true,
-      "K_after": 16,
-      "recursion_fp32_after": true,
-      "certificate_after": true,
-      "detection_time_s": 0.00024470500000006723,
-      "recovery_time_s": 0.007542653000001565,
-      "audit_chain_ok": true
+      "ts": 1785343326.4187512
     },
     {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 0.003152422999960436,
       "name": "interrupted_save",
-      "ts": 1785342554.765782,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "not_required",
-      "detection_time_s": 0.003777928000005204,
-      "audit_chain_ok": true
+      "ts": 1785343326.4457617
     },
     {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 0.0005160170001090592,
       "name": "unauthorized_rollback",
-      "ts": 1785342554.7794378,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "requires_operator_decision",
-      "detection_time_s": 0.0006103730000006635,
-      "audit_chain_ok": true
+      "ts": 1785343326.4622302
     },
     {
-      "name": "authorized_rollback",
-      "ts": 1785342554.79737,
-      "passed": true,
-      "detection": "n/a",
-      "containment": "n/a",
-      "recovery": "possible",
-      "recovery_time_s": 0.005372155000003431,
+      "K_after": 16,
       "architecture_manifest_preserved": true,
-      "K_after": 16,
-      "recursion_fp32_after": true,
+      "audit_chain_ok": true,
       "certificate_after": true,
-      "audit_chain_ok": true
+      "containment": "n/a",
+      "detection": "n/a",
+      "name": "authorized_rollback",
+      "passed": true,
+      "recovery": "possible",
+      "recovery_time_s": 0.0028985809999539924,
+      "recursion_fp32_after": true,
+      "ts": 1785343326.4745152
     },
     {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 0.00013952599999811355,
       "name": "invalid_runtime_config",
-      "ts": 1785342554.7990818,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "fix_config",
-      "detection_time_s": 0.00011999400000206606,
-      "audit_chain_ok": true
+      "ts": 1785343326.4761448
     },
     {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 2.4499999994986865e-05,
       "name": "missing_required_artifact",
-      "ts": 1785342554.8095567,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "restore_meta",
-      "detection_time_s": 2.093899999522364e-05,
-      "audit_chain_ok": true
+      "ts": 1785343326.48656
     },
     {
-      "name": "certificate_failure_fails_closed",
-      "ts": 1785342554.8114078,
-      "passed": true,
-      "detection": "detected",
-      "containment": "n/a",
-      "recovery": "not_required",
+      "audit_chain_ok": true,
       "certificate_after": false,
-      "audit_chain_ok": true
-    },
-    {
-      "name": "resource_exhaustion_halt",
-      "ts": 1785342554.8140125,
-      "passed": true,
-      "detection": "detected",
-      "containment": "contained",
-      "recovery": "requires_operator_restart",
-      "containment_time_s": 3.693899999746009e-05,
-      "audit_chain_ok": true
-    },
-    {
-      "name": "audit_output_failure",
-      "ts": 1785342554.814416,
-      "passed": true,
-      "detection": "detected",
-      "containment": "contained",
-      "recovery": "requires_operator",
-      "detection_time_s": 1.739300000735966e-05,
-      "audit_chain_ok": true
-    },
-    {
-      "name": "abrupt_termination_recovery",
-      "ts": 1785342555.031868,
-      "passed": true,
-      "detection": "n/a",
-      "containment": "contained",
-      "recovery": "possible",
-      "recovery_time_s": 0.02487823599999217,
-      "K_after": 16,
-      "recursion_fp32_after": true,
-      "certificate_after": true,
-      "audit_chain_ok": true
-    },
-    {
-      "name": "restore_from_prev",
-      "ts": 1785342555.0768194,
-      "passed": true,
-      "detection": "n/a",
       "containment": "n/a",
-      "recovery": "possible",
-      "recovery_time_s": 0.007753023999995889,
+      "detection": "detected",
+      "name": "certificate_failure_fails_closed",
+      "passed": true,
+      "recovery": "not_required",
+      "ts": 1785343326.4883769
+    },
+    {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "containment_time_s": 5.2196000069670845e-05,
+      "detection": "detected",
+      "name": "resource_exhaustion_halt",
+      "passed": true,
+      "recovery": "requires_operator_restart",
+      "ts": 1785343326.491103
+    },
+    {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 2.3049999981594738e-05,
+      "name": "audit_output_failure",
+      "passed": true,
+      "recovery": "requires_operator",
+      "ts": 1785343326.491558
+    },
+    {
       "K_after": 16,
-      "recursion_fp32_after": true,
+      "audit_chain_ok": true,
       "certificate_after": true,
-      "audit_chain_ok": true
+      "containment": "contained",
+      "detection": "n/a",
+      "name": "abrupt_termination_recovery",
+      "passed": true,
+      "recovery": "possible",
+      "recovery_time_s": 0.021131523999997626,
+      "recursion_fp32_after": true,
+      "ts": 1785343326.7036388
     },
     {
+      "K_after": 16,
+      "audit_chain_ok": true,
+      "certificate_after": true,
+      "containment": "n/a",
+      "detection": "n/a",
+      "name": "restore_from_prev",
+      "passed": true,
+      "recovery": "possible",
+      "recovery_time_s": 0.006273555000007036,
+      "recursion_fp32_after": true,
+      "ts": 1785343326.744504
+    },
+    {
+      "audit_chain_ok": true,
+      "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 4.791000037585036e-06,
       "name": "provenance_mismatch_refused",
-      "ts": 1785342555.0790405,
       "passed": true,
-      "detection": "detected",
-      "containment": "contained",
       "recovery": "restore_provenance",
-      "detection_time_s": 7.828999997627761e-06,
-      "audit_chain_ok": true
+      "ts": 1785343326.746611
     },
     {
-      "name": "protected_state_auth_failure",
-      "ts": 1785342555.1017025,
-      "passed": true,
-      "detection": "detected",
+      "audit_chain_ok": true,
       "containment": "contained",
+      "detection": "detected",
+      "detection_time_s": 0.0004868059999125762,
+      "name": "protected_state_auth_failure",
+      "passed": true,
       "recovery": "use_correct_key",
-      "detection_time_s": 0.00043138399999520516,
-      "audit_chain_ok": true
+      "ts": 1785343326.7579513
     }
   ],
   "summary": {
-    "total": 13,
+    "fail": 0,
     "pass": 13,
-    "fail": 0
+    "total": 13
   }
 }

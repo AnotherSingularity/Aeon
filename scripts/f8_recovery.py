@@ -483,8 +483,8 @@ def main():
     evidence = {"phase": "F8", "results": results,
                  "summary": {"total": len(results), "pass": n_pass,
                               "fail": len(results) - n_pass}}
-    with open(os.path.join(ROOT, "docs", "f8_evidence.json"), "w") as fh:
-        json.dump(evidence, fh, indent=2, default=str)
+    from aeon.evidence import write_evidence
+    write_evidence(os.path.join(ROOT, "docs", "f8_evidence.json"), evidence)
     print(f"[F8] pass={n_pass}/{len(results)}")
 
 
