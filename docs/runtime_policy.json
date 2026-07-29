@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "F4",
+  "policy_id": "aeon-runtime-v1",
+  "description": "Aeon deny-by-default runtime containment policy. Uses relative-root templates (not machine-specific paths). Enforced by aeon/runtime_policy.py; verified by tests/test_runtime_policy.py.",
+  "execution_identity": {
+    "requires_dedicated_non_admin": true,
+    "no_package_install_authority": true,
+    "no_unrestricted_shell": true,
+    "no_credential_access": true,
+    "may_alter_own_security_policy": false,
+    "may_alter_own_executable_code": false,
+    "explicit_output_directories": true,
+    "notes": "The runtime environment (systemd unit, container, wrapper) enforces this. Aeon-side verifiers check code invariants only; OS enforcement is the deployment's responsibility."
+  },
+  "filesystem_policy": {
+    "read_only_roots": [
+      {"template": "<repo>/aeon", "reason": "source code"},
+      {"template": "<repo>/scripts", "reason": "entry points"},
+      {"template": "<repo>/configs", "reason": "configuration"},
+      {"template": "<repo>/docs", "reason": "policies + manifests"},
+      {"template": "<corpus_root>", "reason": "approved corpus (operator-configured)"},
+      {"template": "<tokenizer_root>", "reason": "approved tokenizer (operator-configured)"}
+    ],
+    "writable_roots": [
+      {"template": "<repo>/runs/<out_dir>", "reason": "checkpoints + metrics"},
+      {"template": "<repo>/runs/<out_dir>/audit", "reason": "audit log"},
+      {"template": "<tmp>", "reason": "bounded temporary workspace"}
+    ],
+    "deny_by_default": true,
+    "reject_symlink_escape": true,
+    "reject_path_traversal": true,
+    "notes": "aeon.runtime_policy.check_path() applies these rules; committed policy MUST NOT contain absolute machine paths."
+  },
+  "network_policy": {
+    "required_in_certified_local_mode": "none",
+    "notes": "Certified local mode: zero required network use for training, resume, validation, diagnostics, generation, recovery. Verified by tests/test_runtime_policy.py::test_no_network_client_in_forward_path."
+  },
+  "process_policy": {
+    "may_invoke_shell": false,
+    "may_spawn_arbitrary_subprocess": false,
+    "may_import_arbitrary_modules_at_runtime": false,
+    "may_eval_generated_code": false,
+    "may_install_packages": false,
+    "may_load_arbitrary_plugins": false,
+    "may_execute_corpus_contents": false,
+    "may_modify_runtime_policy": false,
+    "notes": "Aeon's runtime does not have model-directed authority for any of the above. Aeon-side verifiers scan the code base to prove absence; OS containment (e.g. seccomp, AppArmor) is the deployment's responsibility to add on top."
+  },
+  "resource_controls": {
+    "cpu_thread_ceiling_env": "OMP_NUM_THREADS",
+    "memory_ceiling_gb": null,
+    "disk_ceiling_gb_per_run": 64,
+    "checkpoint_retention_max": 20,
+    "audit_log_ceiling_mb": 4096,
+    "metrics_log_ceiling_mb": 4096,
+    "input_size_bytes_max": 1048576,
+    "seq_len_max": 8192,
+    "batch_size_max": 32,
+    "evaluation_duration_s_max": 3600,
+    "diagnostic_duration_s_max": 900,
+    "queue_depth_max": 128,
+    "restart_rate_per_hour_max": 8,
+    "temporary_file_count_max": 32,
+    "notes": "Resource exhaustion enters SAFE_HALT (§F5) rather than consume the host."
+  },
+  "fail_closed_conditions": [
+    "artifact_authentication_failure",
+    "certificate_validation_failure",
+    "protected_dtype_invariant_failure",
+    "invalid_runtime_identity",
+    "audit_write_failure",
+    "policy_missing_or_incompatible",
+    "unauthorized_network_capability_detected",
+    "filesystem_escape_attempt",
+    "critical_resource_ceiling_crossed",
+    "checkpoint_integrity_failure"
+  ]
+}
