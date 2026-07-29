@@ -19,6 +19,7 @@ the optimizer step near 2^-5, snapping it to 1/32 and freezing it).
 """
 import argparse
 import glob
+import math
 import os
 import time
 
@@ -27,6 +28,15 @@ import torch
 
 from aeon.hybrid import HybridModel
 from aeon.transformer import AeonTransformerConfig
+from aeon.observability import (
+    Observer,
+    parameter_accounting,
+    optimizer_bytes_estimate,
+    state_bytes,
+    static_op_estimates,
+    checkpoint_size_estimate,
+    resident_mb,
+)
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
 
@@ -130,6 +140,20 @@ def main():
           f"device={device} dtype={dtype}")
     print(f"[init] audit @ start: {model.audit()}")
 
+    # ---- observability (§8 low-overhead) ---------------------------------
+    obs_enabled = bool(tcfg.get("observability", True))
+    sample_every = int(tcfg.get("sample_every", 512))
+    obs = Observer(out_dir=tcfg["out_dir"], sample_every=sample_every,
+                   enabled=obs_enabled)
+    if obs_enabled:
+        obs.emit_static("parameter_accounting", parameter_accounting(model))
+        obs.emit_static("static_accounting", {
+            "optimizer_bytes_estimate": optimizer_bytes_estimate(model, "adamw"),
+            **state_bytes(model),
+            "static_op_estimates": static_op_estimates(model, dcfg["seq_len"], mcfg["K"]),
+            "checkpoint_bytes_estimate": checkpoint_size_estimate(model),
+        })
+
     # ---- resume ----------------------------------------------------------
     start_step = 0
     if tcfg.get("resume"):
@@ -154,35 +178,113 @@ def main():
     model.train()
     step = start_step
     t0 = time.time()
+    t_step = time.time()
     for batch in batches:
         if step >= tcfg["max_steps"]:
             break
-        out = model(input_ids=batch["input_ids"],
-                    attention_mask=batch["attention_mask"], labels=batch["labels"])
+        sampled = obs.should_sample(step + 1)
+        # ---- data phase (sampled) -------
+        if sampled:
+            with obs.phase("data"): _ = batch["input_ids"].shape       # no-op timing anchor
+        # ---- forward ------
+        if sampled:
+            with obs.phase("output_loss"):
+                out = model(input_ids=batch["input_ids"],
+                            attention_mask=batch["attention_mask"], labels=batch["labels"])
+        else:
+            out = model(input_ids=batch["input_ids"],
+                        attention_mask=batch["attention_mask"], labels=batch["labels"])
         loss = out.loss
         if beta and out.gate_mean is not None:
             loss = loss + beta * out.gate_mean        # penalise gate firing (self-justifying)
         opt.zero_grad(set_to_none=True)
-        loss.backward()
+        # ---- backward -----
+        if sampled:
+            with obs.phase("backward"): loss.backward()
+        else:
+            loss.backward()
         if tcfg.get("grad_clip"):
             torch.nn.utils.clip_grad_norm_(params, tcfg["grad_clip"])
-        opt.step()
+        # ---- optimizer ----
+        if sampled:
+            with obs.phase("optimizer"): opt.step()
+        else:
+            opt.step()
         step += 1
+        # tokens accounting
+        useful = int((batch["labels"] != -100).sum().item()) if "labels" in batch else int(batch["input_ids"].numel())
+        obs.add_tokens(int(batch["input_ids"].numel()), useful)
+        obs.add_recursion_updates(math.ceil(dcfg["seq_len"] / mcfg["K"]))
 
+        # ---- always-on metrics (at log_every) --------------------------------
         if step % tcfg["log_every"] == 0:
             a = model.audit()
+            now = time.time()
+            step_time = (now - t_step) / max(tcfg["log_every"], 1)
+            t_step = now
             gate_str = (f" gate={out.gate_mean.item():.3f}"
                         if out.gate_mean is not None else "")
             print(f"[step {step}] loss={out.loss.item():.4f} "
                   f"sigma_Wh={a['sigma_Wh']:.4f} sigma_Wc={a['sigma_Wc']:.4f} "
                   f"holds={a['holds']} lambda={a['lambda']:.3f} gamma={a['gamma']:.4e}"
-                  f"{gate_str} ({time.time()-t0:.1f}s)")
+                  f"{gate_str} ({now-t0:.1f}s)")
             if not a["holds"]:
                 print("  [WARN] sigma certificate does NOT hold — investigate")
-        if step % tcfg["ckpt_every"] == 0:
-            print(f"[ckpt] {save_checkpoint(tcfg['out_dir'], step, model, opt)}")
+            non_finite = not (torch.isfinite(out.loss).all().item())
+            obs.emit_always_on(
+                step=step, loss=out.loss.item(), lr=opt.param_groups[0]["lr"],
+                step_time_s=step_time,
+                tokens_per_s_raw=(batch["input_ids"].numel() / max(step_time, 1e-9)),
+                useful_tokens_per_s=(useful / max(step_time, 1e-9)),
+                seq_len=dcfg["seq_len"],
+                resident_mb=resident_mb(),
+                certificate_holds=bool(a["holds"]),
+                sigma_h=float(a["sigma_Wh"]), sigma_c=float(a["sigma_Wc"]),
+                gamma=float(a["gamma"]),
+                non_finite=non_finite,
+            )
+        # ---- sampled metrics (per §8.3 sparse interval) ----------------------
+        if sampled:
+            fb = getattr(model.substrate, "feedback", None)
+            gate_stats = {}
+            if fb is not None and fb.gate() is not None:
+                g = fb.gate()
+                gate_stats = {"gate_mean": float(g.mean()),
+                              "gate_active_frac": float((g > 0.5).float().mean())}
+            # readout / broadcast norms — detached, scalar-reduced immediately
+            with torch.no_grad():
+                s_read = None
+                if hasattr(model.substrate, "_read") and model.substrate._read is not None:
+                    s_read = float(model.substrate._read.detach().float().norm())
+            obs.emit_sampled(step=step, substrate_readout_norm=s_read, **gate_stats)
 
-    print(f"[done] final step {step} | {save_checkpoint(tcfg['out_dir'], step, model, opt)}")
+        if step % tcfg["ckpt_every"] == 0:
+            path = save_checkpoint(tcfg['out_dir'], step, model, opt)
+            print(f"[ckpt] {path}")
+            obs.emit_always_on(
+                step=step, loss=out.loss.item(), lr=opt.param_groups[0]["lr"],
+                step_time_s=0.0, tokens_per_s_raw=0.0, useful_tokens_per_s=0.0,
+                seq_len=dcfg["seq_len"], resident_mb=resident_mb(),
+                certificate_holds=bool(model.audit()["holds"]),
+                sigma_h=float(model.audit()["sigma_Wh"]),
+                sigma_c=float(model.audit()["sigma_Wc"]),
+                gamma=float(model.transformer.gamma.item()),
+                checkpoint_status=f"saved:{os.path.basename(path)}",
+            )
+
+    final_path = save_checkpoint(tcfg['out_dir'], step, model, opt)
+    print(f"[done] final step {step} | {final_path}")
+    obs.emit_always_on(
+        step=step, loss=float(out.loss.item()) if 'out' in locals() else 0.0,
+        lr=opt.param_groups[0]["lr"], step_time_s=0.0,
+        tokens_per_s_raw=0.0, useful_tokens_per_s=0.0, seq_len=dcfg["seq_len"],
+        resident_mb=resident_mb(),
+        certificate_holds=bool(model.audit()["holds"]),
+        sigma_h=float(model.audit()["sigma_Wh"]),
+        sigma_c=float(model.audit()["sigma_Wc"]),
+        gamma=float(model.transformer.gamma.item()),
+        checkpoint_status=f"final:{os.path.basename(final_path)}",
+    )
 
 
 if __name__ == "__main__":
