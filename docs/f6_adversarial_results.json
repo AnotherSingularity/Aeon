@@ -12,10 +12,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "830a9c1e-ffbc-4fa8-8e0d-a097dc7cedd0",
+      "audit_event_id": "7627e6fc-28c2-442a-9728-8dadd3361279",
       "passed": true,
       "error": null,
-      "ts": 1785341727.7198353
+      "ts": 1785341934.9716647
     },
     {
       "threat_id": "T18",
@@ -28,10 +28,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "c78099a9-99e9-43a4-96d4-f666ae5af549",
+      "audit_event_id": "e345ef64-dc02-419c-aef7-6eddcebd87a1",
       "passed": true,
       "error": null,
-      "ts": 1785341727.741384
+      "ts": 1785341934.9950674
     },
     {
       "threat_id": "T14",
@@ -44,10 +44,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "f6534ed7-224e-4389-9ec6-989ed27b19bf",
+      "audit_event_id": "6a6ccc43-5b32-4ee7-ba8b-db9fbb559056",
       "passed": true,
       "error": null,
-      "ts": 1785341727.7469306
+      "ts": 1785341935.001463
     },
     {
       "threat_id": "T10",
@@ -56,14 +56,14 @@
       "precondition": ".meta.json deleted",
       "injection": "unlink envelope metadata",
       "expected_response": "protected_load refuses without envelope metadata",
-      "actual_response": "CheckpointCorrupt: missing envelope metadata: /tmp/tmpe8g2t3up/ck.pt.meta.json",
+      "actual_response": "CheckpointCorrupt: missing envelope metadata: /tmp/tmp_9vp_4e2/ck.pt.meta.json",
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "66b6711f-4a87-48aa-9d28-016060d304a2",
+      "audit_event_id": "e836be65-4538-4c54-b4dd-8726dab24d30",
       "passed": true,
       "error": null,
-      "ts": 1785341727.7573252
+      "ts": 1785341935.0127592
     },
     {
       "threat_id": "T10",
@@ -72,14 +72,14 @@
       "precondition": "attacker has write access to runs/",
       "injection": "flip one byte in payload",
       "expected_response": "sha256 gate refuses with CheckpointCorrupt",
-      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected bc15e190da1d21fca2aab80e0f39228b16805e34dfeaf312326ec844c7e3464a, got bcec245b61aa5581bc584fb870220d832692eab546431965b72bd5b302a4f6e5",
+      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected 499cdf5fc81aff6279b9a4c12ae86b05185112202ba9c73723964ba8f74ec583, got 4f53c7c7cb89984b6f8308858c350cdc86bf44de65dd2e088895f6a490fbe449",
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "8ba2bb56-bfe9-45eb-9b2a-9404fefc7e9a",
+      "audit_event_id": "277ad8c6-2e36-4eb9-b2ed-ddaac8aa5e7c",
       "passed": true,
       "error": null,
-      "ts": 1785341727.7738445
+      "ts": 1785341935.0283802
     },
     {
       "threat_id": "T10",
@@ -88,14 +88,14 @@
       "precondition": "attacker replaces payload keeping legit meta",
       "injection": "copy path_b payload over path_a payload",
       "expected_response": "sha256 sidecar OR MAC verification refuses",
-      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected 9237a10afa354ae97d9de41dc0381f662fd65e8cf6bf99f7d4d1fb2f7cb1e915, got 83714ab3ab6e902f4c8f14ef66596a645ab2df437c279b4a203b8bc460dd4c1e",
+      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected 50a3c03721d1972de6e5f534453c3ce1717350b76f8754849aeb6d0342269a77, got 5a535da2090b61d5d0f32728f9f020d156704d6ef9ac1f7a5cf818474469deb4",
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "b0d77990-bad8-418c-89e6-cef02515a361",
+      "audit_event_id": "265a3449-b397-452f-861f-6ce3b6677942",
       "passed": true,
       "error": null,
-      "ts": 1785341727.7928827
+      "ts": 1785341935.053213
     },
     {
       "threat_id": "T11",
@@ -108,10 +108,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "c063d3c7-be06-409e-a117-74f77a9be8e6",
+      "audit_event_id": "e3785083-e2fe-47fd-9072-bd5a62a2df15",
       "passed": true,
       "error": null,
-      "ts": 1785341727.8019753
+      "ts": 1785341935.0651724
     },
     {
       "threat_id": "T02",
@@ -124,10 +124,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "f83fd766-454e-4b9e-b6ff-af96650af51a",
+      "audit_event_id": "f82e60dc-6eb8-4a29-ab0e-991636a2902a",
       "passed": true,
       "error": null,
-      "ts": 1785341727.8040452
+      "ts": 1785341935.067692
     },
     {
       "threat_id": "T02",
@@ -140,10 +140,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "56f772da-f115-49b9-922a-6f920c359742",
+      "audit_event_id": "3a738ec2-ba8a-4c86-a51f-6e076ff9580c",
       "passed": true,
       "error": null,
-      "ts": 1785341727.804137
+      "ts": 1785341935.0678108
     },
     {
       "threat_id": "T03",
@@ -156,10 +156,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "a4d9b084-8266-494e-aa7b-d15411e27289",
+      "audit_event_id": "9f231046-c2c5-4e3c-be2f-ce76b61e7cbe",
       "passed": true,
       "error": null,
-      "ts": 1785341727.8041694
+      "ts": 1785341935.0678492
     },
     {
       "threat_id": "T07",
@@ -172,10 +172,10 @@
       "detection": "n/a",
       "containment": "n/a",
       "recovery": "not_required",
-      "audit_event_id": "3d615583-4948-48bf-8d7d-e60241ad3426",
+      "audit_event_id": "5562cc87-ba0c-44c9-9f10-849cecec5350",
       "passed": true,
       "error": null,
-      "ts": 1785341727.8050184
+      "ts": 1785341935.0688705
     },
     {
       "threat_id": "T04",
@@ -188,10 +188,10 @@
       "detection": "n/a",
       "containment": "n/a",
       "recovery": "not_required",
-      "audit_event_id": "5daa8fe0-2627-4250-b844-e9133857ffb3",
+      "audit_event_id": "05faec81-b9d0-4859-ae8e-704a5637242d",
       "passed": true,
       "error": null,
-      "ts": 1785341727.8752806
+      "ts": 1785341935.147489
     },
     {
       "threat_id": "T13",
@@ -204,10 +204,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "04751cac-95f3-47e6-9c60-e61cf6739039",
+      "audit_event_id": "b334eba3-b717-42cb-8a30-31136b8e0cb0",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9164999
+      "ts": 1785341935.1939662
     },
     {
       "threat_id": "T15",
@@ -220,10 +220,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "70900b5d-2413-4d98-9fc0-12dd7706495c",
+      "audit_event_id": "4d8f596b-bf99-4886-8310-86f0776f51f3",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9166818
+      "ts": 1785341935.1942565
     },
     {
       "threat_id": "T15",
@@ -232,14 +232,14 @@
       "precondition": "attacker plants symlink inside allow-listed dir",
       "injection": "check_path(symlink \u2192 outside_root)",
       "expected_response": "RuntimePolicyError: outside allowed roots",
-      "actual_response": "RuntimePolicyError: denied read: '/tmp/tmpbfeq_bld/repo/docs/escape' outside allowed roots",
+      "actual_response": "RuntimePolicyError: denied read: '/tmp/tmppjo8dqme/repo/docs/escape' outside allowed roots",
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "01158619-9b57-4497-8dbd-9b9e0b3ceb7f",
+      "audit_event_id": "9985671b-30ea-4820-ba8b-359667374561",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9172096
+      "ts": 1785341935.1956413
     },
     {
       "threat_id": "T15",
@@ -252,10 +252,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "3a94e70f-597b-4995-9e8e-251448b70b11",
+      "audit_event_id": "808c75de-0648-420f-b553-9ab7e1447d4c",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9177723
+      "ts": 1785341935.1966305
     },
     {
       "threat_id": "T15",
@@ -268,10 +268,10 @@
       "detection": "detected",
       "containment": "n/a (structural check)",
       "recovery": "possible",
-      "audit_event_id": "59baaab2-66d0-4809-bc14-731b6d94cf93",
+      "audit_event_id": "13ee0102-b0b5-472f-bc21-b218297ffbed",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9190075
+      "ts": 1785341935.1988862
     },
     {
       "threat_id": "T15",
@@ -284,10 +284,10 @@
       "detection": "n/a",
       "containment": "n/a",
       "recovery": "not_required",
-      "audit_event_id": "4db152ea-6f5a-4311-813a-c9bb08933934",
+      "audit_event_id": "4f944ad0-9ca8-46c7-afa2-ec2ddfdec2fe",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9229026
+      "ts": 1785341935.203511
     },
     {
       "threat_id": "T16",
@@ -300,10 +300,10 @@
       "detection": "detected",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "23805eec-baae-4001-92af-6b155b498ef0",
+      "audit_event_id": "5e392d8e-c31d-42e7-9487-a34d4bfb87bb",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9522312
+      "ts": 1785341935.2345297
     },
     {
       "threat_id": "T16",
@@ -316,10 +316,10 @@
       "detection": "n/a",
       "containment": "contained",
       "recovery": "possible",
-      "audit_event_id": "5b466c1f-6c25-445e-8382-8ff2399b2910",
+      "audit_event_id": "79694229-2bbd-43a8-a9ad-581b9d37bde2",
       "passed": true,
       "error": null,
-      "ts": 1785341727.9711783
+      "ts": 1785341935.258275
     }
   ],
   "summary": {
@@ -327,11 +327,11 @@
     "pass": 20,
     "fail": 0,
     "by_category": {
-      "data": 3,
-      "model_state": 3,
+      "availability": 2,
       "runtime": 5,
+      "model_state": 3,
       "artifact": 7,
-      "availability": 2
+      "data": 3
     }
   }
 }

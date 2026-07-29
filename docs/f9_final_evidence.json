@@ -1,0 +1,207 @@
+{
+  "phase": "F9",
+  "original_source_commit": "d40ee13 (V0.02.03 tip)",
+  "f0_commit": "0816384",
+  "final_commit": "157d884012a76d4e5d90826828c70bd09f3a58bf",
+  "branch": "claude/funny-cori-a3k5cf",
+  "ordered_commit_ledger": [
+    "fd87b8d E0 \u2014 Repository & preservation audit",
+    "d510f76 E1 \u2014 Architectural contract tests",
+    "568a395 E2 \u2014 Low-overhead observability",
+    "9b8d21c E3 \u2014 Checkpoint, resume, and local-security hardening",
+    "0bfde47 E4 \u2014 Offline diagnostics",
+    "b9aaf4e E5 \u2014 Runtime & overhead certification",
+    "cc034dc E5 hygiene: gitignore runs/, remove evidence artefacts from git",
+    "1a1fd90 E6 \u2014 Primary-training readiness",
+    "fbdc1d9 E7 \u2014 Final documentation & closure",
+    "0816384 F0 \u2014 Handoff & inheritance audit + evidence-hygiene corrective",
+    "96b9895 F1 \u2014 Threat model and trust boundaries",
+    "b5f37d2 F2 \u2014 Artifact identity and provenance",
+    "5c23c84 F3 \u2014 Protected checkpoint and state lifecycle",
+    "e4f8f1c F4 \u2014 Runtime containment",
+    "1194b62 F5 \u2014 Defensive continuity framework",
+    "c73c77a F6 \u2014 Authorised adversarial resilience",
+    "82c4246 F7 \u2014 Protected efficiency certification",
+    "157d884 F8 \u2014 Recovery exercise"
+  ],
+  "final_regression": {
+    "suites": {
+      "test_substrate_port": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_aeon_sanity": {
+        "checks": 6,
+        "pass": true
+      },
+      "test_tokenizer": {
+        "checks": 2,
+        "pass": true
+      },
+      "test_feedback": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_feedback_diagnostics": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_six_patches": {
+        "checks": 6,
+        "pass": true
+      },
+      "test_recursion_topology": {
+        "checks": 6,
+        "pass": true
+      },
+      "test_stream_independence": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_config_invariants": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_observability": {
+        "checks": 5,
+        "pass": true
+      },
+      "test_checkpoint": {
+        "checks": 9,
+        "pass": true
+      },
+      "test_diagnose": {
+        "checks": 2,
+        "pass": true
+      },
+      "test_threat_model": {
+        "checks": 8,
+        "pass": true
+      },
+      "test_provenance": {
+        "checks": 14,
+        "pass": true
+      },
+      "test_protected_checkpoint": {
+        "checks": 9,
+        "pass": true
+      },
+      "test_runtime_policy": {
+        "checks": 9,
+        "pass": true
+      },
+      "test_continuity": {
+        "checks": 16,
+        "pass": true
+      },
+      "test_adversarial": {
+        "checks": 20,
+        "pass": true
+      }
+    },
+    "totals": {
+      "checks": 137,
+      "pass": 137,
+      "fail": 0
+    }
+  },
+  "protection_envelope_active": {
+    "artifact_authentication": true,
+    "provenance": true,
+    "anti_rollback": true,
+    "containment": true,
+    "certificate": true,
+    "recursion_fp32": true,
+    "audit_chain": true
+  },
+  "adversarial_results_summary": {
+    "total": 20,
+    "pass": 20,
+    "fail": 0,
+    "by_category": {
+      "availability": 2,
+      "runtime": 5,
+      "model_state": 3,
+      "artifact": 7,
+      "data": 3
+    }
+  },
+  "recovery_results_summary": {
+    "total": 13,
+    "pass": 13,
+    "fail": 0
+  },
+  "protected_efficiency_summary": {
+    "profiles": [
+      "01_baseline_no_observability",
+      "02_observability_enabled",
+      "03_artifact_auth_and_provenance",
+      "04_full_protection_envelope",
+      "05_degraded_mode",
+      "06_recovery_verification"
+    ],
+    "cost_categories": {
+      "base_s_per_step": 0.06013468249989273,
+      "observability_s_per_step": -0.0019021724998538048,
+      "artifact_verification_s_per_step": 0.0009153264999213206,
+      "cryptographic_s_per_step": 0.0004000535001296157,
+      "audit_s_per_step": 0.00010039137497130923,
+      "runtime_containment_s_per_step": 0.00015725012502798563,
+      "recovery_s_full_load": 0.01020887100003165,
+      "total_protected_s_per_step": 0.059547890000089865,
+      "note": "Per-step deltas are noise-dominated at this tiny CPU model scale. Costs are reported honestly and never combined into a single unexplained percentage."
+    }
+  },
+  "artefact_hashes": {
+    "docs/PRESERVATION_MANIFEST.md": "29c6fcb75f167a09ec7bd9cd9bbeca6c3e5ef830a9f3f7edebcf75e87811cab9",
+    "docs/preservation.json": "5b191169a21b5adfabd77abf4c5b38d0737fd9fc9047204e55126c27ea16c8a3",
+    "docs/DEFINITION_OF_DONE.md": "08e587814ae9fefd81eaec790b33b5f6a9b5f716aa3f8ed396253a727b44a27e",
+    "docs/E5_CERTIFICATION.md": "973c957c0d252fa2dacf05d2d90dad6c7fe4feca59f10328ae64055137d085ab",
+    "docs/e5_evidence.json": "d7137ddcfb71021aa490c9a226ce16124ad0c4bb3edf812a0727d813cc8f4982",
+    "docs/e7_final_evidence.json": "3b31d3b156a25c4078536e0dbd95c01392e87f3fe6daf37d475f0da6999b3803",
+    "docs/TOPOLOGY_MAP.md": "1f51583f612cfad2cf0780a0ff8c10f79d7b9262c7802f10563b7cdac1857124",
+    "docs/topology.json": "c954d45486b67739a55709062e047bf39064d59a6391535ad1e2cba20c546007",
+    "docs/COMMIT_REPORT.md": "22692aa2e88a7ecd92b9b78beff8c911375bccdb47521e4352a61b4154f97b51",
+    "docs/OPERATIONS.md": "a46f4a4904ee4e79a256e9739b1474f3c9f946970bb7842e14a66758bc263180",
+    "docs/SECURITY_MODEL.md": "2d6e45780c181ae5c621cf0c78f380843ccf7fc3c3f343988788d2d822084b78",
+    "docs/e6_parameter_accounting.json": "71df02f2ee69c2d300d8d930c98d5c3dc891ef03a5ae2bdccdd0815d03144205",
+    "docs/F0_INHERITANCE_AUDIT.md": "919676914081093bfe52fed71efd8aa159c3190b60fcd860f35de9c94751f957",
+    "docs/f0_baseline_tests.json": "5f62484b7a901487e722f3e1d91aa934d1b69826f8747aba3553acb2c7762313",
+    "docs/asset_registry.json": "ab0a0baee43180c89d472fa9e4d656dff447eb7de95a3e10be8ee1e58588a508",
+    "docs/threat_model.json": "93370398cdba4bffd2f45fd1fb5525dd9ca5af67925b25a4034c400bda323124",
+    "docs/boundary_registry.json": "04e61875d2c434c23ccf27eb42f340ffa7d4a3509fe35c0b4c59c42148664ce9",
+    "docs/tcb_report.json": "b24b07b59840f5f68da1216b84da66e2b80b4a085c46ddde5aa4fad1e94812fb",
+    "docs/corpus_manifest_schema.json": "9653249ee7d745b1102fb0707d360be9d02c1b88543ceb97166ee84d5d05799a",
+    "docs/F1_THREAT_MODEL.md": "ce1c72a2e0a35448857a3be3e23c841f38d4aaf9f720f450478616336d8160b3",
+    "docs/F1_TRUST_BOUNDARIES.md": "7df29ba6fed8b93c910c6db3559a5e571bb5867c18199a9977c21d53414744e9",
+    "docs/F2_ARTIFACT_PROVENANCE.md": "8df7398b3ffaa1eebcfbbd38b7d6fefa22d65a2f144b4ccd8ab27c19bca8c1bd",
+    "docs/F3_PROTECTED_CHECKPOINT.md": "084a6a40959bfbabd2173fc3b85266c0ca846bfed3012370c1bee7d86383003e",
+    "docs/F4_RUNTIME_CONTAINMENT.md": "6b114783641333d310ba8c4c0e48ecaedcec8f50c4c8264973c86fafaf462d2f",
+    "docs/F5_CONTINUITY_FRAMEWORK.md": "687149cf619fb3b1182a3b40e1b019c769234658f11b608ce94949040cab3058",
+    "docs/F6_ADVERSARIAL_RESILIENCE.md": "cdf54c13c3bca6f67f11031930d8bd864ee07ee4e2c70bc5fdab37966b447dfa",
+    "docs/F7_PROTECTED_EFFICIENCY.md": "ea764c2b0c685c1c584994762c5df35ed328c02a68825cf912b16961366132c4",
+    "docs/F8_RECOVERY_REPORT.md": "6e27b8951b2b76b465d64f7fa283205c3f1142051439f7e1c8e2727a67b249bc",
+    "docs/F9_DEFENSIVE_READINESS.md": "65938c1fdf5fbd176edbd8b96974811cab20b8c97ea5f63eb7f7538e46dac9ea",
+    "docs/F9_DEFINITION_OF_DONE.md": "bd4e0727cb7a11dbe7c179e228c100935c17075a4e15daad0a694914e2869858",
+    "docs/runtime_policy.json": "29aa6c031c897725f99f6bbcf008772850a60cb7ddd61dadf1358f4b6a1afeef",
+    "docs/f6_adversarial_results.json": "3fd34882072b25b9dba22c6dd0a18ccd6edff8a53937ecf8033bd6ddeb9cc07e",
+    "docs/f7_evidence.json": "7463f5a7635bb3e382401ed52d078faea8bafa4f691745c9a17c755c3d08fe1b",
+    "docs/f8_evidence.json": "b23a8482002e02e3cbaf4f8c566bca436b759d1e3827b0b5d4e714742cc42278"
+  },
+  "environment": {
+    "python": "3.11.15",
+    "torch": "2.13.0+cu130 (container fallback)",
+    "sentencepiece": "0.2.2",
+    "pyyaml": "6.0.1",
+    "numpy": "2.4.6",
+    "primary_config_pins": "torch==2.5.1 (via pyproject.toml)"
+  },
+  "open_limitations": [
+    "No production key manager bundled; KeyRef.resolve is operator-supplied.",
+    "OS-level containment (seccomp/AppArmor/cgroups) is deployment work.",
+    "Efficiency figures at F7 measured on 4-thread CPU with small model.",
+    "F5 continuity abstractions are analytical; no real equipment integration.",
+    "No CI/CD workflow configured in this repository."
+  ],
+  "timestamp": 1785341909.2003393
+}
