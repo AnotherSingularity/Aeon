@@ -1,0 +1,18 @@
+# Aeon Windows CPU build — pinned deps
+# Install with:
+#     pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-windows.lock
+#
+# The torch pin is the CPU wheel for Windows x64. GPU / CUDA is out of scope
+# for the first Windows installer (§2 "CPU-only PyTorch for the first
+# installer").
+
+# Runtime
+torch==2.5.1+cpu
+safetensors>=0.4,<1.0
+sentencepiece>=0.2,<1.0
+pyyaml>=6.0
+numpy>=1.24,<3.0
+
+# Build tooling
+pyinstaller==6.6.0
+pyinstaller-hooks-contrib>=2024.1
