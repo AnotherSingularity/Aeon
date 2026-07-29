@@ -37,20 +37,38 @@ from aeon.observability import (
     checkpoint_size_estimate,
     resident_mb,
 )
+from aeon.checkpoint import (
+    atomic_save,
+    strict_load,
+    build_metadata,
+    latest_checkpoint as latest_ckpt,
+    CheckpointIncompatible,
+    CheckpointCorrupt,
+)
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
 
 
-def iter_synthetic_batches(vocab_size, seq_len, batch_size, device, generator):
+def iter_synthetic_batches(vocab_size, seq_len, batch_size, device, generator, start_position=0):
     """Synthetic random-token batches (pipeline smoke). Used when no Aeon
-    tokenizer + corpus are configured."""
+    tokenizer + corpus are configured. `start_position` counts input tokens
+    consumed so resume can advance the deterministic generator to the same state.
+    """
+    # Advance the generator to `start_position` by consuming that many tokens.
+    if start_position > 0:
+        n_batches = start_position // (batch_size * seq_len)
+        for _ in range(int(n_batches)):
+            torch.randint(0, vocab_size, (batch_size, seq_len),
+                          generator=generator, device=device)
+    pos = int(start_position)
     while True:
         ids = torch.randint(0, vocab_size, (batch_size, seq_len),
                             generator=generator, device=device)
-        yield {"input_ids": ids, "attention_mask": torch.ones_like(ids), "labels": ids}
+        pos += batch_size * seq_len
+        yield ({"input_ids": ids, "attention_mask": torch.ones_like(ids), "labels": ids}, pos)
 
 
-def iter_corpus_batches(corpus_path, tok, seq_len, batch_size, device):
+def iter_corpus_batches(corpus_path, tok, seq_len, batch_size, device, start_position=0):
     """Sequential single-epoch batches over an Aeon-tokenized corpus.
 
     Documents are tokenized with the Aeon tokenizer and joined by EOS into one id
@@ -58,6 +76,9 @@ def iter_corpus_batches(corpus_path, tok, seq_len, batch_size, device):
     stream is built in memory — fine for the prototype/sanity subset; a full
     5–10B-token single-epoch run wants pre-tokenized shards read lazily, which is
     the next step once the corpus format is fixed (extend aeon/data.py).
+
+    `start_position` (§10.1 data_position) lets resume pick up at the same token.
+    Yields a tuple (batch_dict, position_after_batch).
     """
     from aeon.data import iter_text_records
     stream = []
@@ -68,24 +89,28 @@ def iter_corpus_batches(corpus_path, tok, seq_len, batch_size, device):
     if n_tok < span + 1:
         raise ValueError(f"corpus too small: {n_tok} tokens < one batch ({span}+1)")
     print(f"[data] corpus tokenized: {n_tok/1e6:.3f}M tokens -> "
-          f"{n_tok // span} batches of {batch_size}x{seq_len} (single epoch)")
-    pos = 0
+          f"{n_tok // span} batches of {batch_size}x{seq_len} (single epoch) "
+          f"| starting at token {start_position}")
+    pos = int(start_position)
     while pos + span <= n_tok:
         block = stream[pos:pos + span]
         ids = torch.tensor(block, dtype=torch.long, device=device).view(batch_size, seq_len)
         pos += span
-        yield {"input_ids": ids, "attention_mask": torch.ones_like(ids), "labels": ids.clone()}
+        yield ({"input_ids": ids, "attention_mask": torch.ones_like(ids), "labels": ids.clone()}, pos)
 
 
-def latest_checkpoint(out_dir):
-    cks = glob.glob(os.path.join(out_dir, "ckpt_*.pt"))
-    return max(cks, key=lambda p: int(os.path.basename(p).split("_")[1].split(".")[0])) if cks else None
-
-
-def save_checkpoint(out_dir, step, model, opt):
+def save_checkpoint(out_dir, step, model, opt, *,
+                    model_cfg=None, train_cfg=None, data_cfg=None,
+                    tokenizer_id=None, corpus_id=None, data_position=0,
+                    instrumentation_cfg=None):
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"ckpt_{step}.pt")
-    torch.save({"step": step, "model": model.state_dict(), "optim": opt.state_dict()}, path)
+    metadata = build_metadata(step=step, model_cfg=model_cfg or {},
+                              train_cfg=train_cfg or {}, data_cfg=data_cfg or {},
+                              tokenizer_id=tokenizer_id, corpus_id=corpus_id,
+                              data_position=data_position,
+                              instrumentation_cfg=instrumentation_cfg)
+    atomic_save(path, model=model, optimizer=opt, metadata=metadata)
     return path
 
 
@@ -154,34 +179,52 @@ def main():
             "checkpoint_bytes_estimate": checkpoint_size_estimate(model),
         })
 
-    # ---- resume ----------------------------------------------------------
+    # ---- resume (strict) --------------------------------------------------
     start_step = 0
+    data_position = 0
     if tcfg.get("resume"):
-        ck = latest_checkpoint(tcfg["out_dir"])
+        ck = latest_ckpt(tcfg["out_dir"])
         if ck:
-            blob = torch.load(ck, map_location=device)
-            model.load_state_dict(blob["model"])
-            opt.load_state_dict(blob["optim"])
-            start_step = blob["step"]
-            print(f"[resume] from {ck} at step {start_step}")
+            try:
+                blob = strict_load(ck, expected_model_config=mcfg)
+                model.load_state_dict(blob["model"])
+                opt.load_state_dict(blob["optim"])
+                start_step = int(blob["metadata"]["step"])
+                data_position = int(blob["metadata"].get("data_position", 0))
+                # restore RNG for deterministic continuation
+                rng = blob.get("rng") or {}
+                if "torch_cpu" in rng:
+                    torch.random.set_rng_state(rng["torch_cpu"])
+                if torch.cuda.is_available() and rng.get("torch_cuda_all"):
+                    torch.cuda.set_rng_state_all(rng["torch_cuda_all"])
+                print(f"[resume] {ck} step={start_step} data_pos={data_position}")
+            except CheckpointIncompatible as e:
+                print(f"[resume] REFUSED (incompatible): {e}")
+                raise
+            except CheckpointCorrupt as e:
+                print(f"[resume] REFUSED (corrupt): {e}")
+                raise
 
     # ---- train loop ------------------------------------------------------
     if tok is not None:
         batches = iter_corpus_batches(corpus_path, tok, dcfg["seq_len"],
-                                      tcfg["batch_size"], device)
+                                      tcfg["batch_size"], device,
+                                      start_position=data_position)
     else:
         print("[data] no tokenizer+corpus configured -> SYNTHETIC random tokens (smoke)")
         gen = torch.Generator(device=device).manual_seed(tcfg["seed"])
         batches = iter_synthetic_batches(tcfg_model.vocab_size, dcfg["seq_len"],
-                                         tcfg["batch_size"], device, gen)
+                                         tcfg["batch_size"], device, gen,
+                                         start_position=data_position)
     beta = float(tcfg.get("aux_gate_penalty", 0.0))   # L_aux = β·mean g(L); 0 disables
     model.train()
     step = start_step
     t0 = time.time()
     t_step = time.time()
-    for batch in batches:
+    for batch, batch_pos_after in batches:
         if step >= tcfg["max_steps"]:
             break
+        data_position = batch_pos_after
         sampled = obs.should_sample(step + 1)
         # ---- data phase (sampled) -------
         if sampled:
@@ -259,7 +302,13 @@ def main():
             obs.emit_sampled(step=step, substrate_readout_norm=s_read, **gate_stats)
 
         if step % tcfg["ckpt_every"] == 0:
-            path = save_checkpoint(tcfg['out_dir'], step, model, opt)
+            path = save_checkpoint(tcfg['out_dir'], step, model, opt,
+                                   model_cfg=mcfg, train_cfg=tcfg, data_cfg=dcfg,
+                                   tokenizer_id=(tok_path or "synthetic"),
+                                   corpus_id=(corpus_path or "synthetic"),
+                                   data_position=data_position,
+                                   instrumentation_cfg={"sample_every": sample_every,
+                                                        "enabled": obs_enabled})
             print(f"[ckpt] {path}")
             obs.emit_always_on(
                 step=step, loss=out.loss.item(), lr=opt.param_groups[0]["lr"],
@@ -272,7 +321,13 @@ def main():
                 checkpoint_status=f"saved:{os.path.basename(path)}",
             )
 
-    final_path = save_checkpoint(tcfg['out_dir'], step, model, opt)
+    final_path = save_checkpoint(tcfg['out_dir'], step, model, opt,
+                                   model_cfg=mcfg, train_cfg=tcfg, data_cfg=dcfg,
+                                   tokenizer_id=(tok_path or "synthetic"),
+                                   corpus_id=(corpus_path or "synthetic"),
+                                   data_position=data_position,
+                                   instrumentation_cfg={"sample_every": sample_every,
+                                                        "enabled": obs_enabled})
     print(f"[done] final step {step} | {final_path}")
     obs.emit_always_on(
         step=step, loss=float(out.loss.item()) if 'out' in locals() else 0.0,
