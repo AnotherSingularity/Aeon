@@ -255,7 +255,7 @@ def test_audit_hash_chain_verifies_and_detects_tampering():
         w.write("resume", ckpt="ck2")
         assert verify_chain(path) is None
         # Tamper: rewrite the second line's payload
-        lines = open(path).readlines()
+        lines = open(path, encoding="utf-8").readlines()
         import json
         rec = json.loads(lines[1])
         rec["payload"]["ckpt"] = "ck_wrong"

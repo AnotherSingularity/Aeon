@@ -214,7 +214,7 @@ def test_f6_1_corrupted_audit_chain():
         w.write("a"); w.write("b"); w.write("c")
         assert verify_chain(path) is None
         # Tamper
-        lines = open(path).readlines()
+        lines = open(path, encoding="utf-8").readlines()
         rec = json.loads(lines[1]); rec["payload"] = {"tampered": True}
         lines[1] = json.dumps(rec) + "\n"
         open(path, "w").writelines(lines)

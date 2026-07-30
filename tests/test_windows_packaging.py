@@ -31,7 +31,7 @@ PKG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 def test_spec_file_exists_and_lists_aeon_hidden_imports():
     p = os.path.join(PKG, "Aeon.spec")
     assert os.path.exists(p), p
-    src = open(p).read()
+    src = open(p, encoding="utf-8").read()
     # A representative sample of packages that MUST ship
     required = ["aeon.entry", "aeon.hybrid", "aeon.recursion",
                 "aeon.transformer", "aeon.substrate.matrix_cell",
@@ -58,14 +58,14 @@ def test_spec_excludes_test_dir_and_cuda():
 def test_runtime_hook_exists_and_sets_aeon_data_dir_on_windows():
     p = os.path.join(PKG, "runtime_hook.py")
     assert os.path.exists(p)
-    src = open(p).read()
+    src = open(p, encoding="utf-8").read()
     assert "AEON_DATA_DIR" in src
     assert "LOCALAPPDATA" in src
 
 
 def test_requirements_lock_pins_cpu_torch_and_no_cuda():
     p = os.path.join(PKG, "requirements-windows.lock")
-    src = open(p).read()
+    src = open(p, encoding="utf-8").read()
     assert "torch==2.5.1+cpu" in src, "must pin CPU torch"
     # No CUDA extras
     for cuda_hint in ("+cu", "cu124", "cu121", "cu118"):
@@ -135,7 +135,7 @@ def test_release_metadata_never_writes_secrets():
 # ---- W7: sign.ps1 uses env vars, no hard-coded secrets ---------------------
 def test_sign_ps1_uses_env_vars_only():
     p = os.path.join(PKG, "sign.ps1")
-    src = open(p).read()
+    src = open(p, encoding="utf-8").read()
     # Required env references
     for envkey in ("AEON_SIGN_CERT_PFX", "AEON_SIGN_CERT_PASS",
                     "AEON_SIGNTOOL_PATH"):
@@ -191,7 +191,7 @@ def test_packaging_scripts_contain_no_absolute_user_paths():
                   "file_version_info.txt"):
         p = os.path.join(PKG, name)
         if not os.path.exists(p): continue
-        text = open(p).read()
+        text = open(p, encoding="utf-8").read()
         for m in re.finditer(r"/home/[a-z]+|/Users/[a-z]+", text):
             offenders.append(f"{name}: {m.group(0)}")
     assert not offenders, offenders

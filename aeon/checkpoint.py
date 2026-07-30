@@ -217,7 +217,7 @@ def strict_load(
     # (1) sha256 gate
     sha_path = path + ".sha256"
     if os.path.exists(sha_path):
-        expected = open(sha_path).read().strip().split()[0]
+        expected = open(sha_path, encoding="ascii").read().strip().split()[0]
         actual = _sha256(path)
         if expected != actual:
             raise CheckpointCorrupt(

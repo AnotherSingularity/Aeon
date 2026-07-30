@@ -158,21 +158,21 @@ def run_preflight(user_cfg: Dict[str, Any]) -> PreflightResult:
     # --- 11-15. Architectural invariants preserved (static structural checks) ---
     try:
         import aeon.hybrid as _h
-        assert "K: int = 16" in open(_h.__file__).read()
+        assert "K: int = 16" in open(_h.__file__, encoding="utf-8").read()
         _add(res, "K_equals_16", "pass", "hybrid.py declares K=16 default")
     except Exception as e:
         _add(res, "K_equals_16", "fail", str(e))
 
     try:
         import aeon.transformer as _t
-        assert "register_buffer" not in open(_t.__file__).read()
+        assert "register_buffer" not in open(_t.__file__, encoding="utf-8").read()
         _add(res, "rotary_no_register_buffer", "pass", "P-4f still enforced")
     except Exception as e:
         _add(res, "rotary_no_register_buffer", "fail", str(e))
 
     try:
         import aeon.checkpoint as _c
-        assert "weights_only=True" in open(_c.__file__).read()
+        assert "weights_only=True" in open(_c.__file__, encoding="utf-8").read()
         _add(res, "strict_load_weights_only", "pass", "E3 strict_load uses weights_only")
     except Exception as e:
         _add(res, "strict_load_weights_only", "fail", str(e))

@@ -116,14 +116,14 @@ def test_no_runtime_pip_call_in_forward_path():
     training / inference / diagnostic import path."""
     import glob
     for path in glob.glob("aeon/**/*.py", recursive=True):
-        src = open(path).read()
+        src = open(path, encoding="utf-8").read()
         # Any use of pip / install / subprocess-in-forward is a fail.
         assert "pip install" not in src, f"{path}: contains 'pip install'"
         assert "pip._internal" not in src, path
     # scripts/ may reference pip in DOCUMENTATION comments but not as code —
     # ensure no active call.
     for path in glob.glob("scripts/*.py"):
-        src = open(path).read()
+        src = open(path, encoding="utf-8").read()
         # Allow subprocess.run for git-rev-parse and E5 test spawning, but not
         # for pip/install.
         assert "pip install" not in src.replace("# ", ""), \

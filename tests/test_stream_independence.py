@@ -42,7 +42,7 @@ def test_substrate_does_not_import_transformer():
         if not fname.endswith(".py"):
             continue
         path = os.path.join(root, fname)
-        tree = ast.parse(open(path).read())
+        tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 mod = node.module or ""
@@ -58,7 +58,7 @@ def test_transformer_does_not_import_substrate():
     """Mirror check for the transformer side."""
     tm_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            "aeon", "transformer.py")
-    tree = ast.parse(open(tm_path).read())
+    tree = ast.parse(open(tm_path, encoding="utf-8").read())
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             mod = node.module or ""

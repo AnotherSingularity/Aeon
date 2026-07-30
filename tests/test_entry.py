@@ -14,6 +14,7 @@ Covers:
 """
 import json
 import os
+import pathlib
 import sys
 import tempfile
 import unittest.mock as mock
@@ -104,7 +105,11 @@ def test_user_data_root_is_separate_from_installed():
     with tempfile.TemporaryDirectory() as d:
         with mock.patch.dict(os.environ, {"AEON_DATA_DIR": d}):
             ud = windows_paths.user_data_root()
-            assert str(ud).startswith(d)
+            # user_data_root() calls .resolve(); on Windows a tempdir may be a
+            # short-name path (RUNNER~1) whose long form differs. Compare after
+            # the same resolution the code performs.
+            d_resolved = str(pathlib.Path(d).resolve())
+            assert str(ud).startswith(d_resolved)
             assert str(ud) != str(inst)
 
 
@@ -113,9 +118,11 @@ def test_ensure_writable_layout_creates_dirs_under_data_root_only():
     with tempfile.TemporaryDirectory() as d:
         with mock.patch.dict(os.environ, {"AEON_DATA_DIR": d}):
             layout = windows_paths.ensure_writable_layout()
+            d_resolved = str(pathlib.Path(d).resolve())
             for key in ("user_data", "config", "jobs", "logs", "evidence", "checkpoints"):
                 assert key in layout
-                assert layout[key].startswith(d)
+                assert layout[key].startswith(d_resolved), (
+                    f"{layout[key]!r} not under {d_resolved!r}")
                 assert os.path.isdir(layout[key])
 
 

@@ -159,7 +159,7 @@ def scan_forward_path_for_network_client() -> List[str]:
         for path in _iter_py(os.path.join(REPO_ROOT, root)):
             relative = os.path.relpath(path, REPO_ROOT)
             try:
-                tree = ast.parse(open(path).read(), filename=path)
+                tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
             except SyntaxError:
                 continue
             for node in ast.walk(tree):
@@ -184,7 +184,7 @@ def scan_for_shell_or_eval() -> List[str]:
         if relative == "aeon/runtime_policy.py":
             continue
         try:
-            tree = ast.parse(open(path).read(), filename=path)
+            tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
         except SyntaxError:
             continue
         for node in ast.walk(tree):
