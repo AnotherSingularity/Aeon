@@ -137,7 +137,29 @@ train:
         rc, out, err = subprocess_run_env([str(exe), "--worker", str(job_file)],
                                             env=env, timeout=120)
         if rc != 0:
-            FAIL.append({"stage": "worker", "rc": rc, "stderr_tail": err[-500:]})
+            # Aeon.exe is a Windowed (runw.exe) subsystem executable, so stderr
+            # may be empty even on crash. Fold in the structured job artefacts
+            # the worker writes on failure so the CI log actually surfaces the
+            # cause.
+            diag = {"stage": "worker", "rc": rc,
+                     "stdout_tail": out[-500:] if out else "",
+                     "stderr_tail": err[-500:] if err else ""}
+            for name in ("status.json", "result.json"):
+                p = job_dir / name
+                if p.exists():
+                    try:
+                        diag[name] = json.loads(p.read_text(encoding="utf-8"))
+                    except Exception as e:
+                        diag[name + "_raw"] = p.read_text(encoding="utf-8", errors="replace")[-500:]
+                        diag[name + "_parse_error"] = str(e)
+            errors_log = Path(d) / "logs" / "errors.jsonl"
+            if errors_log.exists():
+                try:
+                    lines = errors_log.read_text(encoding="utf-8", errors="replace").splitlines()
+                    diag["errors_jsonl_tail"] = lines[-5:]
+                except Exception:
+                    pass
+            FAIL.append(diag)
 
     if FAIL:
         print(json.dumps({"ok": False, "failures": FAIL}, indent=2))
