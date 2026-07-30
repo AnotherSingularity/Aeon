@@ -1,11 +1,32 @@
-# W8 — Clean-Machine Windows Certification Procedure
+# W8 — Windows Certification Procedure (Tier A + Tier B)
 
-This document is the exact procedure a Windows CI runner or a controlled
-local Windows host follows to convert the source in this branch into a
-certified `AeonSetup.exe` (and the `Aeon.exe` it installs). The procedure
-does **not** run on Linux — see §5 "External limitation" — but the entire
-source tree needed to execute it is committed here and validated by
-`tests/test_windows_packaging.py`.
+**Two distinct tiers.** The certified `AeonSetup.exe` is not one thing:
+
+| tier | label emitted into evidence | who executes it | what it proves |
+|---|---|---|---|
+| **A** | `TIER_A_WINDOWS_BUILD_VERIFIED` | GitHub-hosted `windows-2022` CI via `.github/workflows/windows-release.yml` | The installer is a genuine Windows-produced PE built from this exact commit; every hosted-CI-verifiable check in §3 and §4-automated passes; hashes recorded. |
+| **B** | `TIER_B_CLEAN_WINDOWS_CERTIFIED` | A labeled self-hosted runner (`self-hosted, windows, x64, aeon-certification`) via `.github/workflows/windows-certification.yml`, running under a standard non-administrator account on a clean VM snapshot with the network mechanically blocked | The interactive standard-user desktop clean-machine procedure in §4 passes end-to-end; frozen-vs-source performance is measured on the same host. |
+
+Signing status is **separate** from either tier:
+
+* `UNSIGNED_DEVELOPMENT_BUILD` — default; Tier A produces this unless the sign job runs.
+* `SIGNED_DEVELOPMENT_BUILD` — Tier A's optional signing job succeeded on a non-tag ref.
+* `SIGNED_RELEASE_BUILD` — Tier A's signing job succeeded on a `v*` tag ref.
+
+The three axes never conflate. An artefact is at most one tier label and
+exactly one signing label; each is recorded independently in the Tier A
+and Tier B evidence blobs.
+
+
+
+This document is the authoritative procedure. Tier A is implemented in
+`.github/workflows/windows-release.yml`; Tier B in
+`.github/workflows/windows-certification.yml`; the manual-signoff form
+Tier B consumes is the interactive-checks list in §4 below. Neither tier
+runs on Linux — see §5 "External limitation" — but every source
+deliverable both need is committed here and structurally validated on
+Linux by `tests/test_windows_packaging.py` and
+`tests/test_windows_workflows.py`.
 
 The procedure MUST be executed on a clean Windows machine (fresh VM image,
 no leftover Aeon installation, no environment overrides in the user

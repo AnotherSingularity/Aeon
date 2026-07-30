@@ -1,0 +1,557 @@
+# Tier A — GitHub-hosted Windows build certification.
+#
+# Purpose: convert the packaging source in this branch into a real, Windows-built
+# AeonSetup.exe with reproducible provenance and per-artefact SHA-256s.
+#
+# Explicitly NOT a substitute for Tier B (clean-VM, non-admin, offline,
+# GUI-driven certification on labeled self-hosted runner). See
+# windows-certification.yml.
+#
+# Third-party action pinning: version tags are used here; a follow-up
+# hardening pass replaces each tag with the immutable release SHA. Tags are
+# owned by the actions/... publisher (GitHub) — this is documented, not silent.
+
+name: windows-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Attempt to sign artefacts. Requires the windows-release-signing environment secrets."
+        type: boolean
+        required: false
+        default: false
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'claude/**'
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Source verification (fast, Ubuntu; git-only). Fails fast if the ref
+  #    does not descend from certified baseline 0d7bbb9 or the W0-W9 ledger
+  #    files are missing.
+  # -------------------------------------------------------------------------
+  verify-source:
+    name: A1 verify source (baseline descent + W0-W9 ledger)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      short_sha: ${{ steps.info.outputs.short_sha }}
+    steps:
+      - name: Checkout at ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: A1 verification
+        id: info
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "commit: $(git rev-parse HEAD)"
+          short=$(git rev-parse --short=7 HEAD)
+          echo "short_sha=$short" >> "$GITHUB_OUTPUT"
+
+          # a1.4 working tree clean
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::working tree not clean"; git status; exit 1
+          fi
+
+          # a1.5 descent from certified baseline 0d7bbb9
+          baseline=0d7bbb9
+          if ! git cat-file -e "${baseline}^{commit}"; then
+            echo "::error::baseline ${baseline} not present in fetched history"; exit 1
+          fi
+          if ! git merge-base --is-ancestor "${baseline}" HEAD; then
+            echo "::error::HEAD does not descend from ${baseline}"; exit 1
+          fi
+
+          # a1.6 W0-W9 ledger present
+          for f in \
+              docs/W0_WINDOWS_AUDIT.md \
+              docs/W8_CERTIFICATION_PROCEDURE.md \
+              docs/W9_DEFINITION_OF_DONE.md \
+              docs/w0_baseline.txt \
+              docs/w9_baseline.txt \
+              packaging/windows/Aeon.spec \
+              packaging/windows/AeonInstaller.iss \
+              packaging/windows/build.ps1 \
+              packaging/windows/build_installer.ps1 \
+              packaging/windows/sign.ps1 \
+              packaging/windows/runtime_hook.py \
+              packaging/windows/generate_runtime_manifest.py \
+              packaging/windows/verify_bundle.py \
+              packaging/windows/release_metadata.py \
+              packaging/windows/requirements-windows.lock \
+              packaging/windows/file_version_info.txt ; do
+            [ -f "$f" ] || { echo "::error::missing ledger file: $f"; exit 1; }
+          done
+
+          # a1.7 no Linux-produced executable reused
+          if [ -d dist ] || [ -d build ]; then
+            echo "::error::dist/ or build/ present in tree — must be produced by this workflow, not reused"; exit 1
+          fi
+
+          # a1.7 no signing material in tree
+          if find packaging tests aeon docs -type f \
+              \( -iname '*.pfx' -o -iname '*.p12' -o -iname '*.key' \
+                 -o -iname '*.pem' -o -iname '*.crt' -o -iname '*.pass' \) \
+              | grep -q .; then
+            echo "::error::signing material present in tree"; exit 1
+          fi
+
+          # a1.8 evidence contains no /home/... or /Users/... paths
+          if grep -REn '/home/[a-z]+/AeonV0\.02|/Users/[a-z]+/AeonV0\.02' docs/ \
+              --include='*.json' --include='*.txt' 2>/dev/null \
+              | grep -v -E 'W0_WINDOWS_AUDIT|F0_INHERITANCE_AUDIT|W9_DEFINITION_OF_DONE|F9_DEFINITION_OF_DONE'; then
+            echo "::error::host-specific path leaked into committed evidence"; exit 1
+          fi
+
+  # -------------------------------------------------------------------------
+  # 2. Build the frozen application and installer on a pinned Windows runner.
+  # -------------------------------------------------------------------------
+  build-frozen:
+    name: A2-A8 build frozen + installer
+    needs: verify-source
+    runs-on: windows-2022
+    timeout-minutes: 60
+    outputs:
+      installer_sha256: ${{ steps.hashes.outputs.installer_sha256 }}
+      aeon_exe_sha256:  ${{ steps.hashes.outputs.aeon_exe_sha256 }}
+      installer_size:   ${{ steps.hashes.outputs.installer_size }}
+      installed_size:   ${{ steps.hashes.outputs.installed_size }}
+      short_sha:        ${{ needs.verify-source.outputs.short_sha }}
+    steps:
+      - name: Checkout at ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: A2 environment capture
+        id: env
+        shell: pwsh
+        run: |
+          $out = @{
+            runner_image     = $env:ImageOS
+            runner_image_ver = $env:ImageVersion
+            os               = (Get-CimInstance Win32_OperatingSystem).Caption
+            os_build         = [System.Environment]::OSVersion.Version.ToString()
+            arch             = $env:PROCESSOR_ARCHITECTURE
+            cpu              = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
+            logical_cpus     = [Environment]::ProcessorCount
+            memory_gb        = [Math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)
+            free_disk_gb     = [Math]::Round(((Get-PSDrive C).Free / 1GB), 2)
+            powershell       = $PSVersionTable.PSVersion.ToString()
+          }
+          # Sanitize: no host-specific paths
+          $json = $out | ConvertTo-Json -Depth 4
+          New-Item -ItemType Directory -Force -Path build_reports | Out-Null
+          Set-Content -Path build_reports\environment.json -Value $json -Encoding utf8
+          Write-Host $json
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: packaging/windows/requirements-windows.lock
+
+      - name: A3 install pinned build + runtime deps (CPU torch)
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install `
+              --extra-index-url https://download.pytorch.org/whl/cpu `
+              -r packaging\windows\requirements-windows.lock
+
+          # Assert CPU torch (belt-and-braces — the lockfile pins +cpu).
+          $torch_ver = python -c "import torch;print(torch.__version__)"
+          Write-Host "torch: $torch_ver"
+          if ($torch_ver -notmatch '\+cpu$') {
+            throw "torch is not the CPU wheel: $torch_ver"
+          }
+          if (python -c "import torch;print(torch.cuda.is_available())") -ne "False" {
+            throw "torch reports CUDA available; expected CPU-only"
+          }
+
+          # Dependency inventory (sanitized — pip freeze contains no paths).
+          New-Item -ItemType Directory -Force -Path build_reports | Out-Null
+          python -m pip freeze | Out-File -Encoding utf8 build_reports\dependency-inventory.txt
+          $inv = @{
+            python     = (python -c "import sys;print(sys.version)")
+            pip        = (python -m pip --version)
+            torch      = $torch_ver
+            pyinstaller= (python -c "import PyInstaller;print(PyInstaller.__version__)")
+            list       = Get-Content build_reports\dependency-inventory.txt
+          }
+          $inv | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 build_reports\dependency-inventory.json
+
+      - name: A4 source regression on Windows (must be 205/205)
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$PWD"
+          $suite = @(
+            'test_substrate_port','test_aeon_sanity','test_tokenizer',
+            'test_feedback','test_feedback_diagnostics','test_six_patches',
+            'test_recursion_topology','test_stream_independence',
+            'test_config_invariants','test_observability','test_checkpoint',
+            'test_diagnose','test_threat_model','test_provenance',
+            'test_protected_checkpoint','test_runtime_policy','test_continuity',
+            'test_adversarial','test_evidence_hygiene',
+            'test_entry','test_launcher_and_job','test_windows_packaging',
+            'test_windows_workflows'
+          )
+          $total = 0
+          $failed = @()
+          $rows = @()
+          foreach ($t in $suite) {
+            $path = "tests\$t.py"
+            if (-not (Test-Path $path)) { continue }
+            $out = python $path 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              $failed += $t
+              Write-Host "FAIL $t"
+              Write-Host ($out | Select-Object -Last 20)
+            } else {
+              $line = ($out | Select-String -Pattern '^\d+ checks passed' | Select-Object -First 1).Line
+              if ($line) {
+                $n = [int]($line -replace ' checks passed.*','')
+              } else {
+                $n = ($out | Select-String -Pattern '^  ok  ').Count
+              }
+              $total += $n
+              $rows += @{ file=$t; passed=$n }
+              Write-Host "ok   $t ($n)"
+            }
+          }
+          $report = @{
+            grand_total = $total
+            failed_files = $failed
+            per_file = $rows
+          }
+          $report | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 build_reports\windows-test-report.json
+          Write-Host "TOTAL: $total   FAILED: $($failed.Count)"
+          if ($failed.Count -ne 0) { throw "regression failed on Windows" }
+          if ($total -lt 205)      { throw "test total < 205 inherited baseline: $total" }
+
+      - name: A5 freeze the application (build.ps1)
+        shell: pwsh
+        run: |
+          # build.ps1 runs its own regression + PyInstaller + verify_bundle
+          # + manifest. We invoke it here so its exact procedure — the same
+          # source referenced in W8 — is what CI executes.
+          .\packaging\windows\build.ps1
+
+      - name: A5 assert frozen bundle shape and no forbidden payload
+        shell: pwsh
+        run: |
+          $bundle = "dist\Aeon"
+          $exe = Join-Path $bundle "Aeon.exe"
+          if (-not (Test-Path $exe)) { throw "Aeon.exe missing" }
+          # Windows PE check (MZ magic)
+          $fs = [System.IO.File]::OpenRead($exe)
+          try { $b = New-Object byte[] 2; [void]$fs.Read($b, 0, 2) } finally { $fs.Close() }
+          if ($b[0] -ne 0x4d -or $b[1] -ne 0x5a) { throw "Aeon.exe is not a Windows PE (MZ) file" }
+
+          # Forbidden artefacts within the bundle
+          $forbidden = @('*.pfx','*.p12','*.key','*.pem','*.crt','*.pass')
+          foreach ($pat in $forbidden) {
+            $hits = Get-ChildItem -Path $bundle -Recurse -Filter $pat -ErrorAction SilentlyContinue
+            if ($hits) { throw "forbidden artefact in bundle: $($hits -join ', ')" }
+          }
+          # No CUDA libs
+          $cuda = Get-ChildItem -Path $bundle -Recurse -Include cudart*.dll,cudnn*.dll,nvcuda*.dll -ErrorAction SilentlyContinue
+          if ($cuda) { throw "CUDA libraries present: $($cuda -join ', ')" }
+          # No test dirs shipped
+          $tests = Get-ChildItem -Path $bundle -Directory -Filter tests -ErrorAction SilentlyContinue
+          if ($tests) { throw "tests/ directory shipped in bundle" }
+
+      - name: A6 frozen-bundle smoke (verify_bundle.py)
+        shell: pwsh
+        run: |
+          python packaging\windows\verify_bundle.py --bundle dist\Aeon
+
+      - name: A7 runtime manifest verification round-trip
+        shell: pwsh
+        run: |
+          $manifest = "dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json"
+          if (-not (Test-Path $manifest)) { throw "runtime manifest missing: $manifest" }
+          # Structural sanity: parse + non-empty file list
+          $m = Get-Content $manifest -Raw | ConvertFrom-Json
+          if (-not $m.files) { throw "manifest has no files array" }
+          if ($m.files.Count -lt 5) { throw "manifest suspiciously small: $($m.files.Count) files" }
+          Write-Host "manifest ok: $($m.files.Count) files"
+
+      - name: A8 build the installer (Inno Setup)
+        shell: pwsh
+        run: |
+          # Inno Setup is pre-installed on windows-2022 GitHub-hosted images
+          # under C:\Program Files (x86)\Inno Setup 6. build_installer.ps1
+          # discovers it automatically.
+          $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) {
+            Write-Host "Inno Setup 6 not preinstalled; installing via chocolatey"
+            choco install innosetup --no-progress --yes
+          }
+          .\packaging\windows\build_installer.ps1
+
+      - name: A8 hashes + report
+        id: hashes
+        shell: pwsh
+        run: |
+          $exe = "dist\Aeon\Aeon.exe"
+          $installer = "dist\installer\AeonSetup.exe"
+          if (-not (Test-Path $installer)) { throw "AeonSetup.exe missing" }
+
+          $exe_sha = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
+          $exe_size = (Get-Item $exe).Length
+          $ins_sha = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLower()
+          $ins_size = (Get-Item $installer).Length
+
+          # Total installed size (dist\Aeon)
+          $installed = (Get-ChildItem -Recurse dist\Aeon | Measure-Object -Sum Length).Sum
+
+          "installer_sha256=$ins_sha" >> $env:GITHUB_OUTPUT
+          "aeon_exe_sha256=$exe_sha"   >> $env:GITHUB_OUTPUT
+          "installer_size=$ins_size"   >> $env:GITHUB_OUTPUT
+          "installed_size=$installed"  >> $env:GITHUB_OUTPUT
+
+          # Machine-readable build report (sanitized: no absolute paths)
+          $report = @{
+            commit_sha        = "${{ github.sha }}"
+            ref               = "${{ github.ref }}"
+            runner            = "windows-2022"
+            aeon_exe          = @{ size_bytes = $exe_size; sha256 = $exe_sha }
+            aeon_setup_exe    = @{ size_bytes = $ins_size; sha256 = $ins_sha }
+            installed_size    = $installed
+            manifest_verified = $true
+            signed            = $false
+            tier              = "TIER_A_WINDOWS_BUILD_VERIFIED"
+            signing_status    = "UNSIGNED_DEVELOPMENT_BUILD"
+          }
+          New-Item -ItemType Directory -Force -Path build_reports | Out-Null
+          $report | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 build_reports\windows-build-report.json
+          $ins_sha_out = "$ins_sha  AeonSetup.exe"
+          Set-Content -Path dist\installer\AeonSetup.exe.sha256 -Value $ins_sha_out -Encoding ascii
+
+          Write-Host "AeonSetup.exe  size=$ins_size  sha256=$ins_sha"
+          Write-Host "Aeon.exe       size=$exe_size  sha256=$exe_sha"
+
+      - name: A10 assemble sanitized Tier A certification evidence
+        shell: pwsh
+        run: |
+          # Aggregate every sanitized report into a single Tier A evidence blob.
+          $env_report = Get-Content build_reports\environment.json -Raw | ConvertFrom-Json
+          $deps       = Get-Content build_reports\dependency-inventory.json -Raw | ConvertFrom-Json
+          $tests      = Get-Content build_reports\windows-test-report.json -Raw | ConvertFrom-Json
+          $build      = Get-Content build_reports\windows-build-report.json -Raw | ConvertFrom-Json
+          $manifest   = Get-Content "dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json" -Raw | ConvertFrom-Json
+          $release    = Get-Content "packaging\windows\RELEASE.json" -Raw | ConvertFrom-Json
+
+          $ev = @{
+            tier              = "TIER_A_WINDOWS_BUILD_VERIFIED"
+            signing_status    = "UNSIGNED_DEVELOPMENT_BUILD"
+            source_commit     = "${{ github.sha }}"
+            branch_ref        = "${{ github.ref }}"
+            windows_environment = $env_report
+            dependency_inventory = $deps
+            windows_test_result  = $tests
+            windows_build_result = $build
+            runtime_manifest_summary = @{
+              file_count = $manifest.files.Count
+              release    = $release
+            }
+            interactive_certification = @{
+              performed = $false
+              reason    = "Tier A is hosted CI only; Tier B is the clean-VM standard-user interactive certification (see windows-certification.yml)"
+            }
+            known_limitations = @(
+              "SmartScreen reputation is external and out of scope for build CI.",
+              "Interactive GUI, offline runtime, non-admin standard-user smoke: Tier B.",
+              "Signing status: unsigned unless the sign input is true AND the windows-release-signing environment provides credentials."
+            )
+          }
+          $ev | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 build_reports\w9-tier-a-certification-evidence.json
+
+      - name: Copy installer artefacts to upload staging
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release_artifacts | Out-Null
+          Copy-Item dist\installer\AeonSetup.exe                             release_artifacts\
+          Copy-Item dist\installer\AeonSetup.exe.sha256                      release_artifacts\
+          Copy-Item dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json        release_artifacts\
+          Copy-Item packaging\windows\RELEASE.json                           release_artifacts\release-metadata.json
+          Copy-Item build_reports\windows-build-report.json                  release_artifacts\
+          Copy-Item build_reports\windows-test-report.json                   release_artifacts\
+          Copy-Item build_reports\dependency-inventory.json                  release_artifacts\
+          Copy-Item build_reports\environment.json                          release_artifacts\
+          Copy-Item build_reports\w9-tier-a-certification-evidence.json     release_artifacts\
+          Get-ChildItem release_artifacts
+
+      - name: Upload Tier A release artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeon-windows-tier-a-${{ needs.verify-source.outputs.short_sha }}
+          path: release_artifacts/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload frozen bundle (large, retained shorter) for Tier B download
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeon-frozen-bundle-${{ needs.verify-source.outputs.short_sha }}
+          path: dist/Aeon/**
+          if-no-files-found: error
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 3. Build-provenance attestation for the installer. Runs only for pushes
+  #    that originate from this repository — protected against fork PRs by
+  #    the trigger set (workflow_dispatch, branch push, tag push — none of
+  #    those fire from a fork's pull_request event).
+  # -------------------------------------------------------------------------
+  attest:
+    name: A10 build provenance
+    needs: build-frozen
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download Tier A artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: aeon-windows-tier-a-${{ needs.build-frozen.outputs.short_sha }}
+          path: incoming
+
+      - name: Verify pre-attestation installer SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ needs.build-frozen.outputs.installer_sha256 }}"
+          actual=$(sha256sum incoming/AeonSetup.exe | awk '{print $1}')
+          echo "expected=$expected"
+          echo "actual  =$actual"
+          [ "$expected" = "$actual" ] || { echo "::error::SHA-256 mismatch"; exit 1; }
+
+      - name: Attest build provenance for AeonSetup.exe
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: incoming/AeonSetup.exe
+
+  # -------------------------------------------------------------------------
+  # 4. Optional signing job. Gated on a PROTECTED environment which must
+  #    require reviewers before secrets are exposed. Fork PRs cannot reach a
+  #    protected environment. If the operator did not opt in via
+  #    workflow_dispatch(sign=true) OR the ref is not a tag, this job skips.
+  # -------------------------------------------------------------------------
+  sign:
+    name: A9 sign (protected environment; opt-in)
+    needs: build-frozen
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.sign == true) ||
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-2022
+    timeout-minutes: 30
+    environment: windows-release-signing
+    permissions:
+      contents: read
+    steps:
+      - name: Download Tier A artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: aeon-windows-tier-a-${{ needs.build-frozen.outputs.short_sha }}
+          path: incoming
+
+      - name: Download frozen bundle (for Aeon.exe path)
+        uses: actions/download-artifact@v4
+        with:
+          name: aeon-frozen-bundle-${{ needs.build-frozen.outputs.short_sha }}
+          path: dist_bundle
+
+      - name: Verify inbound installer SHA-256
+        shell: pwsh
+        run: |
+          $expected = "${{ needs.build-frozen.outputs.installer_sha256 }}"
+          $actual   = (Get-FileHash -Algorithm SHA256 incoming\AeonSetup.exe).Hash.ToLower()
+          if ($expected -ne $actual) { throw "installer SHA mismatch" }
+
+      - name: Resolve signtool path
+        id: signtool
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" `
+              -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found in Windows SDK" }
+          "path=$($signtool.FullName)" >> $env:GITHUB_OUTPUT
+          Write-Host "signtool: $($signtool.FullName)"
+
+      - name: Sign Aeon.exe + AeonSetup.exe (env-driven, no secrets in logs)
+        # sign.ps1 reads AEON_SIGN_CERT_PFX / AEON_SIGN_CERT_PASS from env.
+        # We stage the PFX from a base64 secret to disk under the runner-
+        # local temp path, invoke sign.ps1, then delete the PFX in a
+        # guaranteed cleanup step.
+        env:
+          AEON_SIGNTOOL_PATH: ${{ steps.signtool.outputs.path }}
+          AEON_SIGN_CERT_PFX_B64: ${{ secrets.AEON_SIGN_CERT_PFX_B64 }}
+          AEON_SIGN_CERT_PASS:    ${{ secrets.AEON_SIGN_CERT_PASS }}
+          AEON_SIGN_TIMESTAMP:    ${{ secrets.AEON_SIGN_TIMESTAMP }}
+        shell: pwsh
+        run: |
+          if (-not $env:AEON_SIGN_CERT_PFX_B64) {
+            Write-Host "::warning::AEON_SIGN_CERT_PFX_B64 not set — signing job cannot proceed"; exit 78
+          }
+          $pfxTmp = Join-Path $env:RUNNER_TEMP "aeon-sign.pfx"
+          [IO.File]::WriteAllBytes($pfxTmp, [Convert]::FromBase64String($env:AEON_SIGN_CERT_PFX_B64))
+          $env:AEON_SIGN_CERT_PFX = $pfxTmp
+          try {
+            .\packaging\windows\sign.ps1 `
+                -AeonExe    "dist_bundle\Aeon.exe" `
+                -Installer  "incoming\AeonSetup.exe"
+          } finally {
+            if (Test-Path $pfxTmp) { Remove-Item -Force $pfxTmp }
+          }
+
+      - name: Recompute + upload signed hashes
+        shell: pwsh
+        run: |
+          $signed_installer_sha = (Get-FileHash -Algorithm SHA256 incoming\AeonSetup.exe).Hash.ToLower()
+          $signed_exe_sha       = (Get-FileHash -Algorithm SHA256 dist_bundle\Aeon.exe).Hash.ToLower()
+
+          # Signtool verify — do NOT echo cert contents
+          & "${{ steps.signtool.outputs.path }}" verify /pa /v incoming\AeonSetup.exe | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "signature verify on AeonSetup.exe failed" }
+          & "${{ steps.signtool.outputs.path }}" verify /pa /v dist_bundle\Aeon.exe | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "signature verify on Aeon.exe failed" }
+
+          New-Item -ItemType Directory -Force -Path signed_out | Out-Null
+          Copy-Item incoming\AeonSetup.exe signed_out\
+          Set-Content -Path signed_out\AeonSetup.exe.sha256 -Value "$signed_installer_sha  AeonSetup.exe" -Encoding ascii
+          $sig = @{
+            tier              = "TIER_A_WINDOWS_BUILD_VERIFIED"
+            signing_status    = "SIGNED_DEVELOPMENT_BUILD"
+            aeon_exe_sha256_signed       = $signed_exe_sha
+            aeon_setup_exe_sha256_signed = $signed_installer_sha
+            verify              = "PASS"
+          }
+          $sig | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 signed_out\signing-report.json
+
+      - name: Upload signed artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeon-windows-tier-a-signed-${{ needs.build-frozen.outputs.short_sha }}
+          path: signed_out/**
+          if-no-files-found: error
+          retention-days: 30

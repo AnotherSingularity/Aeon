@@ -1,0 +1,287 @@
+# Tier B — Standard-user interactive Windows certification.
+#
+# Purpose: verify the EXACT AeonSetup.exe artefact produced by Tier A on a
+# clean, non-administrator Windows 11 x64 workstation, including offline
+# runtime, GUI-driven training start/stop/resume, negative integrity paths,
+# and paired frozen-vs-source performance measurement.
+#
+# Runner requirements enforced by the required labels below:
+#   * self-hosted            — GitHub-hosted runners cannot satisfy Tier B
+#   * windows                — obvious
+#   * x64                    — arch pin
+#   * aeon-certification     — a repo-scoped label indicating this specific
+#                              runner has been provisioned per docs/W8_*
+#                              (clean VM snapshot, standard user account,
+#                              interactive session, network mechanically
+#                              blockable).
+#
+# The runner MUST NOT run as a privileged Windows service and MUST be
+# started under an ordinary standard-user account (this cannot be enforced
+# from YAML alone; the runner-provisioning script is responsible, and the
+# certification report records the running-as-standard-user proof).
+
+name: windows-certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      tier_a_run_id:
+        description: "The windows-release run ID that produced the installer to certify. Required."
+        type: string
+        required: true
+      expected_installer_sha256:
+        description: "Expected SHA-256 of AeonSetup.exe. Required — Tier B never rebuilds."
+        type: string
+        required: true
+      offline_mode:
+        description: "Verify with the runner's network mechanically blocked."
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: windows-certification-${{ inputs.tier_a_run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  attestations: read
+
+jobs:
+  certify:
+    name: B1-B4 clean-machine standard-user certification
+    # ANY of these labels missing => the job cannot schedule. This is the
+    # gate that prevents an arbitrary self-hosted runner from claiming
+    # Tier B certification.
+    runs-on:
+      - self-hosted
+      - windows
+      - x64
+      - aeon-certification
+    timeout-minutes: 240
+    steps:
+      - name: Checkout source at ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: B0 assert non-admin standard-user runner
+        shell: pwsh
+        run: |
+          $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $wp = New-Object Security.Principal.WindowsPrincipal($id)
+          $isAdmin = $wp.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          $isSystem = $id.IsSystem
+          $rec = @{
+            user           = $id.Name
+            is_administrator = $isAdmin
+            is_system      = $isSystem
+            interactive    = [Environment]::UserInteractive
+          }
+          New-Item -ItemType Directory -Force -Path cert_reports | Out-Null
+          $rec | ConvertTo-Json | Set-Content cert_reports\runner-identity.json -Encoding utf8
+          if ($isAdmin -or $isSystem) {
+            throw "Tier B runner must NOT be admin or SYSTEM. Provision the runner under a standard user."
+          }
+          Write-Host "runner identity: $($id.Name) (non-admin)"
+
+      - name: B1 download Tier A installer + reports
+        # actions/download-artifact fetches from another workflow run via
+        # run-id and github-token.
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.tier_a_run_id }}
+          # Pattern picks up both the reports bundle and the signed bundle
+          # if a signing run exists.
+          pattern: aeon-windows-tier-a-*
+          path: incoming
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: B1 verify Tier A artefact SHA-256
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem incoming\AeonSetup.exe | Select-Object -First 1
+          if (-not $installer) { throw "AeonSetup.exe missing in Tier A artefact" }
+          $actual = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash.ToLower()
+          $expected = "${{ inputs.expected_installer_sha256 }}".ToLower()
+          if ($actual -ne $expected) {
+            throw "SHA-256 mismatch. expected=$expected actual=$actual"
+          }
+          Write-Host "installer SHA-256 verified: $actual"
+
+      - name: B1 verify build-provenance attestation (best-effort)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          # gh CLI is expected on the certification runner. Best-effort so
+          # a temporarily missing gh does not fail the whole certification;
+          # the manual signoff records the outcome either way.
+          $gh = Get-Command gh -ErrorAction SilentlyContinue
+          if (-not $gh) { Write-Host "gh not present; skipping provenance verify"; return }
+          $env:GH_TOKEN = "${{ secrets.GITHUB_TOKEN }}"
+          gh attestation verify incoming\AeonSetup.exe --owner "${{ github.repository_owner }}" `
+              --predicate-type "https://slsa.dev/provenance/v1" | Tee-Object cert_reports\provenance-verify.txt
+
+      - name: B2 offline-mode gate (best-effort DNS block)
+        if: ${{ inputs.offline_mode }}
+        shell: pwsh
+        run: |
+          # This step DOCUMENTS the offline gate. Real mechanical isolation
+          # is the runner operator's responsibility (VM network adapter
+          # disabled, or Windows Firewall block-all rule). We record what
+          # the runner saw at cert time.
+          $probe = Test-NetConnection -ComputerName 8.8.8.8 -Port 53 -InformationLevel Quiet -WarningAction SilentlyContinue
+          $off = @{ offline_probe_reachable = [bool]$probe; timestamp = (Get-Date).ToString("o") }
+          $off | ConvertTo-Json | Set-Content cert_reports\offline-probe.json -Encoding utf8
+          if ($probe) {
+            Write-Host "::warning::network reachable during offline certification — operator must confirm mechanical isolation"
+          }
+
+      - name: B2 silent install to per-user path with spaces
+        shell: pwsh
+        run: |
+          # Standard user; UAC prompt would break /VERYSILENT. The installer
+          # itself is per-user (PrivilegesRequired=lowest); no elevation.
+          $installBase = Join-Path $env:LOCALAPPDATA "Programs\Aeon Certification"
+          Start-Process -FilePath incoming\AeonSetup.exe `
+            -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/DIR=`"$installBase`"" `
+            -Wait -NoNewWindow
+          if (-not (Test-Path (Join-Path $installBase "Aeon.exe"))) {
+            throw "installation did not produce Aeon.exe under $installBase"
+          }
+          "install_path=$installBase" >> $env:GITHUB_ENV
+
+      - name: B2 launch Aeon.exe --verify-installation (structured JSON)
+        shell: pwsh
+        run: |
+          $out = & "$env:install_path\Aeon.exe" "--verify-installation"
+          $rc = $LASTEXITCODE
+          $rec = @{ rc = $rc; body = $out }
+          $rec | ConvertTo-Json -Depth 4 | Set-Content cert_reports\verify-installation.json -Encoding utf8
+          if ($rc -ne 0) { throw "verify-installation rc=$rc" }
+
+      - name: B2 launch Aeon.exe --diagnose (offline diagnostics)
+        shell: pwsh
+        run: |
+          $out = & "$env:install_path\Aeon.exe" "--diagnose"
+          $rc  = $LASTEXITCODE
+          @{ rc = $rc; body = $out } | ConvertTo-Json -Depth 4 |
+              Set-Content cert_reports\diagnose.json -Encoding utf8
+
+      - name: B2 interactive GUI + training-lifecycle (manual signoff)
+        shell: pwsh
+        run: |
+          # Interactive checks that GUI automation cannot reliably prove:
+          #   * first-run wizard opens
+          #   * training starts from GUI
+          #   * worker keeps running when launcher closes
+          #   * launcher reattaches
+          #   * Safe Stop writes an authenticated checkpoint
+          #   * Resume Latest authenticates and resumes
+          #   * Recovery from previous checkpoint succeeds
+          #   * Concurrent-worker rejection surfaces in UI
+          #   * Modified-file detection surfaces in UI
+          #   * Uninstall preserves user data by default
+          # The operator performs each check interactively and records the
+          # outcome in the manual-signoff file, which the workflow reads
+          # here. This is the ONLY sanctioned way a GUI-observed pass
+          # enters Tier B evidence.
+          $manual = "cert_reports\manual-signoff.json"
+          $template = @{
+            operator_id = ""
+            timestamp   = ""
+            first_run_wizard          = $null
+            gui_training_start        = $null
+            worker_survives_launcher_close = $null
+            launcher_reattaches       = $null
+            safe_stop_checkpoint_authenticated = $null
+            resume_latest             = $null
+            recovery_previous         = $null
+            concurrent_worker_denied  = $null
+            modified_file_detected    = $null
+            modified_dll_detected     = $null
+            modified_policy_detected  = $null
+            corrupted_checkpoint_rejected = $null
+            rollback_rejected         = $null
+            path_traversal_rejected   = $null
+            symlink_escape_rejected   = $null
+            missing_runtime_file_guidance = $null
+            uninstall_preserves_user_data = $null
+            upgrade_preserves_user_data   = $null
+          }
+          if (-not (Test-Path $manual)) {
+            $template | ConvertTo-Json -Depth 4 | Set-Content $manual -Encoding utf8
+            Write-Host "::warning::manual-signoff.json created as a template. Operator must complete it before Tier B closure."
+          }
+          # Verify every field is a concrete pass/fail (not $null); this is
+          # the honest gate — the workflow refuses to mark Tier B green if
+          # any interactive check has no recorded outcome.
+          $mf = Get-Content $manual -Raw | ConvertFrom-Json
+          $incomplete = @()
+          foreach ($p in $mf.PSObject.Properties) {
+            if ($null -eq $p.Value -or $p.Value -eq "") { $incomplete += $p.Name }
+          }
+          if ($incomplete) {
+            Write-Host "::error::interactive checks not signed off: $($incomplete -join ', ')"
+            throw "Tier B interactive certification incomplete"
+          }
+          $failed = @()
+          foreach ($p in $mf.PSObject.Properties) {
+            if ($p.Value -is [string] -and $p.Value.ToLower() -eq "fail") { $failed += $p.Name }
+          }
+          if ($failed) {
+            throw "Tier B interactive checks failed: $($failed -join ', ')"
+          }
+
+      - name: B3 paired frozen-vs-source performance trials
+        shell: pwsh
+        run: |
+          # Alternating trials. Each trial exercises the same bounded
+          # fixture on both frozen and source; the launcher records step
+          # time, tokens/sec, peak memory. Aggregate median (not min) is
+          # what enters the report.
+          python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu `
+              -r packaging\windows\requirements-windows.lock
+          $env:PYTHONPATH = "$PWD"
+          $out = python scripts\w9_perf_compare.py `
+              --frozen-exe "$env:install_path\Aeon.exe" `
+              --trials 6 `
+              --out cert_reports\perf-report.json
+          Write-Host $out
+
+      - name: B4 write Tier B evidence
+        shell: pwsh
+        run: |
+          $tierA = Get-Content incoming\w9-tier-a-certification-evidence.json -Raw | ConvertFrom-Json
+          $manual = Get-Content cert_reports\manual-signoff.json -Raw | ConvertFrom-Json
+          $verify = Get-Content cert_reports\verify-installation.json -Raw | ConvertFrom-Json
+          $perf = Get-Content cert_reports\perf-report.json -Raw | ConvertFrom-Json
+          $ident = Get-Content cert_reports\runner-identity.json -Raw | ConvertFrom-Json
+          $offline = if (Test-Path cert_reports\offline-probe.json) {
+              Get-Content cert_reports\offline-probe.json -Raw | ConvertFrom-Json
+          } else { $null }
+
+          $ev = @{
+            tier               = "TIER_B_CLEAN_WINDOWS_CERTIFIED"
+            signing_status     = $tierA.signing_status
+            tier_a_source      = @{
+              run_id           = "${{ inputs.tier_a_run_id }}"
+              installer_sha256 = "${{ inputs.expected_installer_sha256 }}"
+            }
+            runner_identity     = $ident
+            offline_probe       = $offline
+            installation_verify = $verify
+            manual_signoff      = $manual
+            performance         = $perf
+          }
+          $ev | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 cert_reports\w9-tier-b-certification-evidence.json
+
+      - name: Upload Tier B evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeon-windows-tier-b-evidence-${{ inputs.tier_a_run_id }}
+          path: cert_reports/**
+          if-no-files-found: error
+          retention-days: 90

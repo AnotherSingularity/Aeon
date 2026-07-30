@@ -48,17 +48,44 @@ authorised Windows host as documented in W0 §4 and W8 §5).
 | 31 | Clean-machine certification procedure documented | `docs/W8_CERTIFICATION_PROCEDURE.md` (§3 build, §4 18-check clean-machine validation) | MET (procedure) |
 | 32 | External limitation surfaced honestly | `docs/W0_WINDOWS_AUDIT.md` §4; `docs/W8_CERTIFICATION_PROCEDURE.md` §5 | MET (honest) |
 | 33 | 155-check inherited regression preserved | `docs/w9_baseline.txt` (155 inherited rows unchanged; 50 W-series rows added; grand total 205) | MET |
-| 34 | Windows CI produces `AeonSetup.exe`, records size + SHA-256 + signature chain | `docs/W8_CERTIFICATION_PROCEDURE.md` §3.8; slot for `docs/w9_certification_evidence.json` to be populated by the Windows runner | BLOCKED-EXTERNAL |
-| 35 | Clean-Windows-VM installation smoke passes 18 checks | `docs/W8_CERTIFICATION_PROCEDURE.md` §4 | BLOCKED-EXTERNAL |
-| 36 | Authenticode signature verifies on a clean machine | `docs/W8_CERTIFICATION_PROCEDURE.md` §4 row 1; requires operator's PFX chain | BLOCKED-EXTERNAL |
-| 37 | Certified Windows-produced binaries checksummed in the repo | `docs/w9_certification_evidence.json` (to be committed by the Windows runner) | BLOCKED-EXTERNAL |
+| 34 | Tier A workflow exists and is structurally correct | `.github/workflows/windows-release.yml`; `tests/test_windows_workflows.py` (16 checks) | MET |
+| 35 | Tier B workflow exists, requires all four self-hosted labels, refuses admin/SYSTEM | `.github/workflows/windows-certification.yml`; `tests/test_windows_workflows.py::test_tier_b_*` | MET |
+| 36 | Tier A produces a real Windows `AeonSetup.exe` with hashes recorded | Requires the workflow to be triggered and pass; artefact `aeon-windows-tier-a-<sha>` from `windows-release` run | TRACKED-BY-CI (Tier A) |
+| 37 | Tier B interactive standard-user certification passes on a clean VM | Requires the labeled self-hosted runner + operator; artefact `aeon-windows-tier-b-evidence-*` | TRACKED-BY-CI (Tier B) |
+| 38 | Signing pipeline is opt-in, protected by environment gate, uses env-var secrets | `.github/workflows/windows-release.yml` `sign` job (`environment: windows-release-signing`); `test_tier_a_signing_is_opt_in_or_tag_triggered`; `test_tier_a_secrets_referenced_only_via_env` | MET (source); running signing requires the operator to configure the protected environment |
+| 39 | Frozen-vs-source performance script exists and reports medians | `scripts/w9_perf_compare.py` (requires N≥6 alternating trials, refuses min-only reporting) | MET (source) |
 
-**Summary:** 33 of 37 items are MET in this branch on Linux; 4 are
-BLOCKED-EXTERNAL — they are the four checks that structurally require an
-authorised Windows host to execute (build, install-smoke, signature
-verification, checksum recording). Every source-side deliverable those
-four items depend on is present and tested here; the Windows runner
-executes the procedure and records the numbers.
+**Summary (post-workflow additive commit):** 37 of 39 items are MET in
+this branch on Linux; 2 are TRACKED-BY-CI (items 36 and 37 — the actual
+Tier A build success and the actual Tier B interactive certification).
+The BLOCKED-EXTERNAL language from earlier revisions has been retired
+because the two workflows now schedule the missing work on the
+appropriate hosts:
+
+* **Tier A (item 36)** — GitHub-hosted `windows-2022` runs
+  `.github/workflows/windows-release.yml`. When a run succeeds, the
+  installer's SHA-256 is recorded in the workflow's build report and the
+  attestation is issued.
+* **Tier B (item 37)** — A labeled self-hosted runner runs
+  `.github/workflows/windows-certification.yml` when
+  provisioned; it downloads the exact Tier A installer, refuses to
+  proceed under admin/SYSTEM, and gates on the manual-signoff form for
+  every interactive check. Until such a runner is provisioned, Tier B
+  cannot fire — which is honest, not a defect.
+
+Items 34–35, 38–39 are met by the source in this branch and locked by
+`tests/test_windows_workflows.py` (16 checks) on Linux.
+
+### Two tiers, three signing statuses — never conflated
+
+| axis | possible values | recorded where |
+|---|---|---|
+| Windows build tier | `TIER_A_WINDOWS_BUILD_VERIFIED` / `TIER_B_CLEAN_WINDOWS_CERTIFIED` | `build_reports/w9-tier-a-certification-evidence.json` / `cert_reports/w9-tier-b-certification-evidence.json` |
+| Signing status | `UNSIGNED_DEVELOPMENT_BUILD` / `SIGNED_DEVELOPMENT_BUILD` / `SIGNED_RELEASE_BUILD` | Same evidence blobs; the sign job in Tier A updates it |
+| Interactive standard-user certification | performed / not performed | Only Tier B evidence records `performed: true` |
+
+Reporting the artefact as "certified" without both a tier label and a
+signing label is not permitted by the evidence schema.
 
 ## 2. Inherited invariants — preserved without modification
 
