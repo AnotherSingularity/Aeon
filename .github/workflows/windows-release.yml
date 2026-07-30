@@ -179,7 +179,9 @@ jobs:
           if ($torch_ver -notmatch '\+cpu$') {
             throw "torch is not the CPU wheel: $torch_ver"
           }
-          if (python -c "import torch;print(torch.cuda.is_available())") -ne "False" {
+          $cuda_avail = python -c "import torch;print(torch.cuda.is_available())"
+          Write-Host "cuda.is_available: $cuda_avail"
+          if ("$cuda_avail".Trim() -ne "False") {
             throw "torch reports CUDA available; expected CPU-only"
           }
 

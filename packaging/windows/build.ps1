@@ -35,9 +35,13 @@ if (-not (Test-Path $Venv)) {
 }
 & (Join-Path $Venv 'Scripts\python.exe') -m pip install --upgrade pip
 
-# 2. Install pinned deps
+# 2. Install pinned deps. torch==2.5.1+cpu is only on the pytorch CPU index,
+#    not PyPI — must pass --extra-index-url or the lock resolves to nothing.
 if (Test-Path $Requirements) {
-    & (Join-Path $Venv 'Scripts\python.exe') -m pip install -r $Requirements
+    & (Join-Path $Venv 'Scripts\python.exe') -m pip install `
+        --extra-index-url https://download.pytorch.org/whl/cpu `
+        -r $Requirements
+    if ($LASTEXITCODE -ne 0) { throw "pip install failed against $Requirements" }
 } else {
     Write-Warning "requirements-windows.lock missing — installing minimal pins"
     & (Join-Path $Venv 'Scripts\python.exe') -m pip install `
