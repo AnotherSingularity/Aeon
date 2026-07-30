@@ -123,7 +123,7 @@ var
   ManifestPath: string;
 begin
   NeedsRestart := False;
-  ManifestPath := ExpandConstant('{src}\dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json');
+  ManifestPath := ExpandConstant('{src}\dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json');
   if not FileExists(ManifestPath) then
   begin
     Result := 'Installer payload is missing RUNTIME_MANIFEST.json. ' +

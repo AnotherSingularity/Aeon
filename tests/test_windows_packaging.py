@@ -120,6 +120,52 @@ def test_manifest_generator_produces_valid_manifest_verifier_accepts():
                 assert any(x["path"] == "Aeon.exe" for x in report2["mismatched"])
 
 
+# ---- W5: manifest generator handles PyInstaller 6.x _internal/ layout ------
+def test_manifest_generator_uses_internal_subdir_when_present():
+    """PyInstaller 6.x onedir puts every immutable file under `<bundle>/_internal/`.
+    The manifest must be written INSIDE `_internal/` and list paths relative
+    to `_internal/`, because that is what `installed_resource_root()` returns
+    at runtime (sys._MEIPASS). Regression against the initial Tier A shape
+    where the manifest was written to <bundle>/packaging/... and Aeon.exe
+    --verify-installation could not find it."""
+    with tempfile.TemporaryDirectory() as d:
+        internal = os.path.join(d, "_internal")
+        os.makedirs(os.path.join(internal, "configs"))
+        os.makedirs(os.path.join(internal, "packaging", "windows"))
+        # Aeon.exe lives OUTSIDE _internal (top-level next to the exe)
+        with open(os.path.join(d, "Aeon.exe"), "wb") as fh:
+            fh.write(b"MZfrozen")
+        # Immutable data files live inside _internal
+        for name in ("configs/aeon_smoke_e5.yaml", "python311.dll",
+                      "torch/_C.pyd"):
+            path = os.path.join(internal, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as fh:
+                fh.write(b"data-" + name.encode())
+        rel = {"semantic_version": "0.2.3", "source_commit": "abc",
+                "build_type": "release"}
+        rel_path = os.path.join(d, "RELEASE.json")
+        with open(rel_path, "w") as fh:
+            json.dump(rel, fh)
+        r = subprocess.run(
+            [sys.executable, os.path.join(PKG, "generate_runtime_manifest.py"),
+             "--bundle", d, "--release", rel_path],
+            capture_output=True, text=True, timeout=30)
+        assert r.returncode == 0, r.stderr
+        # Manifest MUST be inside _internal/
+        m_path = os.path.join(internal, "packaging", "windows",
+                                "RUNTIME_MANIFEST.json")
+        assert os.path.exists(m_path), f"manifest not at {m_path}: {r.stdout}"
+        m = json.load(open(m_path, encoding="utf-8"))
+        assert m["resource_root_relative_to_bundle"] == "_internal"
+        # The top-level Aeon.exe MUST NOT appear in the manifest — it's outside
+        # the runtime resource root (verified via Authenticode when signed).
+        for f in m["files"]:
+            assert not f["path"].startswith("../"), f
+            assert f["path"] != "Aeon.exe", (
+                "top-level Aeon.exe leaked into runtime manifest")
+
+
 # ---- W7: release_metadata never writes secrets -----------------------------
 def test_release_metadata_never_writes_secrets():
     src = open(os.path.join(PKG, "release_metadata.py")).read()

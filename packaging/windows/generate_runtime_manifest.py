@@ -44,12 +44,28 @@ def main() -> int:
         return 1
     release_meta = json.load(open(args.release, encoding="utf-8"))
 
+    # PyInstaller 6.x onedir layout: <bundle>/Aeon.exe + <bundle>/_internal/*
+    # `_internal/` is the directory `sys._MEIPASS` points at at runtime, which
+    # `aeon.windows_paths.installed_resource_root()` returns and
+    # `aeon.integrity.verify_installed_manifest()` resolves against. Every
+    # immutable runtime file lives under `_internal/`, so the manifest must
+    # (a) enumerate paths RELATIVE to `_internal/`, and (b) live at
+    # `_internal/packaging/windows/RUNTIME_MANIFEST.json`. On older PyInstaller
+    # or unit-test scaffolding without `_internal/`, we fall back to bundle-root.
+    internal = bundle / "_internal"
+    if internal.is_dir():
+        walk_root = internal
+        resource_root_relative = "_internal"
+    else:
+        walk_root = bundle
+        resource_root_relative = "."
+
     files_meta = []
     total_bytes = 0
-    for root, _, filenames in os.walk(bundle):
+    for root, _, filenames in os.walk(walk_root):
         for fn in filenames:
             full = os.path.join(root, fn)
-            rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+            rel = os.path.relpath(full, walk_root).replace(os.sep, "/")
             # Skip the manifest itself if it already exists
             if rel == "packaging/windows/RUNTIME_MANIFEST.json":
                 continue
@@ -63,11 +79,12 @@ def main() -> int:
         "generated_at": time.time(),
         "release": release_meta,
         "build_architecture": "x64",
+        "resource_root_relative_to_bundle": resource_root_relative,
         "files": files_meta,
         "total_bytes": total_bytes,
         "file_count": len(files_meta),
     }
-    out_path = args.out or str(bundle / "packaging" / "windows" / "RUNTIME_MANIFEST.json")
+    out_path = args.out or str(walk_root / "packaging" / "windows" / "RUNTIME_MANIFEST.json")
     Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, sort_keys=True, indent=2, ensure_ascii=False)

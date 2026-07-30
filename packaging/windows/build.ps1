@@ -92,15 +92,19 @@ if (Test-Path (Join-Path $DistRoot 'Aeon')) { Remove-Item -Recurse -Force (Join-
 & (Join-Path $Venv 'Scripts\pyinstaller.exe') --clean (Join-Path $Pkg 'Aeon.spec')
 if ($LASTEXITCODE -ne 0) { throw "pyinstaller failed" }
 
-# 7. Bundle-smoke test
-Write-Host "[build] bundle smoke test" -ForegroundColor Cyan
-& (Join-Path $Venv 'Scripts\python.exe') (Join-Path $Pkg 'verify_bundle.py') `
-    --bundle (Join-Path $DistRoot 'Aeon')
-
-# 8. Manifest generation
+# 7. Manifest generation MUST happen before the bundle-smoke test, because
+#    Aeon.exe --verify-installation reads the manifest.
 Write-Host "[build] runtime manifest" -ForegroundColor Cyan
 & (Join-Path $Venv 'Scripts\python.exe') (Join-Path $Pkg 'generate_runtime_manifest.py') `
     --bundle (Join-Path $DistRoot 'Aeon') `
     --release (Join-Path $Pkg 'RELEASE.json')
+if ($LASTEXITCODE -ne 0) { throw "generate_runtime_manifest failed" }
+
+# 8. Bundle-smoke test — Aeon.exe --version, --verify-installation, --worker.
+#    A non-zero exit here stops the build; the workflow's A6 step runs it too.
+Write-Host "[build] bundle smoke test" -ForegroundColor Cyan
+& (Join-Path $Venv 'Scripts\python.exe') (Join-Path $Pkg 'verify_bundle.py') `
+    --bundle (Join-Path $DistRoot 'Aeon')
+if ($LASTEXITCODE -ne 0) { throw "verify_bundle failed" }
 
 Write-Host "[build] DONE — dist\Aeon\Aeon.exe" -ForegroundColor Green

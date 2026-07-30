@@ -23,10 +23,12 @@ FAIL: list = []
 
 
 def _run(argv, *, timeout=60, expect=0):
-    """Run a subprocess with no shell; return (rc, stdout, stderr)."""
+    """Run a subprocess with no shell; return (rc, stdout, stderr).
+    expect=None accepts any RC and records no failure for RC alone
+    (used when the caller only wants to inspect stdout)."""
     p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout,
                         stdin=subprocess.DEVNULL, shell=False)
-    if p.returncode != expect:
+    if expect is not None and p.returncode != expect:
         FAIL.append({"argv": argv, "rc": p.returncode, "expected": expect,
                       "stdout_tail": p.stdout[-400:], "stderr_tail": p.stderr[-400:]})
     return p.returncode, p.stdout, p.stderr
@@ -53,8 +55,10 @@ def main():
         except Exception as e:
             FAIL.append({"stage": "--version parse", "detail": str(e)})
 
-    # 2. --verify-installation runs; either passes or reports a structured error
-    rc, out, err = _run([str(exe), "--verify-installation"], expect=None)  # accept any RC
+    # 2. --verify-installation runs and MUST pass — integrity is a hard gate
+    #    for Tier A: if the frozen bundle's manifest is missing or a hash does
+    #    not match, that's a real defect and Tier A stays red.
+    rc, out, err = _run([str(exe), "--verify-installation"], expect=0)
     try:
         json.loads(out)
     except Exception as e:

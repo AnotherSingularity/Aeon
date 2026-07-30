@@ -3,7 +3,7 @@
 # Prerequisites:
 #   * Inno Setup 6.x installed (default path: %ProgramFiles(x86)%\Inno Setup 6)
 #   * packaging\windows\build.ps1 already produced dist\Aeon\Aeon.exe and
-#     dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json
+#     dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json (PyInstaller 6.x onedir)
 #
 # Output: dist\installer\AeonSetup.exe
 
@@ -13,7 +13,7 @@ Set-StrictMode -Version Latest
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Iss = Join-Path $PSScriptRoot 'AeonInstaller.iss'
 $Bundle = Join-Path $Root 'dist\Aeon\Aeon.exe'
-$Manifest = Join-Path $Root 'dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json'
+$Manifest = Join-Path $Root 'dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json'
 $InstallerOut = Join-Path $Root 'dist\installer'
 
 if (-not (Test-Path $Bundle)) {

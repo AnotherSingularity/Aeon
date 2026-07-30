@@ -285,7 +285,7 @@ jobs:
       - name: A7 runtime manifest verification round-trip
         shell: pwsh
         run: |
-          $manifest = "dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json"
+          $manifest = "dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json"
           if (-not (Test-Path $manifest)) { throw "runtime manifest missing: $manifest" }
           # Structural sanity: parse + non-empty file list
           $m = Get-Content $manifest -Raw | ConvertFrom-Json
@@ -357,7 +357,7 @@ jobs:
           $deps       = Get-Content build_reports\dependency-inventory.json -Raw | ConvertFrom-Json
           $tests      = Get-Content build_reports\windows-test-report.json -Raw | ConvertFrom-Json
           $build      = Get-Content build_reports\windows-build-report.json -Raw | ConvertFrom-Json
-          $manifest   = Get-Content "dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json" -Raw | ConvertFrom-Json
+          $manifest   = Get-Content "dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json" -Raw | ConvertFrom-Json
           $release    = Get-Content "packaging\windows\RELEASE.json" -Raw | ConvertFrom-Json
 
           $ev = @{
@@ -391,7 +391,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path release_artifacts | Out-Null
           Copy-Item dist\installer\AeonSetup.exe                             release_artifacts\
           Copy-Item dist\installer\AeonSetup.exe.sha256                      release_artifacts\
-          Copy-Item dist\Aeon\packaging\windows\RUNTIME_MANIFEST.json        release_artifacts\
+          Copy-Item dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json        release_artifacts\
           Copy-Item packaging\windows\RELEASE.json                           release_artifacts\release-metadata.json
           Copy-Item build_reports\windows-build-report.json                  release_artifacts\
           Copy-Item build_reports\windows-test-report.json                   release_artifacts\
