@@ -47,7 +47,7 @@ if (Test-Path $Requirements) {
     & (Join-Path $Venv 'Scripts\python.exe') -m pip install `
         torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
     & (Join-Path $Venv 'Scripts\python.exe') -m pip install `
-        safetensors sentencepiece pyyaml numpy pyinstaller==6.6.0
+        safetensors sentencepiece pyyaml "numpy<2" pyinstaller==6.11.1
 }
 
 # 3. Run the full regression suite (must be 155/155 or newer) BEFORE building.

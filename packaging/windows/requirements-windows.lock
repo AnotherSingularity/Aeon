@@ -11,8 +11,13 @@ torch==2.5.1+cpu
 safetensors>=0.4,<1.0
 sentencepiece>=0.2,<1.0
 pyyaml>=6.0
-numpy>=1.24,<3.0
+# torch 2.5.1 was built against numpy 1.x. Numpy 2.x has known ABI issues
+# with older torch native extensions on Windows-frozen builds (triggers
+# ImportError('cannot load module more than once per process') inside the
+# frozen worker even when Python 3.11 caches sys.modules correctly).
+numpy>=1.24,<2.0
 
-# Build tooling
-pyinstaller==6.6.0
+# Build tooling. PyInstaller 6.10+ contains the fix that lets torch 2.5+
+# survive freezing without double-loading torch._C.
+pyinstaller==6.11.1
 pyinstaller-hooks-contrib>=2024.1

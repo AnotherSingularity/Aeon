@@ -47,15 +47,20 @@ aeon_hidden = [
     'aeon.config', 'aeon.config.schema', 'aeon.config.preflight',
 ]
 
-# --- PyTorch CPU: pin the specific submodules Aeon actually touches ---
-# Note: torch collect_submodules pulls in the whole distribution; we prefer
-# explicit hidden imports for the CPU forward/backward + optimizer + Cayley SVD.
+# --- PyTorch CPU: minimal hidden imports; torch's own PyInstaller hook
+# (in _pyinstaller_hooks_contrib.stdhooks.hook-torch) runs collect_all('torch')
+# which enumerates every torch module, .pyd, and DLL. Duplicating those in
+# hidden_imports causes PyInstaller 6.x to register torch._C twice under
+# different resolution paths, and at runtime CPython 3.11's multi-phase
+# native-init guard raises ImportError('cannot load module more than once
+# per process'). Keep this list to modules that are not reachable from a
+# static import graph starting at Aeon's code (i.e. purely lazy names).
+# `torch._C._distributed_c10d` is deliberately absent — it lives in the
+# CUDA build and PyInstaller warns "not found" when the CPU build is
+# installed.
 torch_hidden = [
-    'torch', 'torch._C', 'torch._C._distributed_c10d',
-    'torch.nn', 'torch.nn.functional',
-    'torch.optim', 'torch.optim.adamw',
-    'torch.linalg', 'torch.autograd',
-    'torch.utils', 'torch.utils.data',
+    'torch.optim.adamw',
+    'torch.linalg',
     'torch.random',
 ]
 
