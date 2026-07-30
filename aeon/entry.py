@@ -243,4 +243,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    # PyInstaller on Windows requires this to be the FIRST executable statement
+    # in the frozen entry point. Without it, any child process (torch DataLoader
+    # workers, autograd hooks that spawn) re-enters Aeon.exe recursively at
+    # spawn time instead of running the target function, and the worker exits
+    # with a bare non-zero rc and no stderr (windowed subsystem swallows the
+    # spawn-time crash). Cheap no-op in source mode.
+    import multiprocessing
+    multiprocessing.freeze_support()
     sys.exit(main())
