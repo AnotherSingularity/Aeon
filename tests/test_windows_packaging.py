@@ -49,10 +49,40 @@ def test_spec_uses_onedir_and_windowed():
     assert "upx=False" in src, "§W5 forbids UPX"
 
 
+def test_spec_excludes_tests_and_uses_cpu_torch_wheel():
+    """The CPU-only guarantee comes from (a) the CPU torch wheel in the
+    lockfile and (b) the workflow's `A5 assert frozen bundle shape` step
+    which scans dist\\Aeon for cudart*/cudnn*/nvcuda* DLLs — NOT from
+    excluding the Python `torch.cuda` module. That module is small
+    pure-Python glue; excluding it crashes aeon.job.worker at
+    `torch.cuda.is_available()` on the frozen bundle."""
+    import re
+    src = open(os.path.join(PKG, "Aeon.spec"), encoding="utf-8").read()
+    # Tests must still be excluded.
+    assert "'tests'" in src, "spec must exclude tests directory"
+    # `torch.cuda` and `torch.backends.cudnn` must NOT appear inside the
+    # excludes= list literal (they may appear in a comment explaining the
+    # rationale — that's fine).
+    excludes_match = re.search(r"excludes=\[(.*?)\]", src, re.DOTALL)
+    assert excludes_match, "spec must declare an excludes= list"
+    excludes_code = "\n".join(
+        line for line in excludes_match.group(1).splitlines()
+        if not line.strip().startswith("#"))
+    for must_be_absent in ("'torch.cuda'", "'torch.backends.cudnn'"):
+        assert must_be_absent not in excludes_code, (
+            f"spec excludes {must_be_absent} — the frozen worker crashes at "
+            f"torch.cuda.is_available(). CPU-only is enforced by the wheel "
+            f"and the DLL scan, not by Python-side exclusion.")
+    # And the CPU wheel enforcement lives in the lockfile.
+    lock = open(os.path.join(PKG, "requirements-windows.lock"),
+                 encoding="utf-8").read()
+    assert "torch==2.5.1+cpu" in lock, "lock must pin CPU torch"
+
+
 def test_spec_excludes_test_dir_and_cuda():
-    src = open(os.path.join(PKG, "Aeon.spec")).read()
-    for banned in ("'tests'", "torch.cuda", "torch.backends.cudnn"):
-        assert banned in src, f"spec must exclude {banned}"
+    """Kept under its historical name for CI-log continuity; delegates to
+    the strengthened check above."""
+    test_spec_excludes_tests_and_uses_cpu_torch_wheel()
 
 
 def test_runtime_hook_exists_and_sets_aeon_data_dir_on_windows():

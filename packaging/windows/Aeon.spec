@@ -100,8 +100,14 @@ a = Analysis(
     excludes=[
         # Do NOT ship the whole test suite
         'tests', 'aeon.tests',
-        # No CUDA in the CPU build
-        'torch.cuda', 'torch.backends.cudnn',
+        # CUDA RUNTIME (cudart/cudnn/nvcuda DLLs) is enforced by the torch
+        # CPU wheel + the A5 "No CUDA libs" DLL scan. The Python `torch.cuda`
+        # module is small pure-Python glue that safely returns False from
+        # is_available() when no CUDA runtime is present; excluding it
+        # crashes aeon.job.worker with ModuleNotFoundError at
+        # `torch.cuda.is_available()`. Same for torch.backends.cudnn. Both
+        # stay INCLUDED — the CPU-only guarantee lives in the wheel + the
+        # DLL scan, not in Python-side exclusion.
         # No dev-only integrations
         'matplotlib', 'IPython', 'notebook',
         'pytest', 'pytest_asyncio',
