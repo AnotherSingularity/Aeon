@@ -42,7 +42,7 @@ jobs:
   # -------------------------------------------------------------------------
   verify-source:
     name: A1 verify source (baseline descent + W0-W9 ledger)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       short_sha: ${{ steps.info.outputs.short_sha }}
@@ -425,7 +425,7 @@ jobs:
   attest:
     name: A10 build provenance
     needs: build-frozen
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
