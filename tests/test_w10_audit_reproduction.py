@@ -77,15 +77,18 @@ def test_worker_uses_corpus_path():
 # A4 — FLIPPED by W10-2. The worker now uses the F3 protected envelope.
 # ---------------------------------------------------------------------------
 def test_worker_uses_protected_checkpoint():
+    """W10-2 flipped this. W10-4 refactored save via generation_save,
+    which internally calls protected_save. Either mention counts; direct
+    atomic_save / strict_load calls remain forbidden."""
     src = _read("aeon/job/worker.py")
+    gen = _read("aeon/job/generation.py")
     assert "from aeon.protected_checkpoint import" in src, (
-        "W10-2: worker must import the protected envelope APIs")
-    assert "protected_save" in src, (
-        "W10-2: worker must call protected_save")
-    assert "protected_load" in src, (
-        "W10-2: worker must call protected_load on resume")
-    # Direct atomic_save/strict_load calls are forbidden in code lines
-    # (comments still allowed).
+        "worker must still import protected-load APIs")
+    assert ("protected_save" in src or "generation_save" in src), (
+        "W10-2+W10-4: worker save path must go through protected_save "
+        "(directly or via generation_save)")
+    assert "protected_save" in gen, "generation_save must call protected_save"
+    assert "protected_load" in src
     code_lines = [line for line in src.splitlines()
                     if not line.lstrip().startswith("#")]
     body = "\n".join(code_lines)
@@ -101,10 +104,15 @@ def test_worker_uses_protected_checkpoint():
 def test_gui_authenticated_checkpoint_claim_is_accurate():
     gui = _read("aeon/launcher/gui.py")
     worker = _read("aeon/job/worker.py")
+    gen = _read("aeon/job/generation.py")
     assert "authenticated checkpoint" in gui, (
         "GUI still uses the 'authenticated checkpoint' wording (that's fine)")
-    assert "protected_save" in worker, (
-        "W10-2: the claim is now backed by protected_save in the worker")
+    # protected_save may live in generation_save now (W10-4 refactor).
+    assert ("protected_save" in worker or "generation_save" in worker), (
+        "W10-2+W10-4: the claim is backed by protected_save via "
+        "generation_save in the worker")
+    assert "protected_save" in gen, (
+        "W10-4: generation_save must call protected_save")
     assert "ensure_job_hmac_keyref" in worker, (
         "W10-2: the HMAC key comes from the per-job key store")
 
@@ -257,16 +265,27 @@ def test_checkpoint_provenance_falls_back_to_unknown_when_no_git():
 
 
 # ---------------------------------------------------------------------------
-# A16 — .prev rotation is not one atomic envelope
+# A16 — FLIPPED by W10-4. Atomic per-generation checkpoint chain with
+# COMPLETE markers now guarantees a crash cannot leave a half-rotated
+# envelope discoverable.
 # ---------------------------------------------------------------------------
-def test_checkpoint_rotation_not_atomic_across_envelope():
-    src = _read("aeon/checkpoint.py")
-    # No generation-directory or COMPLETE marker in the current code
-    for hallmark in ("COMPLETE", "generation-", "envelope_atomic"):
-        assert hallmark not in src, (
-            f"checkpoint must not YET carry {hallmark!r} — the audit "
-            "reproduction is that rotation is not atomic across the whole "
-            "envelope (flip at W10-4)")
+def test_checkpoint_rotation_is_atomic_across_envelope():
+    """W10-4 flipped. The atomic-generation implementation lives in
+    aeon/job/generation.py rather than aeon/checkpoint.py — the E3 file
+    stays unchanged so inherited tests keep passing — and the worker's
+    _save_checkpoint calls generation_save which writes a COMPLETE
+    marker LAST and then atomically renames the .tmp directory."""
+    gen_src = _read("aeon/job/generation.py")
+    assert "COMPLETE_MARKER" in gen_src and 'STATE_FILENAME = "state.pt"' in gen_src
+    assert "def generation_save" in gen_src
+    assert "os.rename(str(tmp), str(target))" in gen_src, (
+        "W10-4: promotion must be a single atomic rename")
+    assert "LATEST_POINTER" in gen_src and "os.replace" in gen_src, (
+        "W10-4: latest-authorized.txt update must be atomic")
+    worker = _read("aeon/job/worker.py")
+    assert "from aeon.job.generation import" in worker
+    assert "generation_save(job.checkpoint_dir" in worker
+    assert "discard_incomplete(job.checkpoint_dir)" in worker
 
 
 # ---------------------------------------------------------------------------

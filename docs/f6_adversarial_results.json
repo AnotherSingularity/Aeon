@@ -2,7 +2,7 @@
   "cases": [
     {
       "actual_response": "CheckpointIncompatible: patch_manifest_version mismatch: got 999, expected 1",
-      "audit_event_id": "d7a9c960-c524-4f72-bab5-b4d2295f5a93",
+      "audit_event_id": "145ff952-7812-4dee-b2c9-689d2b3f13ac",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -14,11 +14,11 @@
       "precondition": "attacker forges patch_manifest_version",
       "recovery": "possible",
       "threat_id": "T15",
-      "ts": 1785510688.111503
+      "ts": 1785511283.1836977
     },
     {
       "actual_response": "CheckpointIncompatible: vocab_size mismatch: ckpt=64 runtime=99999 — reject rather than silently swap tokenizer semantics",
-      "audit_event_id": "e6eaef4a-9390-4557-997c-fb4a42639d3c",
+      "audit_event_id": "4c14e2bd-0704-4285-8e28-92c31022598a",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -30,11 +30,11 @@
       "precondition": "attacker supplies mismatched runtime config",
       "recovery": "possible",
       "threat_id": "T18",
-      "ts": 1785510688.1364594
+      "ts": 1785511283.2038884
     },
     {
       "actual_response": "AssertionError: seq 2: content hash mismatch",
-      "audit_event_id": "776bd2b7-c2c8-4abb-ab5c-01c57c53f904",
+      "audit_event_id": "e011a0b4-55bb-421b-aea6-8cdec5501c71",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -46,11 +46,11 @@
       "precondition": "attacker rewrites middle event",
       "recovery": "possible",
       "threat_id": "T14",
-      "ts": 1785510688.1435893
+      "ts": 1785511283.2105088
     },
     {
       "actual_response": "CheckpointCorrupt: missing envelope metadata: <tmp>/ck.pt.meta.json",
-      "audit_event_id": "54aa43e9-9a77-4afa-9593-85a4993c120c",
+      "audit_event_id": "8382844e-0f5a-4425-b04d-932770ce87bb",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -62,11 +62,11 @@
       "precondition": ".meta.json deleted",
       "recovery": "possible",
       "threat_id": "T10",
-      "ts": 1785510688.1553292
+      "ts": 1785511283.2243712
     },
     {
-      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected e9f014c83ec5a8acb9e70197c09577455feff43777fb8c768d677f5e203c1c0a, got ea9e2312fb9096786ad4f206659b0fe8087c2b93af2dbe2a412ad252994c1fd3",
-      "audit_event_id": "710acde2-5a33-4d54-9919-d5ce5f5cddd5",
+      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected a6a23c67d4853e08e68e76c8234e959b1688c80cce0a1fabf8d38efd3f588cc7, got 76143d87f3dd2ac60a177cf38a4a45edbed809116f0cbb22fc987af970cc6bb3",
+      "audit_event_id": "8836f6e3-b655-45b5-ab48-bc2f0e172a4a",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -78,11 +78,11 @@
       "precondition": "attacker has write access to runs/",
       "recovery": "possible",
       "threat_id": "T10",
-      "ts": 1785510688.1695645
+      "ts": 1785511283.239734
     },
     {
-      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected 9f6d47f75268d534997c9602b4e32823ff3ce9cabf13e54ce567ed6c2a81ae0d, got 37a4b50893eef41d9880da28eda585ad0119029e3724d1ecedaa3908b340f0df",
-      "audit_event_id": "cfe8a3e8-0655-4eae-b3cb-b4f13eca590d",
+      "actual_response": "CheckpointCorrupt: sha256 mismatch: expected 645d50a5814166bcbbc1a3df319f33b62e932e6e34ddc1eb3a5073a889132737, got a729c504f3f004e8edc9546bf8f41bba5e107cbb61fbd7611af1f4401df0d4da",
+      "audit_event_id": "8406aeba-7c5f-45f9-bf36-65043dc68e19",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -94,11 +94,11 @@
       "precondition": "attacker replaces payload keeping legit meta",
       "recovery": "possible",
       "threat_id": "T10",
-      "ts": 1785510688.191863
+      "ts": 1785511283.2624993
     },
     {
       "actual_response": "AntiRollbackViolation: checkpoint authorized_step 100 < current 500; explicit RecoveryDecision required",
-      "audit_event_id": "f15a7501-3404-4673-a52b-3b5dd3ab5429",
+      "audit_event_id": "2d445215-91f8-436b-9eac-2c0e5c04bffa",
       "category": "artifact",
       "containment": "contained",
       "detection": "detected",
@@ -110,11 +110,11 @@
       "precondition": "attacker replays older checkpoint",
       "recovery": "possible",
       "threat_id": "T11",
-      "ts": 1785510688.2031696
+      "ts": 1785511283.2730105
     },
     {
       "actual_response": "ProvenanceError: source x: sha256 mismatch expected=0000000000000000000000000000000000000000000000000000000000000000 actual=b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-      "audit_event_id": "d910fdd9-2b02-465a-a5d7-648d680a6331",
+      "audit_event_id": "ff7b9c46-9d55-4179-b76f-22723af9ac30",
       "category": "data",
       "containment": "contained",
       "detection": "detected",
@@ -126,11 +126,11 @@
       "precondition": "attacker declares a sha256 that does not match the file",
       "recovery": "possible",
       "threat_id": "T02",
-      "ts": 1785510688.2059042
+      "ts": 1785511283.2756662
     },
     {
       "actual_response": "ProvenanceError: source s1: missing origin; source s1: missing acquired_at; source s1: missing license_status; source s1: missing content_sha256; source s1: missing preprocessing_version",
-      "audit_event_id": "94412f42-11e9-47a1-b09f-a656be3bcc7a",
+      "audit_event_id": "b539889b-a98f-4cdc-a988-2e9991131a3b",
       "category": "data",
       "containment": "contained",
       "detection": "detected",
@@ -142,11 +142,11 @@
       "precondition": "attacker submits a manifest missing required fields",
       "recovery": "possible",
       "threat_id": "T02",
-      "ts": 1785510688.205994
+      "ts": 1785511283.2757528
     },
     {
       "actual_response": "ProvenanceError: source s1: quarantined sources may not enter train",
-      "audit_event_id": "76e0af5b-b3de-4860-ae6c-7e3ce0d1bd82",
+      "audit_event_id": "9303e39d-8f5c-4e1f-97c1-5ab3d3b84dbf",
       "category": "data",
       "containment": "contained",
       "detection": "detected",
@@ -158,11 +158,11 @@
       "precondition": "attacker marks source quarantined but requests train partition",
       "recovery": "possible",
       "threat_id": "T03",
-      "ts": 1785510688.2060418
+      "ts": 1785511283.275803
     },
     {
       "actual_response": "no offender",
-      "audit_event_id": "b9d53513-ac83-4e85-b12d-2ae5b450e675",
+      "audit_event_id": "969c5110-4ab9-4c56-b757-015575c7b928",
       "category": "runtime",
       "containment": "n/a",
       "detection": "n/a",
@@ -174,11 +174,11 @@
       "precondition": "static verifier",
       "recovery": "not_required",
       "threat_id": "T07",
-      "ts": 1785510688.206963
+      "ts": 1785511283.2767375
     },
     {
       "actual_response": "no offender",
-      "audit_event_id": "5b9322ba-e3be-436a-95ce-d05243830ea9",
+      "audit_event_id": "38a2b778-dd1a-44da-b8ce-e817fb4d93e2",
       "category": "runtime",
       "containment": "n/a",
       "detection": "n/a",
@@ -190,11 +190,11 @@
       "precondition": "static verifier",
       "recovery": "not_required",
       "threat_id": "T04",
-      "ts": 1785510688.3125036
+      "ts": 1785511283.3857462
     },
     {
       "actual_response": "RuntimePolicyError: seq_len 99999 exceeds ceiling 8192",
-      "audit_event_id": "ebc085b6-c217-4704-bf80-25d403e0c173",
+      "audit_event_id": "0aba5c70-cda7-4192-b14a-d060c2cfc16b",
       "category": "runtime",
       "containment": "contained",
       "detection": "detected",
@@ -206,11 +206,11 @@
       "precondition": "attacker sets seq_len=99999",
       "recovery": "possible",
       "threat_id": "T13",
-      "ts": 1785510688.5213368
+      "ts": 1785511283.5748405
     },
     {
       "actual_response": "RuntimePolicyError: denied read: '<absolute>/passwd' outside allowed roots",
-      "audit_event_id": "be2316c9-9a5e-4f8c-8808-91ff89fc9642",
+      "audit_event_id": "77cfb254-54b3-4886-bb7d-edc8a888a52d",
       "category": "runtime",
       "containment": "contained",
       "detection": "detected",
@@ -222,11 +222,11 @@
       "precondition": "attacker requests read of <absolute>/passwd",
       "recovery": "possible",
       "threat_id": "T15",
-      "ts": 1785510688.5215335
+      "ts": 1785511283.5750148
     },
     {
       "actual_response": "RuntimePolicyError: denied read: '<tmp>/repo/docs/escape' outside allowed roots",
-      "audit_event_id": "e70ba51e-5348-43c8-bc0d-49fc388a4498",
+      "audit_event_id": "b49e622e-057d-4c87-a589-75330f5a94ef",
       "category": "runtime",
       "containment": "contained",
       "detection": "detected",
@@ -238,11 +238,11 @@
       "precondition": "attacker plants symlink inside allow-listed dir",
       "recovery": "possible",
       "threat_id": "T15",
-      "ts": 1785510688.5221856
+      "ts": 1785511283.5756083
     },
     {
       "actual_response": "AssertionError: K=8 != 16",
-      "audit_event_id": "a2be9db2-05f0-466c-a3ba-fcf860a18ef5",
+      "audit_event_id": "0b3c048f-75f0-41d1-8b4f-8cf28099c38a",
       "category": "model_state",
       "containment": "contained",
       "detection": "detected",
@@ -254,11 +254,11 @@
       "precondition": "attacker sets model.K=8",
       "recovery": "possible",
       "threat_id": "T15",
-      "ts": 1785510688.52282
+      "ts": 1785511283.5764158
     },
     {
       "actual_response": "holds=False sigma_Wh=5.0",
-      "audit_event_id": "8201cec6-8891-4847-9218-ae2e3cdb4bc7",
+      "audit_event_id": "30a5d71c-da27-45d7-8b0d-2f1b0ce0a346",
       "category": "model_state",
       "containment": "n/a (structural check)",
       "detection": "detected",
@@ -270,11 +270,11 @@
       "precondition": "adversary bypasses _build",
       "recovery": "possible",
       "threat_id": "T15",
-      "ts": 1785510688.5244975
+      "ts": 1785511283.5776622
     },
     {
       "actual_response": "all fp32",
-      "audit_event_id": "7a9441c8-96e2-437c-95df-546c74b94399",
+      "audit_event_id": "71982614-3fc7-43e6-afae-aaa893ad8df6",
       "category": "model_state",
       "containment": "n/a",
       "detection": "n/a",
@@ -286,11 +286,11 @@
       "precondition": "model.to(bf16)",
       "recovery": "not_required",
       "threat_id": "T15",
-      "ts": 1785510688.528251
+      "ts": 1785511283.58146
     },
     {
       "actual_response": "refused; .prev preserved",
-      "audit_event_id": "f795acdd-aac9-4e08-b05a-9080cc68734c",
+      "audit_event_id": "e4518ac9-4f73-4ac3-b716-910b348e28d9",
       "category": "availability",
       "containment": "contained",
       "detection": "detected",
@@ -302,11 +302,11 @@
       "precondition": "attacker corrupts newest checkpoint",
       "recovery": "possible",
       "threat_id": "T16",
-      "ts": 1785510688.5564954
+      "ts": 1785511283.603616
     },
     {
       "actual_response": "prior checkpoint intact",
-      "audit_event_id": "eb54a79e-68e7-4899-bc46-f4f9f8b142b1",
+      "audit_event_id": "57400623-045a-4807-84e4-29da58f16f62",
       "category": "availability",
       "containment": "contained",
       "detection": "n/a",
@@ -318,7 +318,7 @@
       "precondition": "disk full during save",
       "recovery": "possible",
       "threat_id": "T16",
-      "ts": 1785510688.5814805
+      "ts": 1785511283.6236362
     }
   ],
   "phase": "F6",

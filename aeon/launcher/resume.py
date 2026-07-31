@@ -66,11 +66,18 @@ def enumerate_checkpoints(
 
     if not os.path.isdir(checkpoint_dir):
         return []
-    pattern = os.path.join(checkpoint_dir, "ckpt_*.pt")
+    # W10-4: new-format generation-<N>/state.pt AND legacy ckpt_<N>.pt.
+    paths: List[str] = []
+    for child in sorted(os.listdir(checkpoint_dir)):
+        full = os.path.join(checkpoint_dir, child)
+        if os.path.isdir(full) and child.startswith("generation-") and not child.endswith(".tmp"):
+            state = os.path.join(full, "state.pt")
+            if os.path.exists(state) and os.path.exists(os.path.join(full, "COMPLETE")):
+                paths.append(state)
+    paths.extend(p for p in glob.glob(os.path.join(checkpoint_dir, "ckpt_*.pt"))
+                  if not (p.endswith(".prev") or p.endswith(".tmp")))
     candidates: List[CheckpointCandidate] = []
-    for p in glob.glob(pattern):
-        if p.endswith(".prev") or p.endswith(".tmp"):
-            continue
+    for p in paths:
         meta = _read_meta(p)
         if meta is None:
             candidates.append(CheckpointCandidate(

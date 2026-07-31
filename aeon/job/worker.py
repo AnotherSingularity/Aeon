@@ -81,12 +81,16 @@ def _run_training_loop(job: Job) -> None:
     import torch
     from aeon.hybrid import HybridModel
     from aeon.transformer import AeonTransformerConfig
-    from aeon.checkpoint import build_metadata, latest_checkpoint as latest_ckpt
+    from aeon.checkpoint import build_metadata
     from aeon.protected_checkpoint import (
         protected_load,
         CheckpointAuthenticationError, AntiRollbackViolation,
     )
     from aeon.job.key_store import ensure_job_hmac_keyref
+    from aeon.job.generation import (
+        generation_save, latest_authorized_generation, discard_incomplete,
+        Generation as _Gen,
+    )
     from aeon.observability import (Observer, parameter_accounting,
                                      optimizer_bytes_estimate, state_bytes,
                                      static_op_estimates,
@@ -164,25 +168,34 @@ def _run_training_loop(job: Job) -> None:
     intent = getattr(job, "intent", "start")
     start_step, data_position = 0, 0
 
+    # W10-4: sweep incomplete generation-*.tmp/ from any prior crash before
+    # deciding whether a "start" refusal fires. An incomplete generation
+    # cannot count as an active chain.
+    discard_incomplete(job.checkpoint_dir)
+
     if intent == "start":
         # Fresh training. Refuse to overwrite an existing chain in the target
         # checkpoint_dir — that's the audit's "no accidental overwrite" gate.
-        existing_ck = latest_ckpt(job.checkpoint_dir)
+        existing_ck = latest_authorized_generation(job.checkpoint_dir)
         if existing_ck is not None:
             mark_status(job, JobStatus.FAILED,
                          note=(f"start-new refused: checkpoint_dir already "
-                               f"contains an authenticated chain "
-                               f"({os.path.basename(existing_ck)}); pick Resume "
+                               f"contains an authenticated generation "
+                               f"({os.path.basename(existing_ck.path)}); pick Resume "
                                f"or use a fresh checkpoint_dir"))
             _write_result(job, {"ok": False, "reason": "start_new_refused_active_chain",
-                                 "existing_checkpoint": existing_ck})
+                                 "existing_generation": existing_ck.path})
             raise RuntimeError("start_new_refused_active_chain")
 
     elif intent in ("resume", "recover"):
         # Both intents load an authenticated checkpoint. The difference is
         # WHICH one and under WHAT authorization.
         if intent == "resume":
-            ck = job.resume_from_checkpoint or latest_ckpt(job.checkpoint_dir)
+            if job.resume_from_checkpoint:
+                ck = job.resume_from_checkpoint
+            else:
+                gen = latest_authorized_generation(job.checkpoint_dir)
+                ck = gen.state_path if gen is not None else None
             if ck is None:
                 mark_status(job, JobStatus.FAILED,
                              note="resume refused: no eligible authenticated checkpoint")
@@ -206,7 +219,11 @@ def _run_training_loop(job: Job) -> None:
                 _write_result(job, {"ok": False, "reason": "recovery_decision_malformed",
                                      "detail": str(e)})
                 raise
-            ck = job.resume_from_checkpoint or latest_ckpt(job.checkpoint_dir)
+            if job.resume_from_checkpoint:
+                ck = job.resume_from_checkpoint
+            else:
+                gen = latest_authorized_generation(job.checkpoint_dir)
+                ck = gen.state_path if gen is not None else None
             if ck is None:
                 mark_status(job, JobStatus.FAILED,
                              note="recover refused: no checkpoint to recover from")
@@ -337,26 +354,19 @@ def _run_training_loop(job: Job) -> None:
 def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,
                       data_position: int, obs,
                       *, tokenizer_id: str, corpus_id: str, keyref) -> None:
-    """Save a PROTECTED checkpoint (W10-2). This calls
-    ``aeon.protected_checkpoint.protected_save`` which:
-
-      * writes payload + `.meta.json` + `.sha256` atomically,
-      * computes an HMAC-SHA256 tag over (payload bytes ‖ metadata json)
-        under the per-job key returned by ``ensure_job_hmac_keyref``,
-      * records ``authorized_step`` so a subsequent resume enforces
-        anti-rollback,
-      * binds K=K_LOCKED and the E3 patch manifest into the envelope.
-
-    The launcher's Safe Stop message and the Resume selector can now
-    truthfully call these checkpoints authenticated — the flipping of
-    audit findings A4 and A5 is the whole point of this tranche.
+    """Save one PROTECTED, ATOMIC generation (W10-4). The full envelope
+    (payload + meta.json + sha256 + COMPLETE marker) is written into a
+    ``generation-<step>.tmp/`` directory and only promoted to
+    ``generation-<step>/`` after every component is verified round-trip.
+    A crash between the payload write and the metadata write leaves a
+    .tmp directory that no loader ever selects; the previous generation
+    remains authoritatively selectable via ``latest-authorized.txt``.
     """
     from aeon.checkpoint import build_metadata
-    from aeon.protected_checkpoint import protected_save
+    from aeon.job.generation import generation_save
 
     mark_status(job, JobStatus.CHECKPOINTING,
-                 note="saving protected authenticated checkpoint", step=step)
-    path = os.path.join(job.checkpoint_dir, f"ckpt_{step}.pt")
+                 note=f"saving protected generation-{step}", step=step)
     md = build_metadata(step=step, model_cfg=mcfg, train_cfg=tcfg, data_cfg=dcfg,
                          tokenizer_id=tokenizer_id,
                          corpus_id=corpus_id,
@@ -364,8 +374,9 @@ def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,
                          instrumentation_cfg={
                              "sample_every": int(tcfg.get("sample_every", 512)),
                              "enabled": bool(tcfg.get("observability", True))})
-    protected_save(path, model=model, optimizer=opt, metadata=md,
-                    keyref_mac=keyref, authorized_step=int(step))
+    gen = generation_save(job.checkpoint_dir, step,
+                           model=model, optimizer=opt, metadata=md,
+                           keyref=keyref, authorized_step=int(step))
     mark_status(job, JobStatus.RUNNING,
-                 note=f"protected checkpoint saved: {os.path.basename(path)}",
+                 note=f"protected generation saved: {os.path.basename(gen.path)}",
                  step=step)

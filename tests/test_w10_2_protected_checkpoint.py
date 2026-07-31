@@ -249,18 +249,21 @@ def test_anti_rollback_allows_older_checkpoint_with_recovery_decision():
 # Worker source: A4/A5 flipped
 # ---------------------------------------------------------------------------
 def test_worker_uses_protected_save_not_atomic_save():
+    """W10-2 introduced protected_save; W10-4 moved the call site into
+    aeon.job.generation.generation_save. Either mention counts — as long
+    as the worker DOES NOT call atomic_save/strict_load directly."""
     src = open(os.path.join(ROOT, "aeon/job/worker.py"), encoding="utf-8").read()
-    assert "protected_save" in src, (
-        "W10-2: worker._save_checkpoint must call protected_save")
-    # atomic_save may still appear as a string inside a comment or in the
-    # import list of another module, but it must not be called directly from
-    # aeon/job/worker.py's code lines.
-    import re
+    gen_src = open(os.path.join(ROOT, "aeon/job/generation.py"), encoding="utf-8").read()
+    assert ("protected_save" in src or "generation_save" in src), (
+        "W10-2: worker._save_checkpoint must call protected_save (directly "
+        "or via generation_save)")
+    assert "protected_save" in gen_src, (
+        "W10-4: generation_save must call protected_save")
     code_lines = [line for line in src.splitlines()
                     if not line.lstrip().startswith("#")]
     body_code = "\n".join(code_lines)
     assert "atomic_save(" not in body_code, (
-        "W10-2: worker must not call atomic_save directly (use protected_save)")
+        "W10-2: worker must not call atomic_save directly")
     assert "protected_load" in body_code, (
         "W10-2: worker resume must use protected_load")
     assert "strict_load(" not in body_code, (
