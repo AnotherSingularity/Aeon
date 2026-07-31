@@ -53,6 +53,15 @@ class Job:
     created_at: float
     aeon_source_commit: str
     aeon_release: str
+    # W10-3: distinct Start / Resume / Recovery intent. The worker consults
+    # this instead of tcfg["resume"] (which was a config-file toggle that
+    # could not distinguish the three GUI paths). "start" is the default and
+    # means fresh training. "resume" means load the most recent authenticated
+    # checkpoint from checkpoint_dir. "recover" means load a specific older
+    # authenticated checkpoint under recovery_decision_path.
+    intent: str = "start"
+    resume_from_checkpoint: Optional[str] = None
+    recovery_decision_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -105,7 +114,14 @@ def create_job(
     checkpoint_policy: Dict[str, Any],
     runtime_policy_id: str = "aeon-runtime-v1",
     security_policy_id: str = "aeon-security-v1",
+    intent: str = "start",
+    resume_from_checkpoint: Optional[str] = None,
+    recovery_decision_path: Optional[str] = None,
 ) -> Job:
+    if intent not in ("start", "resume", "recover"):
+        raise ValueError(f"intent must be 'start'|'resume'|'recover', got {intent!r}")
+    if intent == "recover" and not recovery_decision_path:
+        raise ValueError("recover intent requires recovery_decision_path")
     from aeon.version import RELEASE_METADATA
     job_id = uuid.uuid4().hex
     job_dir = str(jobs_dir() / job_id)
@@ -126,9 +142,14 @@ def create_job(
         created_at=time.time(),
         aeon_source_commit=RELEASE_METADATA.get("source_commit", "unknown"),
         aeon_release=RELEASE_METADATA.get("semantic_version", "unknown"),
+        intent=intent,
+        resume_from_checkpoint=(os.fspath(resume_from_checkpoint)
+                                 if resume_from_checkpoint else None),
+        recovery_decision_path=(os.fspath(recovery_decision_path)
+                                 if recovery_decision_path else None),
     )
     _atomic_write_json(job.job_json_path, job.to_dict())
-    mark_status(job, JobStatus.CREATED, note="job created")
+    mark_status(job, JobStatus.CREATED, note=f"job created (intent={intent})")
     return job
 
 
@@ -142,6 +163,12 @@ def load_job(job_dir_or_json: str) -> Optional[Job]:
         data = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return None
+    # W10-3 backward compatibility: pre-W10-3 job.json files have no
+    # intent / resume_from_checkpoint / recovery_decision_path fields.
+    # Treat those as intent="start" — the safest disposition.
+    data.setdefault("intent", "start")
+    data.setdefault("resume_from_checkpoint", None)
+    data.setdefault("recovery_decision_path", None)
     return Job(**data)
 
 

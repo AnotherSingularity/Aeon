@@ -110,17 +110,21 @@ def test_gui_authenticated_checkpoint_claim_is_accurate():
 
 
 # ---------------------------------------------------------------------------
-# A6 — Resume aliased to Start
+# A6 — FLIPPED by W10-3. Resume is a distinct flow.
 # ---------------------------------------------------------------------------
-def test_gui_resume_is_alias_of_start():
+def test_gui_resume_is_a_distinct_flow():
     src = _read("aeon/launcher/gui.py")
     tree = ast.parse(src)
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == "_on_resume":
-            # Body should be a single call to self._on_start()
-            body_source = ast.unparse(node.body[-1]) if hasattr(ast, "unparse") else ""
-            assert "_on_start" in body_source, (
-                "_on_resume must still call _on_start at W10-0 (flip at W10-3)")
+            body_source = ast.unparse(node) if hasattr(ast, "unparse") else ""
+            assert "self._on_start()" not in body_source, (
+                "W10-3: _on_resume must no longer alias _on_start")
+            assert ("latest_authenticated_checkpoint" in body_source
+                    or 'intent="resume"' in body_source
+                    or "intent='resume'" in body_source), (
+                "W10-3: _on_resume must consult latest_authenticated_checkpoint "
+                "and create a job with intent='resume'")
             return
     raise AssertionError("could not find _on_resume in gui.py")
 

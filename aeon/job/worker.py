@@ -157,43 +157,95 @@ def _run_training_loop(job: Job) -> None:
     # on first save, reused across restarts, kept out of the runtime manifest.
     keyref = ensure_job_hmac_keyref(job.job_dir, allow_create=True)
 
-    # Resume if a valid checkpoint exists — via protected_load, which enforces
-    # HMAC verification, anti-rollback (F3.3), and E3 sha256/schema/K/vocab
-    # gates in one call. Failures raise back to run_worker and mark FAILED.
+    # W10-3: distinct Start / Resume / Recovery intents. The `intent` field on
+    # the Job dataclass is the ONE source of truth. tcfg["resume"] is no
+    # longer consulted — a config-file toggle could not distinguish the three
+    # GUI paths.
+    intent = getattr(job, "intent", "start")
     start_step, data_position = 0, 0
-    if tcfg.get("resume"):
-        ck = latest_ckpt(job.checkpoint_dir)
-        if ck:
+
+    if intent == "start":
+        # Fresh training. Refuse to overwrite an existing chain in the target
+        # checkpoint_dir — that's the audit's "no accidental overwrite" gate.
+        existing_ck = latest_ckpt(job.checkpoint_dir)
+        if existing_ck is not None:
+            mark_status(job, JobStatus.FAILED,
+                         note=(f"start-new refused: checkpoint_dir already "
+                               f"contains an authenticated chain "
+                               f"({os.path.basename(existing_ck)}); pick Resume "
+                               f"or use a fresh checkpoint_dir"))
+            _write_result(job, {"ok": False, "reason": "start_new_refused_active_chain",
+                                 "existing_checkpoint": existing_ck})
+            raise RuntimeError("start_new_refused_active_chain")
+
+    elif intent in ("resume", "recover"):
+        # Both intents load an authenticated checkpoint. The difference is
+        # WHICH one and under WHAT authorization.
+        if intent == "resume":
+            ck = job.resume_from_checkpoint or latest_ckpt(job.checkpoint_dir)
+            if ck is None:
+                mark_status(job, JobStatus.FAILED,
+                             note="resume refused: no eligible authenticated checkpoint")
+                _write_result(job, {"ok": False, "reason": "resume_no_eligible_checkpoint"})
+                raise RuntimeError("resume_no_eligible_checkpoint")
+            recovery_decision = None
+        else:  # recover
+            from aeon.protected_checkpoint import RecoveryDecision as _RD
+            rd_path = job.recovery_decision_path
+            if not rd_path or not os.path.exists(rd_path):
+                mark_status(job, JobStatus.FAILED,
+                             note=f"recover refused: recovery_decision_path missing: {rd_path!r}")
+                _write_result(job, {"ok": False, "reason": "recovery_decision_missing"})
+                raise RuntimeError("recovery_decision_missing")
             try:
-                blob = protected_load(ck, keyref_mac=keyref,
-                                       expected_model_config=mcfg)
-            except CheckpointAuthenticationError as e:
+                rd_payload = json.loads(open(rd_path, encoding="utf-8").read())
+                recovery_decision = _RD(**rd_payload)
+            except Exception as e:
                 mark_status(job, JobStatus.FAILED,
-                             note=f"checkpoint authentication failed: {e}"[:400])
-                _write_result(job, {"ok": False,
-                                     "reason": "checkpoint_authentication_failed",
+                             note=f"recover refused: malformed RecoveryDecision: {e}")
+                _write_result(job, {"ok": False, "reason": "recovery_decision_malformed",
                                      "detail": str(e)})
                 raise
-            except AntiRollbackViolation as e:
+            ck = job.resume_from_checkpoint or latest_ckpt(job.checkpoint_dir)
+            if ck is None:
                 mark_status(job, JobStatus.FAILED,
-                             note=f"anti-rollback: {e}"[:400])
-                _write_result(job, {"ok": False,
-                                     "reason": "anti_rollback_violation",
-                                     "detail": str(e)})
-                raise
-            model.load_state_dict(blob["model"])
-            opt.load_state_dict(blob["optim"])
-            inner = blob["envelope_metadata"]["inner_metadata"]
-            start_step = int(inner["step"])
-            data_position = int(inner.get("data_position", 0))
-            rng = blob.get("rng") or {}
-            if "torch_cpu" in rng:
-                torch.random.set_rng_state(rng["torch_cpu"])
-            mark_status(job, JobStatus.STARTING,
-                         note=(f"resumed (protected) from "
-                               f"{os.path.basename(ck)} step={start_step} "
-                               f"authorized_step="
-                               f"{blob['envelope_metadata'].get('authorized_step')}"))
+                             note="recover refused: no checkpoint to recover from")
+                _write_result(job, {"ok": False, "reason": "recover_no_checkpoint"})
+                raise RuntimeError("recover_no_checkpoint")
+
+        try:
+            blob = protected_load(ck, keyref_mac=keyref,
+                                   expected_model_config=mcfg,
+                                   recovery_decision=recovery_decision)
+        except CheckpointAuthenticationError as e:
+            mark_status(job, JobStatus.FAILED,
+                         note=f"checkpoint authentication failed: {e}"[:400])
+            _write_result(job, {"ok": False,
+                                 "reason": "checkpoint_authentication_failed",
+                                 "detail": str(e)})
+            raise
+        except AntiRollbackViolation as e:
+            mark_status(job, JobStatus.FAILED,
+                         note=f"anti-rollback: {e}"[:400])
+            _write_result(job, {"ok": False,
+                                 "reason": "anti_rollback_violation",
+                                 "detail": str(e)})
+            raise
+        model.load_state_dict(blob["model"])
+        opt.load_state_dict(blob["optim"])
+        inner = blob["envelope_metadata"]["inner_metadata"]
+        start_step = int(inner["step"])
+        data_position = int(inner.get("data_position", 0))
+        rng = blob.get("rng") or {}
+        if "torch_cpu" in rng:
+            torch.random.set_rng_state(rng["torch_cpu"])
+        mark_status(job, JobStatus.STARTING,
+                     note=(f"{intent} (protected) from "
+                           f"{os.path.basename(ck)} step={start_step} "
+                           f"authorized_step="
+                           f"{blob['envelope_metadata'].get('authorized_step')}"))
+    else:
+        raise ValueError(f"unknown intent: {intent!r}")
 
     # W10-1: real corpus batches. The synthetic torch.randint next_batch is
     # gone. batches is a generator of (batch_dict, position_after) pairs

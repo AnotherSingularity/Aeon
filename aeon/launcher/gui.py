@@ -296,7 +296,28 @@ class LauncherApp:
             "Preflight", f"{res.verdict.value}\n\n" +
             "\n".join(f"[{c.status}] {c.name}: {c.detail}" for c in res.checks))
 
+    # W10-3: distinct Start / Resume / Recovery paths. Each creates a Job
+    # with a different `intent` field, spawns a fresh worker, and writes a
+    # distinct audit event under audit_dir/launcher_events.jsonl.
+
+    def _emit_launcher_event(self, kind: str, payload: dict) -> None:
+        """Best-effort structured event log — never raises."""
+        try:
+            from aeon.windows_paths import evidence_dir as evd
+            import time as _t
+            path = os.path.join(str(evd()), "launcher_events.jsonl")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"ts": _t.time(), "kind": kind, **payload},
+                                       sort_keys=True) + "\n")
+        except Exception:
+            pass
+
     def _on_start(self):
+        """Fresh training. Refuses if the target checkpoint_dir already
+        contains an authenticated chain — that's the audit's "no
+        accidental overwrite" gate. The worker enforces the same rule
+        server-side."""
         from aeon.job.manager import create_job
         from aeon.windows_paths import evidence_dir as evd, resolve_installed
         cfg = load_user_config(str(config_dir() / "user_config.json")) or {}
@@ -310,18 +331,96 @@ class LauncherApp:
                 metrics_dir=cfg.get("metrics_dir", str(user_data_root() / "metrics")),
                 audit_dir=cfg.get("evidence_dir", str(evd())),
                 checkpoint_policy={"interval": int(cfg.get("checkpoint_interval", 1000))},
+                intent="start",
             )
             spawn_worker(job)
             self.state["job"] = job; self.state["job_status"] = "STARTING"
+            self._emit_launcher_event("start_new_training",
+                {"job_id": job.job_id, "checkpoint_dir": job.checkpoint_dir})
+            # Persist the job dir so Resume can locate the HMAC key later.
+            cfg["last_job_dir"] = job.job_dir
+            atomic_write_user_config(str(config_dir() / "user_config.json"), cfg)
             self._render_status(); self._apply_gates()
         except Exception as e:
             self.messagebox.showerror("Aeon", f"start failed: {e}")
 
     def _on_resume(self):
-        # Resume is presented as: pick the most recent authenticated ckpt in the
-        # configured checkpoint_dir; start a new job with resume=True in config.
-        # Actual resume happens inside the worker via strict_load.
-        self._on_start()
+        """Resume Latest. Enumerates authenticated checkpoints under the
+        configured checkpoint_dir, picks the newest one, and spawns a
+        worker with intent='resume'. Refuses (with an explicit message)
+        if no authenticated checkpoint exists — the button gate in
+        _apply_gates should already prevent this path, but the runtime
+        check is defensive.
+
+        The worker's protected_load enforces MAC / anti-rollback /
+        schema/K/vocab gates in one call; failure surfaces as a FAILED
+        job status with a structured reason. Resume DOES NOT alias to
+        Start (W10-3 flip of audit finding A6)."""
+        from aeon.job.manager import create_job
+        from aeon.job.key_store import ensure_job_hmac_keyref
+        from aeon.launcher.resume import latest_authenticated_checkpoint
+        from aeon.windows_paths import evidence_dir as evd, resolve_installed
+
+        cfg = load_user_config(str(config_dir() / "user_config.json")) or {}
+        ckpt_dir = cfg.get("checkpoint_dir", str(default_checkpoint_dir()))
+
+        # Enumerate under a temp keyref BOUND TO NO JOB YET — but we can
+        # only authenticate the checkpoints if we have the ORIGINAL job's
+        # key, which lives at that job's job_dir/hmac.key. Convention: the
+        # launcher stores a pointer from checkpoint_dir back to job_dir in
+        # cfg["last_job_dir"], which _on_start writes after spawning. If
+        # the pointer is absent, the launcher must ask the user (owned by
+        # W10-9's polish); for W10-3 we tell them plainly and refuse.
+        last_job_dir = cfg.get("last_job_dir")
+        if not last_job_dir or not os.path.isdir(last_job_dir):
+            self.messagebox.showerror("Aeon",
+                "Resume requires a known-good previous job dir under "
+                f"{ckpt_dir!r}. None recorded in user_config.last_job_dir. "
+                "Start a new training run, or select a job dir via "
+                "Recovery (W10-9 will surface an authenticated picker).")
+            return
+
+        try:
+            keyref = ensure_job_hmac_keyref(last_job_dir, allow_create=False)
+        except Exception as e:
+            self.messagebox.showerror("Aeon", f"Resume: HMAC key unavailable: {e}")
+            return
+
+        cand = latest_authenticated_checkpoint(ckpt_dir, keyref)
+        if cand is None:
+            self.messagebox.showerror("Aeon",
+                f"Resume refused: no authenticated checkpoint under {ckpt_dir!r}.")
+            return
+
+        tcid = cfg.get("training_config_id", "aeon_350m_primary.yaml")
+        try:
+            job = create_job(
+                config_path=str(resolve_installed(f"configs/{tcid}")),
+                tokenizer_path=cfg.get("tokenizer_path"),
+                corpus_path=cfg.get("corpus_path"),
+                checkpoint_dir=ckpt_dir,
+                metrics_dir=cfg.get("metrics_dir", str(user_data_root() / "metrics")),
+                audit_dir=cfg.get("evidence_dir", str(evd())),
+                checkpoint_policy={"interval": int(cfg.get("checkpoint_interval", 1000))},
+                intent="resume",
+                resume_from_checkpoint=cand.path,
+            )
+            # Copy the HMAC key from the previous job so the new worker can
+            # authenticate. W10-6 replaces this with a signed manifest root.
+            import shutil as _shutil
+            _shutil.copy(os.path.join(last_job_dir, "hmac.key"),
+                          os.path.join(job.job_dir, "hmac.key"))
+            spawn_worker(job)
+            self.state["job"] = job; self.state["job_status"] = "STARTING"
+            self._emit_launcher_event("resume_latest",
+                {"job_id": job.job_id,
+                  "resume_from": cand.path,
+                  "resume_step": cand.step,
+                  "authorized_step": cand.authorized_step,
+                  "source_job_dir": last_job_dir})
+            self._render_status(); self._apply_gates()
+        except Exception as e:
+            self.messagebox.showerror("Aeon", f"Resume failed: {e}")
 
     def _on_stop_safe(self):
         j = self.state.get("job")
@@ -357,9 +456,64 @@ class LauncherApp:
             self.messagebox.showerror("Aeon", f"diagnose spawn failed: {e}")
 
     def _on_recovery(self):
-        self.messagebox.showinfo("Aeon",
-            "Recovery requires an operator-signed RecoveryDecision JSON. "
-            "Launch Aeon.exe --recover <request.json> for the authenticated path.")
+        """W10-3: distinct Recovery path. Spawns a worker with
+        intent='recover'; the worker validates the operator-signed
+        RecoveryDecision JSON, protected_load's the selected checkpoint
+        under anti-rollback bypass, and records an immutable audit event.
+        The dialog for enumerating known-good candidates + building the
+        RecoveryDecision interactively lands with W10-9. For W10-3 the
+        operator provides the JSON file directly."""
+        from aeon.job.manager import create_job
+        from aeon.windows_paths import evidence_dir as evd, resolve_installed
+
+        rd_path = self.filedialog.askopenfilename(
+            title="Select RecoveryDecision JSON (operator-signed)",
+            filetypes=[("JSON", "*.json")])
+        if not rd_path:
+            return
+
+        cfg = load_user_config(str(config_dir() / "user_config.json")) or {}
+        last_job_dir = cfg.get("last_job_dir")
+        if not last_job_dir or not os.path.isdir(last_job_dir):
+            self.messagebox.showerror("Aeon",
+                "Recovery requires a known-good previous job dir. None "
+                "recorded in user_config.last_job_dir.")
+            return
+
+        ck_path = self.filedialog.askopenfilename(
+            title="Select the authenticated checkpoint to recover from",
+            initialdir=cfg.get("checkpoint_dir", str(default_checkpoint_dir())),
+            filetypes=[("Aeon checkpoints", "*.pt")])
+        if not ck_path:
+            return
+
+        tcid = cfg.get("training_config_id", "aeon_350m_primary.yaml")
+        try:
+            job = create_job(
+                config_path=str(resolve_installed(f"configs/{tcid}")),
+                tokenizer_path=cfg.get("tokenizer_path"),
+                corpus_path=cfg.get("corpus_path"),
+                checkpoint_dir=cfg.get("checkpoint_dir", str(default_checkpoint_dir())),
+                metrics_dir=cfg.get("metrics_dir", str(user_data_root() / "metrics")),
+                audit_dir=cfg.get("evidence_dir", str(evd())),
+                checkpoint_policy={"interval": int(cfg.get("checkpoint_interval", 1000))},
+                intent="recover",
+                resume_from_checkpoint=ck_path,
+                recovery_decision_path=rd_path,
+            )
+            import shutil as _shutil
+            _shutil.copy(os.path.join(last_job_dir, "hmac.key"),
+                          os.path.join(job.job_dir, "hmac.key"))
+            spawn_worker(job)
+            self.state["job"] = job; self.state["job_status"] = "STARTING"
+            self._emit_launcher_event("recovery_authorized",
+                {"job_id": job.job_id,
+                  "checkpoint": ck_path,
+                  "recovery_decision": rd_path,
+                  "source_job_dir": last_job_dir})
+            self._render_status(); self._apply_gates()
+        except Exception as e:
+            self.messagebox.showerror("Aeon", f"Recovery failed: {e}")
 
     def _on_exit(self):
         # Closing the launcher must NOT terminate a live worker.
