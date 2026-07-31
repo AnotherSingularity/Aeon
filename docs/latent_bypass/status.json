@@ -1,0 +1,99 @@
+{
+  "$schema_version": 1,
+  "program": "L",
+  "base_commit": "7d07a44",
+  "base_program_close_commit": "7d07a44",
+  "theory_lock_document": "docs/LATENT_BYPASS_THEORY_LOCK.md",
+  "corpus_staging": {
+    "l0_l2_permitted_on_synthetic_fixture": true,
+    "l3_plus_requires_vendored_real_english": true,
+    "held_out_seal": "sealed",
+    "notes": "Per user directive 2026-07-31: L0-L2 may use the bounded synthetic-English fixture from W10-11 for wiring, signal-trace, and probe noninterference checks only. No causal, efficiency, likelihood-ratio, or bypass claim may be derived from that fixture. L3+ requires a vendored real-English public-domain corpus with authenticated partition manifest; the held-out test partition remains sealed until thresholds, reaction coordinates, and evidence criteria are locked at L3-L10."
+  },
+  "tranches": {
+    "L0": {
+      "closed": true,
+      "closed_at_commit": "c951293",
+      "closed_at": "2026-07-31T21:15:00Z",
+      "summary": "Theory lock + W10 inheritance + contracts. Frozen \u03c1 / z / existence condition / claim ladder before any observation. No runtime behaviour change."
+    },
+    "L1": {
+      "closed": false,
+      "summary": "Authoritative signal trace on HybridModel.forward via optional BypassProbe. Default forward-path bit-identical."
+    },
+    "L2": {
+      "closed": false,
+      "summary": "Visible barrier registry (aeon/bypass/barriers.py + benchmarks/latent_bypass/barriers.json). Metrics operate on visible data only. Thresholds calibrated on calibration partition, locked before evaluation."
+    },
+    "L3": {
+      "closed": false,
+      "summary": "Hidden reaction-coordinate framework (norm / directional / predictive). Fit on calibration only, evaluated held-out."
+    },
+    "L4": {
+      "closed": false,
+      "summary": "Bounded bypass telemetry per sampled window; sub-10% overhead target, 15% hard ceiling."
+    },
+    "L5": {
+      "closed": false,
+      "summary": "Causal intervention engine (evaluation-only), training-guarded."
+    },
+    "L6": {
+      "closed": false,
+      "summary": "English barrier benchmark set (long-range entity, delayed instructions, pronoun resolution, nested dependency, contradiction, state tracking, aliasing, negation)."
+    },
+    "L7": {
+      "closed": false,
+      "summary": "Cost and matched-control campaign; net-efficiency accounting."
+    },
+    "L8": {
+      "closed": false,
+      "summary": "Latent-state inference: held-out M0 vs M1 comparison with matched-capacity and shuffled-state controls."
+    },
+    "L9": {
+      "closed": false,
+      "summary": "Full-loop stability analysis; separate structural, projection, response, and empirical bounds."
+    },
+    "L10": {
+      "closed": false,
+      "summary": "Integrated bypass decision under all six existence conditions."
+    },
+    "L11": {
+      "closed": false,
+      "summary": "Closure report + final claim level. Jumping levels forbidden."
+    }
+  },
+  "claim_level_ladder": [
+    {
+      "level": 0,
+      "name": "THEORY_ONLY",
+      "corpus_required": "any"
+    },
+    {
+      "level": 1,
+      "name": "STRUCTURALLY_IMPLEMENTED",
+      "corpus_required": "synthetic_fixture_ok"
+    },
+    {
+      "level": 2,
+      "name": "OBSERVATIONAL_EVIDENCE",
+      "corpus_required": "real_english_vendored"
+    },
+    {
+      "level": 3,
+      "name": "CAUSAL_CHECKPOINT_EVIDENCE",
+      "corpus_required": "real_english_vendored"
+    },
+    {
+      "level": 4,
+      "name": "SMALL_SCALE_NET_EFFICIENCY_EVIDENCE",
+      "corpus_required": "real_english_vendored"
+    },
+    {
+      "level": 5,
+      "name": "REPEATED_COMPARATIVE_EVIDENCE",
+      "corpus_required": "real_english_vendored"
+    }
+  ],
+  "achieved_claim_level": 0,
+  "provisional_notes": "Level 0 (theory only). No observational, causal, efficiency, or bypass claim has been derived. L1 must not raise this above 1; L2 remains at 1. Levels 2+ require the vendored real-English corpus per the corpus_staging block."
+}
