@@ -52,13 +52,63 @@ class CheckpointCorrupt(RuntimeError):
 # Source-commit identity (best effort)
 # ---------------------------------------------------------------------------
 def source_commit_id() -> str:
+    """Return the source_commit for the currently running Aeon build.
+
+    W10-5 policy:
+
+    * If Aeon is running as a FROZEN application (PyInstaller onedir),
+      the value comes from ``aeon.version.RELEASE_METADATA["source_commit"]``,
+      which is populated at build time from ``packaging/windows/RELEASE.json``.
+      There is no `git rev-parse` fallback in frozen mode — a frozen build
+      has no `.git` directory and any git call would return "unknown",
+      which the audit's A15 finding correctly refused. If RELEASE_METADATA
+      is missing or reports ``source_commit == "unknown"`` in frozen mode,
+      raise ``SourceCommitUnavailable`` so protected_save/protected_load
+      fail closed rather than record an unknown-provenance checkpoint.
+
+    * In SOURCE-TREE (development) mode, prefer git rev-parse HEAD; fall
+      back to RELEASE_METADATA if the git binary is missing (e.g. tests
+      running in an unusual environment). Only in the source-tree case
+      is returning ``"unknown"`` acceptable, and only when git fails and
+      RELEASE_METADATA has nothing better either — that path corresponds
+      to a dev checkout without git installed, which is a legitimate
+      dev-only situation.
+    """
+    from aeon.windows_paths import is_frozen
+    from aeon.version import RELEASE_METADATA
+
+    rel_commit = RELEASE_METADATA.get("source_commit", "unknown")
+
+    if is_frozen():
+        if not rel_commit or rel_commit == "unknown":
+            raise SourceCommitUnavailable(
+                "frozen build has no source_commit in RELEASE_METADATA; "
+                "refusing to record checkpoint with unknown provenance")
+        return rel_commit
+
+    # Source-tree mode: git is authoritative.
     try:
-        return subprocess.run(
+        rev = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=2,
             cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ).stdout.strip() or "unknown"
+        ).stdout.strip()
+        if rev:
+            return rev
     except Exception:
-        return "unknown"
+        pass
+    # git absent or failed. Try RELEASE_METADATA before falling all the way
+    # back to "unknown".
+    if rel_commit and rel_commit != "unknown":
+        return rel_commit
+    return "unknown"
+
+
+class SourceCommitUnavailable(RuntimeError):
+    """Raised when the frozen build cannot report a real source_commit and
+    ``source_commit_id`` refuses to return ``"unknown"``. Callers should
+    surface this as a checkpoint-refusal so an operator can fix the
+    build metadata before shipping."""
+    pass
 
 
 # ---------------------------------------------------------------------------

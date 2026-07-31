@@ -251,17 +251,19 @@ def test_iss_upgrade_only_blocks_on_checkpointing():
 
 
 # ---------------------------------------------------------------------------
-# A15 — checkpoint provenance falls back to 'unknown' when no .git
+# A15 — FLIPPED by W10-5. Frozen mode consults RELEASE_METADATA and raises
+# SourceCommitUnavailable rather than returning 'unknown'.
 # ---------------------------------------------------------------------------
-def test_checkpoint_provenance_falls_back_to_unknown_when_no_git():
+def test_checkpoint_provenance_no_unknown_fallback_when_frozen():
     src = _read("aeon/checkpoint.py")
-    m = re.search(r"def source_commit_id.*?\n(?=def |\Z)", src, re.DOTALL)
+    assert "class SourceCommitUnavailable" in src
+    m = re.search(r"def source_commit_id.*?(?=\nclass |\ndef |\Z)",
+                    src, re.DOTALL)
     assert m
     body = m.group(0)
-    assert "git" in body and "rev-parse" in body
-    assert '"unknown"' in body, (
-        "source_commit_id must still return 'unknown' on frozen builds "
-        "(flip at W10-5 — use embedded RELEASE_METADATA)")
+    assert "is_frozen()" in body
+    assert "RELEASE_METADATA" in body
+    assert "SourceCommitUnavailable" in body
 
 
 # ---------------------------------------------------------------------------
