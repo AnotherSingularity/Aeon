@@ -1,10 +1,71 @@
 # W9 — Definition of Done and Release Closure
 
+> **WITHDRAWN PENDING W10 CORRECTION** — see `docs/W10_AUDIT_REPRODUCTION.md`
+>
+> An external audit against this branch (2026-07-30) identified rows in the
+> matrix below whose runtime does not actually satisfy the claim they carry.
+> The rows themselves are preserved for auditability, but each affected row
+> is downgraded to **WITHDRAWN** below with a pointer at the W10-N tranche
+> that will actually correct it. The overall W9 verdict is now:
+>
+> * **Windows installer readiness:** NO-GO until W10 closes.
+> * **English-training readiness through the GUI:** NO-GO — the worker
+>   trains on synthetic `torch.randint` tokens (§A1 in the reproduction doc).
+> * **Authenticated-checkpoint claim in the GUI worker path:** WITHDRAWN —
+>   the GUI worker uses `aeon.checkpoint.atomic_save`, not the HMAC/anti-
+>   rollback envelope in `aeon.protected_checkpoint` (§A4).
+> * **Runtime integrity claim covering the whole installed bundle:**
+>   WITHDRAWN — the manifest generator walks `_internal/` only, so
+>   `Aeon.exe` at the bundle root is outside coverage; malformed entries are
+>   silently skipped; unexpected extra files are not rejected (§A9, A10, A11).
+> * **Installer pre-install verification:** WITHDRAWN — the Inno
+>   `PrepareToInstall` step is a `FileExists` check against a build-tree
+>   path that does not exist beside a distributed installer (§A13).
+> * **Upgrade blocks live worker:** WITHDRAWN — only the `CHECKPOINTING`
+>   status blocks upgrade; `RUNNING`/`STARTING`/`STOP_REQUESTED` do not
+>   (§A14), and `CloseApplications=force` may terminate the worker anyway.
+>
+> The original matrix below is not deleted; the "downgrade table" that
+> immediately follows lists every corrected row.
+
 **Branch:** `claude/funny-cori-a3k5cf` (Windows-packaging additive branch)
 **Baseline:** `0d7bbb9` (F9.1 close-out — inherited)
-**Tip at closure:** `ce2ec83` + this W9 commit
+**Tip at closure:** `ce2ec83` + this W9 commit (row statuses corrected by W10-0)
 **Scope:** Windows desktop installer + launcher for the certified Aeon
 runtime. Packaging only; no architectural change.
+
+## 0. W10-0 downgrade table (authoritative status corrections)
+
+Every row cited in this table is downgraded to **WITHDRAWN** below. Where the
+matrix row still reads "MET" its status is superseded by this table.
+
+| row | original status | corrected status | reason (audit finding) | owned by |
+|---|---|---|---|---|
+| 5 (Safe-stop protocol / "atomic **authenticated** checkpoint") | MET | **WITHDRAWN** | The GUI worker calls `atomic_save`, not `protected_save` (A4, A5) | W10-2 |
+| 10 (17-check preflight — READY/READY_WITH_WARNINGS/BLOCKED) | MET | **WITHDRAWN** | Preflight can return READY with no usable tokenizer or corpus (A17) | W10-8 |
+| 14 (Runtime manifest per-file SHA-256, verified at launch) | MET | **WITHDRAWN** | Manifest excludes top-level `Aeon.exe`; verifier silently skips malformed entries; unexpected extra files not rejected (A9, A10, A11); trust root is a bare JSON beside the files it verifies (N4) | W10-6 |
+| 17 (Installer refuses upgrade during CHECKPOINTING) | MET | **WITHDRAWN** | Only CHECKPOINTING blocks; RUNNING/STARTING/STOP_REQUESTED do not (A14). Also `CloseApplications=force` may terminate a live worker. | W10-7 |
+| 18 (Bundled runtime manifest verified before install) | MET | **WITHDRAWN** | `PrepareToInstall` is `FileExists(ManifestPath)` — presence, not content — and points at a build-tree path that does not exist beside a distributed installer (A13) | W10-7 |
+| 29 (Atomic writes for checkpoint) | MET | **WITHDRAWN** | `.prev` payload and its verification metadata are not rotated as one atomic envelope; no per-generation completion marker (A16) | W10-4 |
+| 20 (Release metadata with source_commit) | MET | **WITHDRAWN** | Frozen builds fall back to `source_commit: unknown` because the runtime calls `git rev-parse HEAD` (A15) | W10-5 |
+
+**Also downgraded (implicit MET claims elsewhere in this document):**
+
+* §2 "Inherited invariants — untouched by W-series" row "Checkpoint HMAC-
+  authenticated envelope, anti-rollback" — the module exists but the GUI
+  worker path does not use it. **WITHDRAWN** for the GUI worker path;
+  MET only for direct `aeon.protected_checkpoint` callers. Owner W10-2.
+* Any row that references "authenticated checkpoint" as a GUI-worker
+  guarantee — same withdrawal, same owner.
+
+**W9 verdict after corrections.** 26 rows remain MET (entry-point dispatch,
+launcher structure, worker lifecycle mechanics, config-schema forbidden-
+field check, path handling, no-shell scanner, workflow structure, tests).
+7 rows are WITHDRAWN. 2 rows (36, 37) remain TRACKED-BY-CI as before. 2
+rows (38, 39) remain MET-source-only. W9 is NOT a shipping certification.
+
+---
+
 
 ## 1. Directive definition-of-done, item by item
 

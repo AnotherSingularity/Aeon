@@ -19,8 +19,14 @@ test_stream_independence         5
 test_substrate_port              5
 test_threat_model                8
 test_tokenizer                   2
+test_w10_audit_reproduction      24
 test_windows_packaging           15
 test_windows_workflows           16
-TOTAL: 223
+TOTAL: 247
 INHERITED (E/F-series, unchanged): 155
 NEW (W-series): 68   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 15 + test_windows_workflows 16)
+NEW (W10-0 reproductions): 24  (test_w10_audit_reproduction — assert CURRENT broken behavior; flip at W10-1..W10-11)
+
+Note: the W10-0 reproductions are NOT proof of correctness. They lock the
+CURRENT audit-reported broken state so future W10 tranches must flip each
+assertion when they correct it. See docs/W10_AUDIT_REPRODUCTION.md.

@@ -22,10 +22,13 @@ on:
         required: false
         default: false
   push:
+    # W10-0 §16: while W10 corrections are open, branch-push must NOT
+    # trigger the Windows build. Only tag pushes and manual dispatch do.
+    # This stops the wasted-runner cycle that burned CI minutes against a
+    # build we now know would ship a misleading installer even if it
+    # succeeded.
     tags:
       - 'v*'
-    branches:
-      - 'claude/**'
 
 concurrency:
   group: windows-release-${{ github.ref }}

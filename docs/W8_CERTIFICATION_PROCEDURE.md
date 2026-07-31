@@ -1,5 +1,48 @@
 # W8 — Windows Certification Procedure (Tier A + Tier B)
 
+> **WITHDRAWN PENDING W10 CORRECTION** — see `docs/W10_AUDIT_REPRODUCTION.md`
+>
+> The clean-machine validation checklist in §4 of this document overstates
+> what actually happens at runtime. Specifically:
+>
+> * The check "Aeon.exe launches without a console" — MET.
+> * The check "Installation verification passes" — currently a per-manifest-
+>   entry SHA-256 check that (a) does not cover `Aeon.exe` itself, (b)
+>   silently skips malformed manifest entries, and (c) never detects
+>   unexpected files added to the installed tree. Corrected under W10-6.
+> * The check "Modified installed executable is detected" — WITHDRAWN.
+>   A modification to `Aeon.exe` at the bundle root is not currently
+>   detected because the manifest excludes it (A9 in W10-0). Corrected
+>   under W10-6.
+> * The check "Modified DLL is detected" — partially MET (DLLs inside
+>   `_internal/` are covered; DLLs added to the bundle root are not).
+> * The check "Corrupted checkpoint is rejected / Unauthorized rollback
+>   is rejected" — the GUI worker path uses `aeon.checkpoint.strict_load`,
+>   which validates a SHA-256 sidecar but does NOT enforce HMAC
+>   authentication or anti-rollback. WITHDRAWN for the GUI worker path;
+>   corrected under W10-2.
+> * The check "Safe Stop creates an authenticated checkpoint" — WITHDRAWN
+>   for the same reason. Corrected under W10-2.
+> * The check "Resume Latest authenticates and resumes" — WITHDRAWN.
+>   `_on_resume` in the launcher currently aliases `_on_start` (A6).
+>   Corrected under W10-3.
+> * The check "Upgrade preservation / installer refuses upgrade during
+>   active training" — WITHDRAWN. Only `CHECKPOINTING` blocks; a
+>   `RUNNING` worker can be terminated by `CloseApplications=force`
+>   (A14). Corrected under W10-7.
+> * The check "Valid preflight" — WITHDRAWN. Preflight can return
+>   READY without a usable tokenizer or corpus (A17). Corrected under
+>   W10-8.
+> * The check "First-run wizard opens" — MET as a UI action; the
+>   wizard does not actually validate provenance end to end.
+>   Partial WITHDRAWAL — corrected under W10-9.
+>
+> The procedure below is preserved because the source deliverables it
+> references (the `windows-release.yml` / `windows-certification.yml`
+> workflows) still exist and are structurally valid. Nothing here should
+> be executed as a shipping certification until W10 closes.
+
+
 **Two distinct tiers.** The certified `AeonSetup.exe` is not one thing:
 
 | tier | label emitted into evidence | who executes it | what it proves |
