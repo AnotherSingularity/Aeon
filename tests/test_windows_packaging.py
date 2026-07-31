@@ -188,12 +188,17 @@ def test_manifest_generator_uses_internal_subdir_when_present():
         assert os.path.exists(m_path), f"manifest not at {m_path}: {r.stdout}"
         m = json.load(open(m_path, encoding="utf-8"))
         assert m["resource_root_relative_to_bundle"] == "_internal"
-        # The top-level Aeon.exe MUST NOT appear in the manifest — it's outside
-        # the runtime resource root (verified via Authenticode when signed).
+        # W10-6: top-level bundle files (Aeon.exe, python311.dll, launcher
+        # shims) are now enumerated with a "../" prefix and scope="top_level"
+        # so the full bundle is covered by the manifest. See
+        # tests/test_w10_6_runtime_integrity.py for the closure tests.
+        top_level_paths = [f["path"] for f in m["files"]
+                             if f["path"].startswith("../")]
+        assert "../Aeon.exe" in top_level_paths, (
+            "W10-6/A9: top-level Aeon.exe must be enumerated with '../' prefix")
         for f in m["files"]:
-            assert not f["path"].startswith("../"), f
-            assert f["path"] != "Aeon.exe", (
-                "top-level Aeon.exe leaked into runtime manifest")
+            if f["path"].startswith("../"):
+                assert f.get("scope") == "top_level", f
 
 
 # ---- W7: release_metadata never writes secrets -----------------------------

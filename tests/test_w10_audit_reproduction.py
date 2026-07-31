@@ -161,46 +161,50 @@ def test_worker_emits_zero_placeholder_metrics():
 
 
 # ---------------------------------------------------------------------------
-# A9 — manifest excludes top-level Aeon.exe
+# A9 — manifest excludes top-level Aeon.exe  [CORRECTED W10-6]
 # ---------------------------------------------------------------------------
 def test_manifest_excludes_top_level_aeon_exe():
     src = _read("packaging/windows/generate_runtime_manifest.py")
-    # The generator walks internal/ when present. Top-level Aeon.exe sits
-    # one level above and is not enumerated. Documented at W10-0; corrected
-    # at W10-6.
-    assert "internal = bundle / \"_internal\"" in src
-    assert "walk_root = internal" in src
-    # And no CODE path adds Aeon.exe from bundle-root back into the manifest.
+    # W10-6 flip: the generator now enumerates top-level bundle files with a
+    # "../" prefix and scope="top_level". A9 CORRECTED.
     code_only = "\n".join(
         line for line in src.splitlines() if not line.lstrip().startswith("#"))
-    assert "Aeon.exe" not in code_only, (
-        "manifest generator must not YET include a special-case for the "
-        "top-level Aeon.exe in CODE (flip at W10-6)")
+    assert 'rel = f"../{name}"' in code_only, (
+        "W10-6/A9: manifest generator must enumerate top-level bundle files "
+        "with a '../' prefix")
+    assert '"scope": "top_level"' in code_only, (
+        "W10-6/A9: top-level entries must carry scope='top_level'")
 
 
 # ---------------------------------------------------------------------------
-# A10 — malformed manifest entries are silently skipped
+# A10 — malformed manifest entries are silently skipped  [CORRECTED W10-6]
 # ---------------------------------------------------------------------------
 def test_verifier_silently_skips_malformed_entries():
     src = _read("aeon/integrity.py")
-    # The `continue` on missing rel/expected is the flaw.
-    assert "if not rel or not expected:" in src
-    assert re.search(r"if not rel or not expected:\s*\n\s*continue", src), (
-        "verify_installed_manifest must still silently `continue` on "
-        "malformed entries at W10-0 (flip at W10-6 — must fail closed)")
+    # W10-6 flip: the silent `continue` on malformed entries has been
+    # replaced with a `malformed.append(...)` that fails verification.
+    code_only = "\n".join(
+        line for line in src.splitlines() if not line.lstrip().startswith("#"))
+    assert re.search(r"if not rel or not expected:\s*\n\s*continue", code_only) is None, (
+        "W10-6/A10: silent continue on malformed entries must be gone")
+    assert "malformed.append" in code_only, (
+        "W10-6/A10: verifier must record malformed entries so verification fails")
 
 
 # ---------------------------------------------------------------------------
-# A11 — unexpected extra files in installed tree are not rejected
+# A11 — unexpected extra files in installed tree are not rejected  [CORRECTED W10-6]
 # ---------------------------------------------------------------------------
 def test_verifier_ignores_unexpected_extra_files():
     src = _read("aeon/integrity.py")
-    # verify_installed_manifest only iterates manifest entries; it does not
-    # walk the installed tree looking for files that are NOT in the manifest.
-    assert "os.walk" not in src, (
-        "integrity verifier must not YET walk the installed tree looking "
-        "for unexpected files (flip at W10-6)")
-    assert "unexpected" not in src.lower() or True
+    # W10-6 flip: verify_installed_manifest now walks the installed tree
+    # and rejects unlisted .exe/.dll/.pyd/etc. files.
+    code_only = "\n".join(
+        line for line in src.splitlines() if not line.lstrip().startswith("#"))
+    assert "os.walk" in code_only, (
+        "W10-6/A11: verifier must walk the installed tree to detect "
+        "unexpected files")
+    assert "unexpected" in code_only, (
+        "W10-6/A11: verifier must populate an 'unexpected' report list")
 
 
 # ---------------------------------------------------------------------------

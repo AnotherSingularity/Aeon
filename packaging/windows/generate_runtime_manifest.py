@@ -62,6 +62,25 @@ def main() -> int:
 
     files_meta = []
     total_bytes = 0
+    # W10-6: also enumerate top-level files (Aeon.exe, launcher shims, etc.)
+    # so the runtime manifest covers them too. They are recorded with a
+    # "../" prefix relative to the resource_root (`_internal/`) so the
+    # verifier can distinguish top-level from internal at load time. The
+    # audit's A9 finding was that a modification to top-level Aeon.exe
+    # was not detected by verify_installed_manifest — that stops here.
+    top_level_files = []
+    if internal.is_dir():
+        for name in sorted(os.listdir(bundle)):
+            full = bundle / name
+            if full.is_file():
+                rel = f"../{name}"
+                size = full.stat().st_size
+                total_bytes += size
+                top_level_files.append({"path": rel, "bytes": size,
+                                          "sha256": _sha256(str(full)),
+                                          "scope": "top_level"})
+    files_meta.extend(top_level_files)
+
     for root, _, filenames in os.walk(walk_root):
         for fn in filenames:
             full = os.path.join(root, fn)
@@ -72,14 +91,29 @@ def main() -> int:
             size = os.path.getsize(full)
             total_bytes += size
             files_meta.append({"path": rel, "bytes": size,
-                                "sha256": _sha256(full)})
+                                "sha256": _sha256(full),
+                                "scope": "internal"})
     files_meta.sort(key=lambda x: x["path"])
 
     manifest = {
+        "manifest_schema_version": 2,  # bumped from implicit 1 by W10-6
         "generated_at": time.time(),
         "release": release_meta,
         "build_architecture": "x64",
         "resource_root_relative_to_bundle": resource_root_relative,
+        "trust_root": {
+            # W10-6: honest trust-posture record. The current unsigned
+            # development build authenticates the manifest against
+            # accidental corruption via SHA-256 per file. It does NOT
+            # authenticate against an adversary who can replace both the
+            # manifest and every file it lists. The signed-manifest /
+            # embedded-digest trust root arrives when Authenticode
+            # signing lands in the Tier A build.
+            "kind": "sha256_per_file",
+            "signed_manifest": False,
+            "adversary_integrity_scope": "none",
+            "accidental_integrity_scope": "full_bundle_including_top_level",
+        },
         "files": files_meta,
         "total_bytes": total_bytes,
         "file_count": len(files_meta),
