@@ -18,8 +18,10 @@
       "summary": "Theory lock + W10 inheritance + contracts. Frozen \u03c1 / z / existence condition / claim ladder before any observation. No runtime behaviour change."
     },
     "L1": {
-      "closed": false,
-      "summary": "Authoritative signal trace on HybridModel.forward via optional BypassProbe. Default forward-path bit-identical."
+      "closed": true,
+      "closed_at_content_commit": "PENDING",
+      "closed_at_closure_commit": "PENDING",
+      "summary": "Authoritative signal trace on HybridModel.forward via optional AeonDiagnosticObserver (aeon/bypass/signal_trace.py). Default forward path byte-identical to observer=None: logits, loss, and gradients agree exactly under identical RNG state. One RecursionWindowEvent per K=16 boundary; both transformer and substrate source norms non-zero; single broadcast per window; Recursion state fp32 at every boundary; K=16 numbering correct with short-final-window handling; observer cannot mutate parameters; raw text never captured by default; TensorCaptureBudget defined and defaults to disabled; observer exceptions propagate. IP-preservation firewall passes. Runtime forward path unchanged. Claim level remains 0 (no observational or causal claim earned)."
     },
     "L2": {
       "closed": false,

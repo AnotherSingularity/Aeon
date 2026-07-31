@@ -109,7 +109,16 @@ class HybridModel(nn.Module):
         self.s_proj = nn.Linear(self.d_state, h_rec, bias=False)      # substrate readout -> manifold
 
     # ---- forward ----------------------------------------------------------
-    def forward(self, input_ids, attention_mask=None, labels=None):
+    def forward(self, input_ids, attention_mask=None, labels=None,
+                *, observer=None, intervention=None):
+        # L1: `observer` is an optional AeonDiagnosticObserver. When
+        # None (the default), the forward path below runs unchanged —
+        # NO diagnostic allocation, copy, sync, serialization, or
+        # branch beyond the single `if observer is not None:` guard
+        # per boundary. `intervention` is reserved for L5 (declared
+        # here so the L0 signature contract is stable) and MUST be
+        # None outside evaluation-only diagnostic runs; the L5 tranche
+        # owns the training-guard check.
         B, T = input_ids.shape
         device = input_ids.device
 
@@ -145,11 +154,64 @@ class HybridModel(nn.Module):
             # optional 3rd input: window mean of the ORIGINAL embeddings (B, D)
             e_w = emb[:, start:end, :].mean(dim=1) if self.recursion.use_embedding_input else None
 
+            # L1 signal-trace hook — inserted BEFORE recursion.step so
+            # we can capture h_before and h_after around the exact
+            # tensors that are executed. Guarded by observer-not-None
+            # so the default forward path is byte-identical.
+            if observer is not None:
+                _h_before_snapshot = h
+                _h_after_snapshot = None  # filled after recursion.step
+
             # slow-clock tick; truncate carry + substrate state at the boundary (D2)
             h, c = self.recursion.step(
                 s_w.float(), t_w.float(), h.detach(), c.detach(),
                 e=e_w.float() if e_w is not None else None)
             self.substrate.detach_state()
+
+            if observer is not None:
+                # L1: emit exactly ONE event per K-window boundary.
+                # Every tensor is detached before summarisation.
+                from aeon.bypass.signal_trace import (
+                    RecursionWindowEvent as _RWE,
+                    _shape_of, _dtype_of, _norm_of, _detached_delta_norm,
+                )
+                try:
+                    _cert_margin = float(self.recursion.audit().get("margin_h", 0.0))
+                except Exception:
+                    _cert_margin = None
+                _event = _RWE(
+                    schema_version=1,
+                    run_id=getattr(observer, "run_id", "unknown"),
+                    checkpoint_generation_id=getattr(
+                        observer, "checkpoint_generation_id", None),
+                    window_index=w,
+                    token_start=start,
+                    token_end=end,
+                    k_value=self.K,
+                    transformer_source_shape=_shape_of(t_w),
+                    transformer_source_dtype=_dtype_of(t_w),
+                    transformer_source_norm=_norm_of(t_w),
+                    substrate_source_shape=_shape_of(s_w),
+                    substrate_source_dtype=_dtype_of(s_w),
+                    substrate_source_norm=_norm_of(s_w),
+                    recursion_state_before_shape=_shape_of(_h_before_snapshot),
+                    recursion_state_before_dtype=_dtype_of(_h_before_snapshot),
+                    recursion_state_before_norm=_norm_of(_h_before_snapshot),
+                    recursion_state_after_shape=_shape_of(h),
+                    recursion_state_after_dtype=_dtype_of(h),
+                    recursion_state_after_norm=_norm_of(h),
+                    recursion_delta_norm=_detached_delta_norm(
+                        _h_before_snapshot, h),
+                    broadcast_shape=_shape_of(h_cond),
+                    broadcast_dtype=_dtype_of(h_cond),
+                    broadcast_norm=_norm_of(h_cond),
+                    transformer_consumed_broadcast=True,
+                    substrate_consumed_broadcast=True,
+                    certificate_margin=_cert_margin,
+                    source_record_ids=tuple(
+                        getattr(observer, "source_record_ids", ())),
+                )
+                observer.on_recursion_window(_event)
 
         inject_signal = torch.stack(inject_cols, dim=1).to(compute_dtype)    # (B,T,H_rec)
         injected = self.transformer.inject(hidden, inject_signal)            # (B,T,D)

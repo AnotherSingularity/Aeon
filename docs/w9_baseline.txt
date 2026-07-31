@@ -35,9 +35,11 @@ test_w10_audit_reproduction      24
 test_windows_packaging           15
 test_windows_workflows           16
 test_l0_theory_lock              13
-test_w10_reconciliation          12
+test_w10_reconciliation          13
 test_w10_11_negative_matrix      26
-TOTAL: 411
+test_ip_preservation             11
+test_l1_signal_trace             14
+TOTAL: 437
 INHERITED (E/F-series, unchanged): 155
 NEW (W-series): 68   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 15 + test_windows_workflows 16)
 NEW (W10-0 reproductions): 24  (test_w10_audit_reproduction — A1/A2/A3 flipped by W10-1; A4/A5 by W10-2; A6 by W10-3; A16 by W10-4; A15 by W10-5; A9/A10/A11 by W10-6)
@@ -55,6 +57,8 @@ NEW (W10-11): 1  (test_w10_11_end_to_end_certification — bounded English fixtu
 NEW (L0):    13  (test_l0_theory_lock — W10 inheritance, theory-lock document, aeon/bypass/contracts.py protocols, latent_bypass/status.json claim ladder at level 0, K=16 + hybrid.py unchanged)
 NEW (W10-R): 12  (test_w10_reconciliation — enforcement of directive reconciliation matrix: vocab-mismatch fail-closed, periodic-validation eval mode + no_grad, release-identity Resume-vs-Recovery, frozen preflight release-identity check, GUI error-path evidence)
 NEW (W10-R): 26  (test_w10_11_negative_matrix — 26 consolidated negative-matrix rows covering directive's 25 failure modes)
+NEW (L0.1):  11  (test_ip_preservation — Program B firewall: modules/classes/signatures/invariants preserved, no outbound network, six V0.02.02 patches active)
+NEW (L1):    14  (test_l1_signal_trace — observer=None byte-identical to observer=NullObserver; both source signals nonzero; single broadcast per window; Recursion fp32; K=16 boundary timing; no mutation; no raw text; TensorCaptureBudget default-off; exceptions propagate)
 NEW (L-series gate): 3  (test_l_series_prerequisite_lock — refuses landings until every W10 tranche closed)
 
 Note: the W10-0 reproductions lock the audit-reported broken state so future

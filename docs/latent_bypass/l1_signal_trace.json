@@ -1,0 +1,70 @@
+{
+  "$schema_version": 1,
+  "tranche": "L1",
+  "base_commit_l0_1": "1b59b8c",
+  "instrumentation_module": "aeon/bypass/signal_trace.py",
+  "wired_in": "aeon/hybrid.py::HybridModel.forward",
+  "trace_event_type": "aeon.bypass.signal_trace.RecursionWindowEvent",
+  "observer_protocol": "aeon.bypass.signal_trace.AeonDiagnosticObserver",
+  "traced_tensors": {
+    "transformer_source": "t_w = t_all[:, end-1, :]",
+    "substrate_source": "s_w = s_proj(mean_readout)",
+    "recursion_state_before": "h snapshot immediately before recursion.step",
+    "recursion_state_after": "h immediately after recursion.step",
+    "recursion_delta_norm": "L2 norm of (after - before) under torch.no_grad()",
+    "broadcast": "h_cond (the held state for the window)",
+    "transformer_consumption_edge": "transformer.inject(hidden, inject_signal) — inject_signal built from h_cond",
+    "substrate_consumption_edge": "x_i = emb_in[:, i, :] + cond_in — cond_in = cond_proj(h_cond)"
+  },
+  "fixtures": {
+    "tokenizer_identity": "not_used_at_L1",
+    "corpus_identity": "not_used_at_L1",
+    "model_configuration": {
+      "h_rec": 64,
+      "K": 16,
+      "hidden_size": 64,
+      "num_attention_heads": 2,
+      "num_key_value_heads": 2,
+      "head_dim": 32,
+      "seq_lens_exercised": [24, 32, 48]
+    },
+    "checkpoint_identity": "not_used_at_L1"
+  },
+  "traced_window_counts": {"seq_len_24": 2, "seq_len_32": 2, "seq_len_48": 3},
+  "results": {
+    "noninterference": "PASS",
+    "logits_bit_identical_with_null_observer": true,
+    "loss_bit_identical_with_null_observer": true,
+    "gradients_bit_identical_with_null_observer": true,
+    "model_parameters_unchanged_after_observer_forward": true,
+    "both_transformer_and_substrate_source_signals_nonzero": true,
+    "single_broadcast_per_window": true,
+    "both_streams_consume_broadcast": true,
+    "recursion_state_dtype_fp32_at_every_boundary": true,
+    "K_equals_16_boundaries_reported_correctly": true,
+    "short_final_window_handled": true,
+    "no_raw_text_captured_by_default": true,
+    "tensor_capture_budget_defaults_to_disabled_and_frozen": true,
+    "observer_exceptions_propagate": true
+  },
+  "instrumentation_overhead": {
+    "observer_is_None": "one branch check per window, zero allocations",
+    "observer_active": "six detached norms + one recursion.audit() + one dataclass + one callback per boundary",
+    "measured_impact_on_regression_time_seconds": "under 1s across all L1 tests"
+  },
+  "architecture_preservation": "PASS (tests/test_ip_preservation.py)",
+  "ip_preservation": "PASS (aeon/hybrid.py only gains two optional None-default kwargs; aeon/bypass/signal_trace.py adds evaluation-only helpers; no outbound-network paths introduced)",
+  "known_limitations": [
+    "Full raw-tensor capture deferred to L4 (TensorCaptureBudget defined but disabled by default).",
+    "Resume-continuity trace not exercised in L1's own tests; W10-11 already proves the resume cycle, and L4 will add the joint trace+resume evidence.",
+    "source_record_ids always empty at L1; L4 will populate from the corpus batch source when telemetry lands.",
+    "L1 remains at claim level 0. STRUCTURALLY_IMPLEMENTED (level 1) is achievable jointly with L2 closure; the ladder value in docs/latent_bypass/status.json.achieved_claim_level stays at 0 until L2 lands."
+  ],
+  "claim_level_after_L1": 0,
+  "next_gate": "L2 — visible barrier registry",
+  "closure_state": {
+    "closed": true,
+    "closed_at_content_commit": "PENDING",
+    "closed_at_closure_commit": "PENDING"
+  }
+}

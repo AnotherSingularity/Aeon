@@ -164,16 +164,20 @@ def test_evaluation_intervention_is_frozen_and_has_kind():
 def test_status_json_well_formed_and_frame_locked():
     with open(STATUS_JSON, encoding="utf-8") as fh:
         s = json.load(fh)
-    # L0 achievements and level 0 recorded
-    assert s["achieved_claim_level"] == 0, (
-        "L0 must record achieved_claim_level=0 — no observation "
-        "supports a higher level yet")
-    # L0 closed, L1-L11 open
+    # Achieved claim level must remain <= 1 without a vendored corpus.
+    # (Level 1 STRUCTURALLY_IMPLEMENTED is reachable jointly by L1+L2.)
+    assert s["achieved_claim_level"] <= 1, (
+        f"achieved_claim_level={s['achieved_claim_level']} exceeds 1; "
+        "real-English vendored corpus is required for level 2+")
+    # L0 must remain closed. Every tranche marked closed must carry
+    # commit evidence.
     assert s["tranches"]["L0"]["closed"] is True
-    for tid in ("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9",
-                  "L10", "L11"):
-        assert s["tranches"][tid]["closed"] is False, (
-            f"tranche {tid} must not be closed at L0")
+    for tid, row in s["tranches"].items():
+        if row.get("closed"):
+            has_commit = ("closed_at_commit" in row
+                            or "closed_at_content_commit" in row)
+            assert has_commit, (
+                f"tranche {tid} marked closed without commit evidence")
     # Claim ladder present and ordered
     ladder = s["claim_level_ladder"]
     assert [row["level"] for row in ladder] == [0, 1, 2, 3, 4, 5]
@@ -208,15 +212,17 @@ def test_permanent_invariants_still_declared_in_source():
 
 
 def test_default_forward_path_unchanged_by_l0():
-    """L0 must not alter HybridModel.forward. This checks the source of
-    aeon/hybrid.py for the diagnostic-probe / intervention arguments —
-    they must NOT be present until L1 lands (defensive; guards against
-    accidental early introduction)."""
-    src = open(os.path.join(ROOT, "aeon", "hybrid.py"), encoding="utf-8").read()
-    # No bypass import in hybrid.py at L0
-    assert "aeon.bypass" not in src, (
-        "aeon/hybrid.py must not import aeon.bypass at L0 — the probe "
-        "wire-through arrives at L1")
+    """L0 must not alter HybridModel.forward's default semantics. At L1
+    the observer/intervention kwargs land — the requirement is that
+    both default to None so probe-absent semantics are unchanged. This
+    check enforces the invariant across L0.1+."""
+    from aeon.hybrid import HybridModel
+    import inspect
+    sig = inspect.signature(HybridModel.forward)
+    for kw in ("observer", "intervention"):
+        if kw in sig.parameters:
+            assert sig.parameters[kw].default is None, (
+                f"HybridModel.forward.{kw} must default to None")
 
 
 # ---------------------------------------------------------------------------
