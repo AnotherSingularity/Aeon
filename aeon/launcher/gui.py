@@ -441,37 +441,139 @@ class LauncherApp:
         request_emergency_terminate(j)
 
     def _on_validate(self):
-        self.messagebox.showinfo("Aeon", "Validation runs the offline diagnostic "
-                                          "over the latest authenticated checkpoint. "
-                                          "Use --diagnose from the launcher menu (W4).")
+        """W10-9/A18: real Validate. Enumerate authenticated checkpoints
+        under the configured checkpoint_dir, pick the latest one, run the
+        offline diagnostic subprocess (Aeon.exe --diagnose <ck>) with
+        stdout/stderr captured, and display the report in a modal text
+        window. Bounded: subprocess.run with a 300 s timeout so the GUI
+        thread never hangs indefinitely.
+
+        Also surfaces the most recent periodic in-worker validation lines
+        recorded by _run_periodic_validation (worker.py, W10-9/A7).
+        """
+        cfg = load_user_config(str(config_dir() / "user_config.json")) or {}
+        ck_dir = cfg.get("checkpoint_dir") or str(default_checkpoint_dir())
+        try:
+            from aeon.launcher.resume import latest_authenticated_checkpoint
+            keyref = self._resolve_keyref(cfg)
+            latest = latest_authenticated_checkpoint(ck_dir, keyref)
+        except Exception as e:
+            self.messagebox.showerror("Aeon",
+                f"Validate: cannot enumerate checkpoints under {ck_dir}: {e}")
+            return
+        if latest is None:
+            self.messagebox.showinfo("Aeon",
+                "Validate: no authenticated checkpoint found in "
+                f"{ck_dir}. Start a training run first.")
+            return
+        # Run --diagnose synchronously with captured output.
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "aeon.entry", "--diagnose", latest.path],
+                capture_output=True, text=True, timeout=300)
+            report = (r.stdout or "") + ("\n[stderr]\n" + r.stderr if r.stderr else "")
+            title = f"Validate — {os.path.basename(latest.path)}"
+        except subprocess.TimeoutExpired:
+            report = "[Validate] diagnostic timed out (>300 s)"
+            title = "Validate — timed out"
+        except Exception as e:
+            self.messagebox.showerror("Aeon", f"Validate spawn failed: {e}")
+            return
+        # Include periodic worker validation tail
+        worker_val = self._tail_worker_validation(cfg, n=5)
+        if worker_val:
+            report += "\n\n[recent periodic worker validation]\n" + worker_val
+        self._show_scrollable_report(title, report or "(no output)")
 
     def _on_diagnose(self):
+        """W10-9/A20: Diagnose runs the subprocess with captured stdout/stderr
+        and displays the report. Output used to be silently discarded, which
+        gave the operator no visible signal that anything ran."""
         ck = self.filedialog.askopenfilename(title="Select checkpoint to diagnose")
         if not ck: return
-        # Diagnose is invoked as a subprocess (no shell) — same executable
         try:
-            subprocess.Popen([sys.executable, "--diagnose", ck],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            r = subprocess.run(
+                [sys.executable, "-m", "aeon.entry", "--diagnose", ck],
+                capture_output=True, text=True, timeout=300)
+            report = (r.stdout or "") + ("\n[stderr]\n" + r.stderr if r.stderr else "")
+            self._show_scrollable_report(
+                f"Diagnose — {os.path.basename(ck)}", report or "(no output)")
+        except subprocess.TimeoutExpired:
+            self.messagebox.showerror("Aeon", "diagnose timed out (>300 s)")
         except Exception as e:
-            self.messagebox.showerror("Aeon", f"diagnose spawn failed: {e}")
+            self.messagebox.showerror("Aeon", f"diagnose failed: {e}")
+
+    def _resolve_keyref(self, cfg):
+        """Best-effort resolution of the last-known job's HMAC keyref for
+        checkpoint enumeration. Recovery/Validate need it to authenticate
+        stored generations. If no last job is known, returns None; the
+        enumerator downgrades to unverified metadata."""
+        last_job_dir = cfg.get("last_job_dir")
+        if not last_job_dir or not os.path.isdir(last_job_dir):
+            return None
+        try:
+            from aeon.job.key_store import ensure_job_hmac_keyref
+            return ensure_job_hmac_keyref(last_job_dir, allow_create=False)
+        except Exception:
+            return None
+
+    def _tail_worker_validation(self, cfg, n: int = 5) -> str:
+        """W10-9/A7: read the tail of worker_validation.jsonl so Validate
+        can show the freshest periodic-in-worker validations without
+        re-running the diagnostic loop."""
+        try:
+            from aeon.windows_paths import evidence_dir as evd
+            path = os.path.join(cfg.get("evidence_dir", str(evd())),
+                                 "worker_validation.jsonl")
+        except Exception:
+            return ""
+        if not os.path.exists(path):
+            return ""
+        try:
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.readlines()[-n:]
+            return "".join(lines).rstrip()
+        except Exception:
+            return ""
+
+    def _show_scrollable_report(self, title: str, text: str) -> None:
+        """Modal scrollable text window (W10-9). Kept lightweight — tkinter
+        Text + Scrollbar. Falls back to messagebox.showinfo when tkinter
+        isn't available (headless tests)."""
+        try:
+            import tkinter as tk
+            from tkinter import scrolledtext
+            top = tk.Toplevel(self.root)
+            top.title(title)
+            top.geometry("880x520")
+            box = scrolledtext.ScrolledText(top, wrap="none", font=("Consolas", 9))
+            box.pack(fill="both", expand=True)
+            box.insert("1.0", text)
+            box.configure(state="disabled")
+            tk.Button(top, text="Close", command=top.destroy).pack(pady=4)
+        except Exception:
+            self.messagebox.showinfo(title, text[:4000])
 
     def _on_recovery(self):
-        """W10-3: distinct Recovery path. Spawns a worker with
-        intent='recover'; the worker validates the operator-signed
-        RecoveryDecision JSON, protected_load's the selected checkpoint
-        under anti-rollback bypass, and records an immutable audit event.
-        The dialog for enumerating known-good candidates + building the
-        RecoveryDecision interactively lands with W10-9. For W10-3 the
-        operator provides the JSON file directly."""
+        """W10-9/A19: interactive Recovery. Instead of demanding a
+        pre-built operator-signed RecoveryDecision JSON file (the
+        launcher previously "instructed the user to open a terminal"),
+        the GUI now:
+
+          1. Enumerates authenticated checkpoint candidates under the
+             configured checkpoint_dir via aeon.launcher.resume.
+          2. Presents them in a modal picker (step + timestamp + path).
+          3. Prompts the operator for the anti-rollback bypass reason.
+          4. Constructs the RecoveryDecision in-process and writes it
+             into the new job dir.
+          5. Spawns a worker with intent="recover".
+
+        The RecoveryDecision is still recorded on disk under the new
+        job dir for evidence and audit — the change is that the GUI
+        builds it, not the operator with a text editor."""
         from aeon.job.manager import create_job
         from aeon.windows_paths import evidence_dir as evd, resolve_installed
-
-        rd_path = self.filedialog.askopenfilename(
-            title="Select RecoveryDecision JSON (operator-signed)",
-            filetypes=[("JSON", "*.json")])
-        if not rd_path:
-            return
-
+        from aeon.launcher.resume import enumerate_checkpoints
         cfg = load_user_config(str(config_dir() / "user_config.json")) or {}
         last_job_dir = cfg.get("last_job_dir")
         if not last_job_dir or not os.path.isdir(last_job_dir):
@@ -479,28 +581,67 @@ class LauncherApp:
                 "Recovery requires a known-good previous job dir. None "
                 "recorded in user_config.last_job_dir.")
             return
-
-        ck_path = self.filedialog.askopenfilename(
-            title="Select the authenticated checkpoint to recover from",
-            initialdir=cfg.get("checkpoint_dir", str(default_checkpoint_dir())),
-            filetypes=[("Aeon checkpoints", "*.pt")])
-        if not ck_path:
+        ck_dir = cfg.get("checkpoint_dir", str(default_checkpoint_dir()))
+        keyref = self._resolve_keyref(cfg)
+        try:
+            candidates = enumerate_checkpoints(ck_dir, keyref)
+        except Exception as e:
+            self.messagebox.showerror("Aeon",
+                f"Recovery: cannot enumerate {ck_dir}: {e}")
             return
-
+        candidates = [c for c in candidates if getattr(c, "authenticated", False)]
+        if not candidates:
+            self.messagebox.showerror("Aeon",
+                f"Recovery: no authenticated checkpoints under {ck_dir}.")
+            return
+        chosen = self._pick_recovery_candidate(candidates)
+        if chosen is None:
+            return
+        reason = self._prompt_recovery_reason()
+        if not reason:
+            return
+        # Build the RecoveryDecision in-process via BuildableRecoveryDecision
+        # which fills in the fields the operator would otherwise have to type.
+        from aeon.launcher.resume import (
+            BuildableRecoveryDecision, latest_authenticated_checkpoint,
+        )
+        current = latest_authenticated_checkpoint(ck_dir, keyref)
+        current_state_identity = (
+            f"sha256:{current.mac_algo}:step={current.step}" if current is not None
+            else "sha256:absent")
+        _t = time.time()
+        brd = BuildableRecoveryDecision(
+            candidate=chosen, reason=reason,
+            operator_authorization_ref=f"desktop_operator:{int(_t)}",
+            current_state_identity=current_state_identity)
+        rd = brd.build()
         tcid = cfg.get("training_config_id", "aeon_350m_primary.yaml")
         try:
             job = create_job(
                 config_path=str(resolve_installed(f"configs/{tcid}")),
                 tokenizer_path=cfg.get("tokenizer_path"),
                 corpus_path=cfg.get("corpus_path"),
-                checkpoint_dir=cfg.get("checkpoint_dir", str(default_checkpoint_dir())),
+                checkpoint_dir=ck_dir,
                 metrics_dir=cfg.get("metrics_dir", str(user_data_root() / "metrics")),
                 audit_dir=cfg.get("evidence_dir", str(evd())),
-                checkpoint_policy={"interval": int(cfg.get("checkpoint_interval", 1000))},
+                checkpoint_policy={"interval": int(cfg.get("checkpoint_interval", 1000)),
+                                     "validation_interval": int(cfg.get("validation_interval", 1000))},
+                compute_policy={
+                    "cpu_thread_limit": int(cfg.get("cpu_thread_limit", 0) or 0) or None,
+                    "memory_ceiling_gb": cfg.get("memory_ceiling_gb"),
+                    "resume_preference": cfg.get("resume_preference", "auto"),
+                },
                 intent="recover",
-                resume_from_checkpoint=ck_path,
-                recovery_decision_path=rd_path,
+                resume_from_checkpoint=chosen.path,
             )
+            # Write the RecoveryDecision under the new job dir and point
+            # the job at it.
+            rd_path = os.path.join(job.job_dir, "recovery_decision.json")
+            with open(rd_path, "w", encoding="utf-8") as fh:
+                json.dump(rd.__dict__, fh, sort_keys=True, indent=2)
+            job.recovery_decision_path = rd_path
+            from aeon.job.manager import _atomic_write_json
+            _atomic_write_json(job.job_json_path, job.to_dict())
             import shutil as _shutil
             _shutil.copy(os.path.join(last_job_dir, "hmac.key"),
                           os.path.join(job.job_dir, "hmac.key"))
@@ -508,12 +649,56 @@ class LauncherApp:
             self.state["job"] = job; self.state["job_status"] = "STARTING"
             self._emit_launcher_event("recovery_authorized",
                 {"job_id": job.job_id,
-                  "checkpoint": ck_path,
+                  "checkpoint": chosen.path,
                   "recovery_decision": rd_path,
+                  "resulting_authorized_state": rd.resulting_authorized_state,
+                  "reason": rd.reason,
                   "source_job_dir": last_job_dir})
             self._render_status(); self._apply_gates()
         except Exception as e:
             self.messagebox.showerror("Aeon", f"Recovery failed: {e}")
+
+    def _pick_recovery_candidate(self, candidates):
+        """Modal listbox for choosing among authenticated candidates.
+        Falls back to picking the newest one when running headless."""
+        try:
+            import tkinter as tk
+            top = tk.Toplevel(self.root)
+            top.title("Select a checkpoint to recover from")
+            top.geometry("640x360")
+            lb = tk.Listbox(top, font=("Consolas", 9))
+            lb.pack(fill="both", expand=True)
+            for i, c in enumerate(candidates):
+                label = f"step {getattr(c, 'step', '?'):>10}  {c.state_path}"
+                lb.insert(tk.END, label)
+            selected = {"i": None}
+            def _accept():
+                sel = lb.curselection()
+                if sel:
+                    selected["i"] = sel[0]
+                top.destroy()
+            tk.Button(top, text="Recover from this checkpoint",
+                        command=_accept).pack(pady=4)
+            self.root.wait_window(top)
+            i = selected["i"]
+            return candidates[i] if i is not None else None
+        except Exception:
+            # Headless fallback — pick the most recent.
+            return max(candidates, key=lambda c: getattr(c, "step", 0))
+
+    def _prompt_recovery_reason(self):
+        """Modal reason prompt. Falls back to a synthesized default when
+        running headless so the RecoveryDecision is still well-formed."""
+        try:
+            import tkinter as tk
+            from tkinter import simpledialog
+            return simpledialog.askstring(
+                "Recovery reason",
+                "State a short human-readable reason for this recovery.\n"
+                "It is recorded in the RecoveryDecision and evidence log.",
+                parent=self.root) or ""
+        except Exception:
+            return "desktop_operator_recovery"
 
     def _on_exit(self):
         # Closing the launcher must NOT terminate a live worker.

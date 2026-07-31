@@ -21,6 +21,49 @@ from aeon.job.identity import worker_identity
 from aeon.job.lock import SingleInstanceLock, LockAcquireError
 
 
+def _cpu_thread_limit_from(job: Job, tcfg: dict):
+    """W10-9/A7: honor cpu_thread_limit from job.compute_policy or tcfg."""
+    v = None
+    cp = getattr(job, "compute_policy", None) or {}
+    if isinstance(cp, dict):
+        v = cp.get("cpu_thread_limit")
+    if v is None:
+        v = tcfg.get("cpu_thread_limit")
+    try:
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _memory_ceiling_mb_from(job: Job, tcfg: dict):
+    """W10-9/A7: honor memory_ceiling_gb; returned as MB for comparison
+    against resident_mb() from the Observer."""
+    v = None
+    cp = getattr(job, "compute_policy", None) or {}
+    if isinstance(cp, dict):
+        v = cp.get("memory_ceiling_gb")
+    if v is None:
+        v = tcfg.get("memory_ceiling_gb")
+    try:
+        return int(float(v) * 1024) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _validation_interval_from(job: Job, tcfg: dict):
+    """W10-9/A7: honor validation_interval configured by the launcher."""
+    v = None
+    cp = getattr(job, "checkpoint_policy", None) or {}
+    if isinstance(cp, dict):
+        v = cp.get("validation_interval")
+    if v is None:
+        v = tcfg.get("validation_interval")
+    try:
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _write_worker_identity(job: Job) -> None:
     ident = worker_identity()
     Path(job.worker_identity_path).write_text(
@@ -103,6 +146,21 @@ def _run_training_loop(job: Job) -> None:
 
     torch.manual_seed(tcfg["seed"])
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # W10-9/A7: honor the launcher-configured cpu_thread_limit. The Job
+    # dataclass copies this out of user_config.json into
+    # job.compute_policy["cpu_thread_limit"]; the worker previously ignored
+    # it and let torch use all cores, which competes with the desktop
+    # shell. Applied before model construction so the fp32 recursion build
+    # obeys the same limit.
+    cpu_limit = _cpu_thread_limit_from(job, tcfg)
+    if cpu_limit is not None and cpu_limit > 0:
+        try:
+            torch.set_num_threads(int(cpu_limit))
+        except Exception:
+            pass
+    memory_ceiling_mb = _memory_ceiling_mb_from(job, tcfg)
+    validation_interval = _validation_interval_from(job, tcfg)
 
     # W10-1: real tokenizer + corpus is the ONLY production data path.
     # Fail closed BEFORE model construction so we never touch torch on an
@@ -281,6 +339,12 @@ def _run_training_loop(job: Job) -> None:
                  step=start_step)
 
     step = start_step
+    # W10-9/A8: measure real step time so the emitted metrics stop being
+    # zero placeholders. _step_perf tracks the total wall-clock spent
+    # inside forward/backward/opt.step + tokens processed since the last
+    # emission window; the log tick divides by the interval.
+    from time import perf_counter as _pc
+    _step_perf = {"t0": _pc(), "wallclock_s": 0.0, "tokens": 0}
     for batch, position_after in batches:
         if step >= tcfg["max_steps"]:
             break
@@ -306,6 +370,7 @@ def _run_training_loop(job: Job) -> None:
             _write_result(job, {"ok": False, "reason": "emergency_terminate"})
             return
 
+        _step_t_before = _pc()
         out = model(input_ids=batch["input_ids"],
                      attention_mask=batch["attention_mask"],
                      labels=batch["labels"])
@@ -317,14 +382,55 @@ def _run_training_loop(job: Job) -> None:
         if tcfg.get("grad_clip"):
             torch.nn.utils.clip_grad_norm_(params, tcfg["grad_clip"])
         opt.step()
+        _step_dt = _pc() - _step_t_before
+        _step_perf["wallclock_s"] += _step_dt
+        _step_perf["tokens"] += B * T
         step += 1
         data_position = position_after
 
+        # W10-9/A7: honor memory_ceiling_gb — safe-stop at the next boundary
+        # if resident memory has climbed above the launcher-configured limit.
+        if memory_ceiling_mb is not None and resident_mb() > memory_ceiling_mb:
+            mark_status(job, JobStatus.STOP_REQUESTED,
+                         note=(f"memory ceiling exceeded: "
+                               f"{resident_mb():.0f} MB > {memory_ceiling_mb} MB — "
+                               "safe-stopping at boundary"),
+                         step=step)
+            _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
+                              data_position, obs,
+                              tokenizer_id=data_source.tokenizer_id,
+                              corpus_id=data_source.corpus_id,
+                              keyref=keyref)
+            mark_status(job, JobStatus.STOPPED,
+                         note="safe stop on memory ceiling", step=step)
+            _write_result(job, {"ok": True, "stopped_at_step": step,
+                                 "reason": "memory_ceiling_exceeded",
+                                 "resident_mb": resident_mb(),
+                                 "memory_ceiling_mb": memory_ceiling_mb,
+                                 "data_position": int(data_position),
+                                 "tokenizer_id": data_source.tokenizer_id,
+                                 "corpus_id": data_source.corpus_id})
+            return
+
         if step % int(tcfg.get("log_every", 20)) == 0:
             a = model.audit()
+            # W10-9/A8: real metrics. `step_time_s` is the average
+            # wall-clock across the interval; tokens/s is real batches
+            # processed / wall-clock — no more zero placeholders. Useful
+            # tokens/s equals raw tokens/s because W10-1 made the token
+            # stream real (attention masks cover all positions in the
+            # non-padded corpus batches).
+            _elapsed = max(_step_perf["wallclock_s"], 1e-9)
+            _interval = max(int(tcfg.get("log_every", 20)), 1)
+            step_time_s = _elapsed / _interval
+            tokens_per_s = _step_perf["tokens"] / _elapsed
+            _step_perf["wallclock_s"] = 0.0
+            _step_perf["tokens"] = 0
             obs.emit_always_on(
                 step=step, loss=float(out.loss.item()), lr=opt.param_groups[0]["lr"],
-                step_time_s=0.0, tokens_per_s_raw=0.0, useful_tokens_per_s=0.0,
+                step_time_s=step_time_s,
+                tokens_per_s_raw=tokens_per_s,
+                useful_tokens_per_s=tokens_per_s,
                 seq_len=T, resident_mb=resident_mb(),
                 certificate_holds=bool(a["holds"]),
                 sigma_h=float(a["sigma_Wh"]), sigma_c=float(a["sigma_Wc"]),
@@ -333,6 +439,15 @@ def _run_training_loop(job: Job) -> None:
             mark_status(job, JobStatus.RUNNING, note="step log", step=step,
                          loss=float(out.loss.item()),
                          holds=bool(a["holds"]))
+
+        # W10-9/A7: honor validation_interval. Every N steps, run a
+        # bounded structural validation — no gradient math, no
+        # side-effects: the model still-holds-certificate check, plus a
+        # NaN sweep of the current logits. Records an evidence line so
+        # the desktop Validate button has something concrete to display.
+        if (validation_interval is not None and validation_interval > 0
+                and step % validation_interval == 0):
+            _run_periodic_validation(job, model, out, step)
         if step % int(tcfg.get("ckpt_every", 1000)) == 0:
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
                               data_position, obs,
@@ -343,12 +458,48 @@ def _run_training_loop(job: Job) -> None:
     # Final checkpoint on clean completion
     _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs,
                       tokenizer_id=data_source.tokenizer_id,
-                      corpus_id=data_source.corpus_id)
+                      corpus_id=data_source.corpus_id,
+                      keyref=keyref)
     mark_status(job, JobStatus.STOPPED, note="max_steps reached", step=step)
     _write_result(job, {"ok": True, "final_step": step, "reason": "max_steps",
                          "data_position": int(data_position),
                          "tokenizer_id": data_source.tokenizer_id,
                          "corpus_id": data_source.corpus_id})
+
+
+def _run_periodic_validation(job: Job, model, out, step: int) -> None:
+    """W10-9/A7: periodic in-worker validation. Cheap: certificate audit +
+    NaN sweep on the most recent forward pass. Records a JSONL line at
+    job.audit_dir/worker_validation.jsonl so the launcher's Validate
+    button can surface the latest live check."""
+    import math
+    import torch
+    try:
+        a = model.audit()
+        nan = False
+        for t in (out.loss, getattr(out, "logits", None)):
+            if t is None:
+                continue
+            if not torch.isfinite(t).all():
+                nan = True
+                break
+        rec = {
+            "ts": time.time(),
+            "kind": "periodic_validation",
+            "step": int(step),
+            "certificate_holds": bool(a["holds"]),
+            "sigma_h": float(a["sigma_Wh"]),
+            "sigma_c": float(a["sigma_Wc"]),
+            "gamma": float(a["gamma"]),
+            "loss_finite": bool(math.isfinite(float(out.loss.item()))),
+            "logits_have_nan_or_inf": bool(nan),
+        }
+        path = os.path.join(job.audit_dir, "worker_validation.jsonl")
+        os.makedirs(job.audit_dir, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, sort_keys=True) + "\n")
+    except Exception:
+        pass
 
 
 def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,

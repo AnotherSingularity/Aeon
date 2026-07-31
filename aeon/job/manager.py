@@ -62,6 +62,10 @@ class Job:
     intent: str = "start"
     resume_from_checkpoint: Optional[str] = None
     recovery_decision_path: Optional[str] = None
+    # W10-9/A7: launcher-configured worker settings that the worker used to
+    # ignore (cpu_thread_limit, memory_ceiling_gb, resume_preference). Kept
+    # optional with a default of {} so pre-W10-9 job.json files still load.
+    compute_policy: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -117,6 +121,7 @@ def create_job(
     intent: str = "start",
     resume_from_checkpoint: Optional[str] = None,
     recovery_decision_path: Optional[str] = None,
+    compute_policy: Optional[Dict[str, Any]] = None,
 ) -> Job:
     if intent not in ("start", "resume", "recover"):
         raise ValueError(f"intent must be 'start'|'resume'|'recover', got {intent!r}")
@@ -147,6 +152,7 @@ def create_job(
                                  if resume_from_checkpoint else None),
         recovery_decision_path=(os.fspath(recovery_decision_path)
                                  if recovery_decision_path else None),
+        compute_policy=dict(compute_policy or {}),
     )
     _atomic_write_json(job.job_json_path, job.to_dict())
     mark_status(job, JobStatus.CREATED, note=f"job created (intent={intent})")
@@ -169,6 +175,8 @@ def load_job(job_dir_or_json: str) -> Optional[Job]:
     data.setdefault("intent", "start")
     data.setdefault("resume_from_checkpoint", None)
     data.setdefault("recovery_decision_path", None)
+    # W10-9 backward compatibility: pre-W10-9 job.json has no compute_policy.
+    data.setdefault("compute_policy", {})
     return Job(**data)
 
 

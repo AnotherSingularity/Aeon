@@ -64,8 +64,10 @@
       "summary": "Fail-closed frozen preflight: in frozen mode (sys.frozen / _MEIPASS) missing or unloadable tokenizer/corpus BLOCKS instead of WARN; corpus check now attempts to read one text record via iter_text_records; source-tree mode preserves WARN (A17 flipped)"
     },
     "W10-9": {
-      "closed": false,
-      "summary": "Real Validate / Diagnose / Recovery / first-run + real metrics"
+      "closed": true,
+      "closed_at_commit": "b3a3685",
+      "closed_at": "2026-07-31T01:30:00Z",
+      "summary": "Real desktop operations + real metrics: worker consumes cpu_thread_limit/memory_ceiling_gb/validation_interval from Job.compute_policy and applies them (torch.set_num_threads, safe-stop on ceiling, periodic in-worker validation writing worker_validation.jsonl). Metrics computed via perf_counter \u2014 no more step_time_s=0.0 placeholders. GUI Validate runs --diagnose against the latest authenticated checkpoint with subprocess.run(capture_output=True) into a scrollable text window. GUI Diagnose captures output identically. GUI Recovery enumerates authenticated candidates via aeon.launcher.resume.enumerate_checkpoints, builds the RecoveryDecision in-process via BuildableRecoveryDecision, and spawns intent=recover. A7/A8/A18/A19/A20 flipped."
     },
     "W10-10": {
       "closed": false,

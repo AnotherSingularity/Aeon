@@ -138,26 +138,33 @@ def test_gui_resume_is_a_distinct_flow():
 
 
 # ---------------------------------------------------------------------------
-# A7 — worker ignores launcher settings for cpu/memory limits
+# A7 — worker ignores launcher settings for cpu/memory limits  [CORRECTED W10-9]
 # ---------------------------------------------------------------------------
 def test_worker_ignores_gui_settings():
     src = _read("aeon/job/worker.py")
-    for gui_only in ("cpu_thread_limit", "memory_ceiling_gb",
-                      "validation_interval", "checkpoint_interval",
-                      "resume_preference"):
-        assert gui_only not in src, (
-            f"worker must not YET consume launcher setting {gui_only!r} "
-            "(flip at W10-9)")
+    # W10-9 flip: worker now consumes cpu_thread_limit, memory_ceiling_gb,
+    # and validation_interval; enforces them at boundaries.
+    for consumed in ("cpu_thread_limit", "memory_ceiling_gb",
+                       "validation_interval"):
+        assert consumed in src, (
+            f"W10-9/A7: worker must consume launcher setting {consumed!r}")
+    assert "torch.set_num_threads" in src, (
+        "W10-9/A7: worker must apply cpu_thread_limit via torch.set_num_threads")
 
 
 # ---------------------------------------------------------------------------
-# A8 — hard-coded 0.0 throughput placeholders
+# A8 — hard-coded 0.0 throughput placeholders  [CORRECTED W10-9]
 # ---------------------------------------------------------------------------
 def test_worker_emits_zero_placeholder_metrics():
     src = _read("aeon/job/worker.py")
-    assert "step_time_s=0.0" in src, "worker still hard-codes step_time_s=0.0"
-    assert "tokens_per_s_raw=0.0" in src, "worker still hard-codes tokens_per_s_raw=0.0"
-    assert "useful_tokens_per_s=0.0" in src, "worker still hard-codes useful_tokens_per_s=0.0"
+    # W10-9 flip: metrics are computed from perf_counter and the actual
+    # tokens processed per interval.
+    assert "step_time_s=0.0" not in src, (
+        "W10-9/A8: hard-coded step_time_s=0.0 must be gone")
+    assert "tokens_per_s_raw=0.0" not in src, (
+        "W10-9/A8: hard-coded tokens_per_s_raw=0.0 must be gone")
+    assert "perf_counter" in src, (
+        "W10-9/A8: worker must measure step time via perf_counter")
 
 
 # ---------------------------------------------------------------------------
@@ -314,44 +321,58 @@ def test_preflight_does_not_block_on_missing_tokenizer_or_corpus():
 
 
 # ---------------------------------------------------------------------------
-# A18 — GUI Validate is a placeholder
+# A18 — GUI Validate is a placeholder  [CORRECTED W10-9]
 # ---------------------------------------------------------------------------
 def test_gui_validate_is_placeholder():
     src = _read("aeon/launcher/gui.py")
     tree = ast.parse(src)
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == "_on_validate":
-            body = ast.unparse(node.body[-1]) if hasattr(ast, "unparse") else ""
-            assert "messagebox.showinfo" in body or "showinfo" in body, (
-                "_on_validate must still be a messagebox placeholder at W10-0")
+            body = ast.unparse(node) if hasattr(ast, "unparse") else ""
+            assert "subprocess.run" in body, (
+                "W10-9/A18: _on_validate must actually run the diagnostic subprocess")
+            assert "--diagnose" in body, (
+                "W10-9/A18: _on_validate must pass --diagnose to the entry point")
+            assert "capture_output=True" in body, (
+                "W10-9/A18: _on_validate must capture subprocess output")
             return
     raise AssertionError("_on_validate not found")
 
 
 # ---------------------------------------------------------------------------
-# A19 — GUI Recovery requires terminal
+# A19 — GUI Recovery requires terminal  [CORRECTED W10-9]
 # ---------------------------------------------------------------------------
 def test_gui_recovery_requires_terminal():
     src = _read("aeon/launcher/gui.py")
     tree = ast.parse(src)
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == "_on_recovery":
-            body = ast.unparse(node.body[-1]) if hasattr(ast, "unparse") else ""
-            assert "Aeon.exe --recover" in body or "messagebox" in body, (
-                "_on_recovery must still ask the user to launch --recover "
-                "themselves at W10-0 baseline (flip at W10-9)")
+            body = ast.unparse(node) if hasattr(ast, "unparse") else ""
+            assert "Aeon.exe --recover" not in body, (
+                "W10-9/A19: _on_recovery must not ask the user to open a terminal")
+            assert "enumerate_checkpoints" in body, (
+                "W10-9/A19: _on_recovery must enumerate candidates in-GUI")
+            assert "BuildableRecoveryDecision" in body, (
+                "W10-9/A19: _on_recovery must build the RecoveryDecision in-process")
             return
     raise AssertionError("_on_recovery not found")
 
 
 # ---------------------------------------------------------------------------
-# A20 — GUI Diagnose discards subprocess output
+# A20 — GUI Diagnose discards subprocess output  [CORRECTED W10-9]
 # ---------------------------------------------------------------------------
 def test_gui_diagnose_discards_output():
     src = _read("aeon/launcher/gui.py")
-    assert "stdout=subprocess.DEVNULL" in src and "stderr=subprocess.DEVNULL" in src, (
-        "_on_diagnose must still discard subprocess output at W10-0 baseline "
-        "(flip at W10-9)")
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_on_diagnose":
+            body = ast.unparse(node) if hasattr(ast, "unparse") else ""
+            assert "DEVNULL" not in body, (
+                "W10-9/A20: _on_diagnose must not discard output via DEVNULL")
+            assert "capture_output=True" in body, (
+                "W10-9/A20: _on_diagnose must capture subprocess output")
+            return
+    raise AssertionError("_on_diagnose not found")
 
 
 # ---------------------------------------------------------------------------
