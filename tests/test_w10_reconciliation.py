@@ -64,6 +64,21 @@ def test_closure_state_reflects_reality():
         f"but matrix has {open_sub} unresolved substantive rows")
 
 
+def test_closure_state_splits_content_vs_closure_commit():
+    """L0.1: a commit cannot contain its own final hash, so the closure
+    state records the content commit (containing the reconciled
+    implementation) and the closure commit (containing the finalized
+    closure metadata) separately."""
+    m = _load_matrix()
+    cs = m["closure_state"]
+    assert "w10_reconciled_content_commit" in cs, (
+        "L0.1: closure_state must record the content commit separately")
+    assert "w10_reconciliation_closure_commit" in cs, (
+        "L0.1: closure_state must record the closure commit separately")
+    assert cs["w10_reconciled_content_commit"] != cs["w10_reconciliation_closure_commit"], (
+        "L0.1: content and closure commits must be distinct")
+
+
 # ---------------------------------------------------------------------------
 # R8 — vocab mismatch fail-closed
 # ---------------------------------------------------------------------------

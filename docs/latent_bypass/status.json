@@ -96,8 +96,9 @@
   ],
   "achieved_claim_level": 0,
   "provisional_notes": "Level 0 (theory only). No observational, causal, efficiency, or bypass claim has been derived. L1 must not raise this above 1; L2 remains at 1. Levels 2+ require the vendored real-English corpus per the corpus_staging block.",
-  "program_state": "authorized_at_L1",
+  "program_state": "authorized",
   "highest_completed_tranche": "L0",
-  "scientific_execution_authorized": false,
-  "freeze_notes": "W10-R closed with reconciliation_complete=true and program_b_authorized=true. Program B resumes at L1. scientific_execution_authorized remains false until Level 2 evidence lands (real-English vendored corpus required for Level >= 2)."
+  "execution_authorized": true,
+  "real_corpus_claims_authorized": false,
+  "freeze_notes": "L0.1 correction: separated execution authorization from real-corpus claim authorization. execution_authorized=true permits L1 (signal trace) and L2 (barrier registry) work on the bounded synthetic-English fixture; real_corpus_claims_authorized=false blocks any elevation of achieved_claim_level above 1 (STRUCTURALLY_IMPLEMENTED) until a vendored authenticated real-English corpus lands. achieved_claim_level=0 does not prohibit L1/L2 execution — it means no observational or causal claim has yet been earned."
 }

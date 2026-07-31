@@ -1,0 +1,84 @@
+{
+  "$schema_version": 1,
+  "purpose": "Machine-readable IP-preservation firewall for Program B. Consumed by tests/test_ip_preservation.py. Program B may add instrumentation via optional observer interfaces, detached diagnostic tensors, evaluation-only intervention adapters, and separate evidence modules. Program B may NOT delete, rename, flatten, replace, or genericize Aeon's proprietary architecture. Every invariant here is asserted by the test file — the manifest and the tests move together.",
+  "protected_modules": [
+    "aeon/hybrid.py",
+    "aeon/recursion.py",
+    "aeon/transformer.py",
+    "aeon/substrate/__init__.py"
+  ],
+  "protected_classes": [
+    {"module": "aeon.hybrid",       "name": "HybridModel"},
+    {"module": "aeon.hybrid",       "name": "HybridOutput"},
+    {"module": "aeon.recursion",    "name": "RecursionJoiner"},
+    {"module": "aeon.transformer",  "name": "HybridTransformer"},
+    {"module": "aeon.transformer",  "name": "AeonTransformerConfig"}
+  ],
+  "protected_signatures": {
+    "HybridModel.__init__": ["h_rec", "K", "transformer_config", "substrate",
+                              "margin_h", "margin_c", "freeze_backbone",
+                              "use_embedding_input", "dtype"],
+    "HybridModel.forward":  ["input_ids", "attention_mask", "labels"]
+  },
+  "architectural_invariants": {
+    "K_locked_at_16": {
+      "declaration": "aeon/hybrid.py",
+      "pattern": "K: int = 16",
+      "rationale": "Slow-clock interval K=16 is the L-series' entire windowing basis. Any change invalidates the barrier registry, the reaction-coordinate framework, and every prior W10 evidence row."
+    },
+    "recursion_fp32": {
+      "declarations": [
+        "aeon/hybrid.py:model.recursion.float() cast",
+        "aeon/hybrid.py::HybridModel.forward: s_w.float(), t_w.float(), e_w.float() at slow-clock tick"
+      ],
+      "rationale": "The contractive certificate (σ<margin) is proved in fp32. Downcasting Recursion state breaks the certificate."
+    },
+    "single_broadcast_per_window": {
+      "declaration": "aeon/hybrid.py::HybridModel.forward: inject_cols.append(h_cond) inside the per-window loop, one h_cond value per token in [start:end]",
+      "rationale": "Adding a second broadcast head or letting the substrate see a different h than the transformer breaks Aeon's cross-stream integration invariant."
+    },
+    "no_direct_stream_to_stream_communication": {
+      "forbidden_edges": [
+        {"src": "transformer.hidden_states", "dst": "substrate.step", "explanation": "Transformer state may reach substrate ONLY via Recursion's h_cond broadcast."},
+        {"src": "substrate.step",            "dst": "transformer.hidden_states", "explanation": "Substrate state may reach transformer ONLY via Recursion's h_cond broadcast + transformer.inject."}
+      ],
+      "rationale": "Removing this invariant collapses the two-stream architecture to a conventional attention+state model."
+    },
+    "substrate_gate_inputs": {
+      "declaration": "aeon/hybrid.py::HybridModel.forward: substrate.step consumes only (emb_in + cond_in). No transformer entropy, logits, or attention heads feed the substrate gate.",
+      "rationale": "V0.02.02 patch: transformer entropy cannot enter the substrate gate."
+    },
+    "six_v0_02_02_patches_active": {
+      "declaration": "docs/V0_02_02_CORRECTIONS.md + tests/test_six_patches.py",
+      "rationale": "The six V0.02.02 corrections define Aeon's correctness envelope. Program B may not disable any of them."
+    }
+  },
+  "forbidden_program_b_changes": [
+    "Deleting or renaming aeon/hybrid.py, aeon/recursion.py, aeon/transformer.py, or aeon/substrate/",
+    "Replacing HybridModel with a standard transformer plus memory",
+    "Replacing RecursionJoiner with a generic recurrent layer, mixture-of-experts, or state-space model",
+    "Introducing a second broadcast head",
+    "Making K adaptive or removing the K=16 declaration",
+    "Downcasting Recursion state below fp32",
+    "Adding transformer entropy, logits, or attention state to substrate gate inputs",
+    "Adding a direct transformer↔substrate edge that does not pass through Recursion",
+    "Changing HybridModel.forward's default (probe-absent) semantics",
+    "Copying proprietary Aeon code into third-party packages",
+    "Uploading source, weights, activations, checkpoints, or corpus data to external APIs",
+    "Adding telemetry, analytics, or cloud-inference dependencies to the runtime",
+    "Placing Aeon architecture internals in public release notes",
+    "Extending the corpus license or third-party notice files over Aeon source (Aeon and corpus licences remain disjoint)"
+  ],
+  "permitted_program_b_changes": [
+    "Adding aeon/bypass/* modules that never modify the default forward path",
+    "Adding an optional `observer=None` keyword argument to HybridModel.forward that is inert unless supplied",
+    "Adding an optional `intervention=None` keyword argument to HybridModel.forward that is inert unless supplied AND raises when model.training is True (evaluation-only)",
+    "Adding tests, evidence modules, benchmarks, and reports under aeon/bypass/, tests/, docs/latent_bypass/, benchmarks/latent_bypass/",
+    "Adding validation machinery for a vendored corpus package under corpus_package_tools/ or equivalent"
+  ],
+  "no_ip_export_stance": {
+    "outbound_network_prohibition_extended_to_program_b": true,
+    "third_party_upload_targets_forbidden": ["huggingface", "wandb", "openai", "anthropic-hosted", "any-cloud-inference"],
+    "corpus_package_isolation": "Corpus source, license, provenance, and partition manifest live in a separate package (corpus-package/). Corpus licence text NEVER extends over Aeon source, weights, algorithms, checkpoints, or generated evidence."
+  }
+}

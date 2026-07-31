@@ -347,7 +347,10 @@
     "evidence_open_gaps": 0,
     "cosmetic_only_open_rows": 0,
     "program_b_authorized": true,
+    "w10_reconciled_content_commit": "4a8f3d2",
+    "w10_reconciliation_closure_commit": "57653cb",
+    "notes": "L0.1: split w10_reconciled_commit into content vs closure commit. A commit cannot contain its own final hash \u2014 the content commit 4a8f3d2 carries the reconciled implementation; the closure commit 57653cb (previously mis-referenced as w10_reconciled_commit) carries the finalized closure metadata pointing at 4a8f3d2. All substantive and evidence gaps closed. R6/R8/R20/R26 corrected; R17/R31/R32 evidenced. 411/411 checks passing. Program B (L-series) resumes at L1.",
     "w10_reconciled_commit": "4a8f3d2",
-    "notes": "All substantive and evidence gaps closed. R6 (validation eval mode) / R8 (vocab fail-closed) / R20 (release-identity Resume) / R26 (frozen preflight release check) corrected. R17 (button gating) / R31 (positive matrix extended) / R32 (negative matrix consolidated to 26 rows) evidenced. 411/411 checks passing. Program B (L-series) resumes at L1."
+    "w10_reconciled_commit_note": "DEPRECATED. Ambiguous between content and closure; use w10_reconciled_content_commit / w10_reconciliation_closure_commit."
   }
 }
