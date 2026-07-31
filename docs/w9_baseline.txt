@@ -43,7 +43,8 @@ test_l2_barrier_registry         16
 test_aeon_lbc1_acquisition       23
 test_l3_reaction_coordinate       7
 test_l4_telemetry_l5_interventions 11
-TOTAL: 494
+test_aeon_lbc1_offline_import    19
+TOTAL: 513
 INHERITED (E/F-series, unchanged): 155
 NEW (W-series): 68   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 15 + test_windows_workflows 16)
 NEW (W10-0 reproductions): 24  (test_w10_audit_reproduction — A1/A2/A3 flipped by W10-1; A4/A5 by W10-2; A6 by W10-3; A16 by W10-4; A15 by W10-5; A9/A10/A11 by W10-6)

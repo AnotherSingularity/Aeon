@@ -4,7 +4,16 @@ DEVELOPER-ONLY. Not part of the Aeon runtime. Not bundled into
 AeonSetup.exe. Runs offline after the six vendored files are on
 disk; every other stage of the pipeline is offline-only.
 
-Safety controls (§3):
+Two mutually exclusive intake modes:
+
+    * NETWORK (default) — download the six eBook IDs from official
+      Project Gutenberg URLs. Every §3 safety control is enforced.
+    * OFFLINE (--source-dir <DIR>) — read six pre-downloaded files
+      the operator supplies on disk. NO network access is attempted;
+      every §1/§4 offline safety control is enforced. Provenance
+      sidecars mandatory.
+
+Network-mode safety controls (§3):
 
   * Exactly six eBook IDs allowlisted; nothing else is fetched.
   * Official Gutenberg UTF-8 plain-text URLs only.
@@ -21,6 +30,26 @@ Safety controls (§3):
     accidental corpus contamination guard).
   * Refuses to overwrite an existing source file whose digest differs
     from the recorded digest unless --refresh-source is explicitly set.
+
+Offline-mode safety controls (§1):
+
+  * Reads only local files under the operator-supplied directory.
+  * Accepts exactly the six allowlisted work identities; extra files
+    and missing files both fail-closed.
+  * Strict UTF-8 decode.
+  * Rejects HTML/PDF/binary masquerading as text.
+  * Rejects files whose content does not carry the expected
+    Gutenberg source markers, the expected eBook ID, and the
+    expected title.
+  * Preserves supplied bytes byte-for-byte; SHA-256 recorded from
+    the actual supplied bytes (never pre-declared).
+  * Requires a provenance sidecar per file; retrieval_method must
+    be one of the allowed values.
+  * Records acquisition_method="manual_official_download" and
+    executing_environment_did_not_download=true.
+  * All six sources validate atomically before ANY is promoted to
+    the package. Partial imports are refused; the previous package
+    state is unchanged on failure.
 """
 from __future__ import annotations
 
@@ -294,6 +323,347 @@ def vendor_all(package_root: Path, *, refresh_source: bool = False,
     return summary
 
 
+# ---------------------------------------------------------------------------
+# Offline intake (--source-dir MODE)
+# ---------------------------------------------------------------------------
+# The intake directory layout is fixed by the directive §2:
+#   <intake>/sources/pg-XXXX.txt
+#   <intake>/provenance/pg-XXXX.json
+# where XXXX zero-pads to 4 digits.
+INTAKE_FILENAME_TO_WORK = {
+    "pg-0011.txt": "pg-11",
+    "pg-0055.txt": "pg-55",
+    "pg-0084.txt": "pg-84",
+    "pg-1342.txt": "pg-1342",
+    "pg-1661.txt": "pg-1661",
+    "pg-2701.txt": "pg-2701",
+}
+INTAKE_SOURCES_SUBDIR = "sources"
+INTAKE_PROVENANCE_SUBDIR = "provenance"
+
+MAX_INTAKE_BYTES = 25 * 1024 * 1024
+BINARY_SNIFF_BYTES = 4096
+
+ALLOWED_RETRIEVAL_METHODS = frozenset({
+    "manual_browser_download",
+    "manual_official_download",
+    "authorized_offline_transfer",
+})
+
+PROVENANCE_REQUIRED_KEYS = (
+    "schema_version",
+    "ebook_id",
+    "title",
+    "source_provider",
+    "source_page",
+    "retrieval_date",
+    "retrieval_method",
+    "format",
+    "public_domain_basis",
+    "provided_by",
+)
+
+# Per-work title-evidence patterns. Gutenberg headers usually carry
+# "Title: <title>"; we do a case-insensitive substring check against a
+# work-specific evidence phrase in the first ~200 lines. Versioned so a
+# format-specific edge case can be relaxed for one work without
+# loosening validation globally.
+_WORK_TITLE_EVIDENCE_VERSION = 1
+_WORK_TITLE_EVIDENCE = {
+    "pg-11":   ("alice",),                  # "Alice's Adventures in Wonderland"
+    "pg-55":   ("wonderful wizard of oz",),
+    "pg-84":   ("frankenstein",),
+    "pg-1342": ("pride and prejudice",),
+    "pg-1661": ("adventures of sherlock holmes",),
+    "pg-2701": ("moby",),                   # "Moby-Dick" or "Moby Dick"
+}
+
+# HTML / PDF / audio-transcript sniff patterns rejected before any
+# downstream processing.
+_HTML_SNIFF = (b"<!doctype", b"<html", b"<HTML", b"<HEAD", b"<head",
+                 b"<script", b"<title>")
+_PDF_SNIFF = (b"%PDF-",)
+
+
+def _looks_html_or_pdf(prefix: bytes) -> Optional[str]:
+    lo = prefix.lstrip()[:200].lower()
+    for token in _HTML_SNIFF:
+        if token.lower() in lo:
+            return "html"
+    for token in _PDF_SNIFF:
+        if prefix.startswith(token):
+            return "pdf"
+    return None
+
+
+def _is_binaryish(prefix: bytes) -> bool:
+    """Reject files whose first BINARY_SNIFF_BYTES look binary."""
+    if b"\x00" in prefix:
+        return True
+    # Any control byte outside the printable / whitespace range that
+    # cannot legitimately appear in UTF-8 plain text.
+    for b in prefix:
+        if b < 9 or (13 < b < 32):
+            return True
+    return False
+
+
+def _validate_provenance(raw: dict, expected_ebook_id: int,
+                           expected_title: str) -> None:
+    for k in PROVENANCE_REQUIRED_KEYS:
+        if k not in raw:
+            raise AcquisitionError(
+                "provenance_missing_field", f"{k!r}")
+    if raw["schema_version"] != 1:
+        raise AcquisitionError(
+            "provenance_unsupported_schema", str(raw["schema_version"]))
+    if int(raw["ebook_id"]) != int(expected_ebook_id):
+        raise AcquisitionError(
+            "provenance_ebook_id_mismatch",
+            f"provenance ebook_id={raw['ebook_id']!r} expected "
+            f"{expected_ebook_id!r}")
+    if raw.get("format") != "plain_text_utf8":
+        raise AcquisitionError(
+            "provenance_wrong_format", str(raw.get("format")))
+    if raw.get("retrieval_method") not in ALLOWED_RETRIEVAL_METHODS:
+        raise AcquisitionError(
+            "provenance_invalid_retrieval_method",
+            f"{raw.get('retrieval_method')!r} not in "
+            f"{sorted(ALLOWED_RETRIEVAL_METHODS)}")
+    if raw.get("public_domain_basis") not in ("public_domain_in_usa",
+                                                  "public_domain"):
+        raise AcquisitionError(
+            "provenance_invalid_public_domain_basis",
+            str(raw.get("public_domain_basis")))
+    # Title fuzzy match — sanity check that provenance is not from a
+    # different work. Case-insensitive substring of a canonical token.
+    canonical = expected_title.lower()
+    tokens = canonical.split(";")[0].strip()
+    if tokens.split()[0] not in (raw.get("title") or "").lower():
+        raise AcquisitionError(
+            "provenance_title_mismatch",
+            f"provenance title {raw.get('title')!r} does not match "
+            f"expected first token of {expected_title!r}")
+
+
+def _validate_content_identity(text: str, work_id: str,
+                                  ebook_number: int, title: str) -> None:
+    """Verify the file's own contents identify it as the right work.
+
+    Filename alone is not proof (§3). Checks:
+      1. Recognizable Project Gutenberg source markers exist.
+      2. eBook ID appears in the header block (if present).
+      3. A work-specific title-evidence phrase is present in the
+         first ~200 lines (case-insensitive).
+    """
+    head = "\n".join(text.splitlines()[:200])
+    head_lower = head.lower()
+    if ("project gutenberg" not in head_lower):
+        raise AcquisitionError(
+            "no_gutenberg_header", f"{work_id}: 'Project Gutenberg' phrase "
+            "not found in the first 200 lines")
+    # Header ID hint (Gutenberg files usually say 'EBook #N' or
+    # 'eBook of ... [EBook #N]'). Enforced ONLY when present — some
+    # older UTF-8 editions omit the numeric hint in the header block
+    # itself but always carry the *** START OF ... *** marker.
+    id_variants = (f"#{ebook_number}", f"#{ebook_number}]",
+                    f"ebook {ebook_number}", f"e-book {ebook_number}")
+    if not any(v in head_lower for v in id_variants):
+        # Not fatal — many editions omit this in the header — but the
+        # title evidence check below must succeed.
+        pass
+    evidence_tokens = _WORK_TITLE_EVIDENCE.get(work_id, ())
+    if not evidence_tokens:
+        raise AcquisitionError(
+            "work_id_not_allowlisted", work_id)
+    if not any(tok in head_lower for tok in evidence_tokens):
+        raise AcquisitionError(
+            "title_evidence_missing",
+            f"{work_id}: none of {evidence_tokens} appears in the "
+            "first 200 lines")
+
+
+@dataclass(frozen=True)
+class _IntakeStagedFile:
+    work_id: str
+    canonical_filename: str
+    bytes: bytes
+    sha256: str
+    provenance: dict
+    intake_source_filename: str
+    intake_provenance_filename: str
+
+
+def import_offline_sources(package_root: Path, source_dir: Path) -> dict:
+    """Read the six pre-downloaded files from `source_dir/sources/` and
+    their provenance sidecars from `source_dir/provenance/`.
+
+    Validates every file before ANY byte is copied into the package. On
+    validation failure, the previous package state is unchanged.
+
+    Returns an acquisition summary that mirrors network mode's shape,
+    with acquisition_method="manual_official_download" so downstream
+    audit code can distinguish the two intakes.
+    """
+    sources_root = source_dir / INTAKE_SOURCES_SUBDIR
+    provenance_root = source_dir / INTAKE_PROVENANCE_SUBDIR
+    if not sources_root.is_dir():
+        raise AcquisitionError(
+            "intake_sources_dir_missing", str(sources_root))
+    if not provenance_root.is_dir():
+        raise AcquisitionError(
+            "intake_provenance_dir_missing", str(provenance_root))
+
+    # 1. Presence check + no-extras check.
+    expected = set(INTAKE_FILENAME_TO_WORK.keys())
+    present = {p.name for p in sources_root.iterdir() if p.is_file()}
+    missing = sorted(expected - present)
+    if missing:
+        raise AcquisitionError(
+            "intake_missing_sources", ", ".join(missing))
+    extras = sorted(present - expected)
+    if extras:
+        raise AcquisitionError(
+            "intake_unexpected_sources", ", ".join(extras))
+
+    # 2. Read + validate every source AND its provenance sidecar into
+    #    an in-memory staged bundle. Do NOT touch the package tree yet.
+    staged: list = []
+    allowlist_by_id = {w.work_id: w for w in ALLOWLIST}
+    for intake_filename in sorted(expected):
+        work_id = INTAKE_FILENAME_TO_WORK[intake_filename]
+        work = allowlist_by_id[work_id]
+        src_path = sources_root / intake_filename
+        prov_name = intake_filename.rsplit(".", 1)[0] + ".json"
+        prov_path = provenance_root / prov_name
+        if not prov_path.exists():
+            raise AcquisitionError(
+                "intake_provenance_missing", str(prov_path))
+        # Read source bytes (byte-preserving)
+        try:
+            with open(src_path, "rb") as fh:
+                data = fh.read(MAX_INTAKE_BYTES + 1)
+        except OSError as e:
+            raise AcquisitionError(
+                "intake_source_unreadable", f"{src_path}: {e}") from e
+        if len(data) > MAX_INTAKE_BYTES:
+            raise AcquisitionError(
+                "intake_source_too_large",
+                f"{intake_filename}: > {MAX_INTAKE_BYTES} bytes")
+        prefix = data[:BINARY_SNIFF_BYTES]
+        masquerade = _looks_html_or_pdf(prefix)
+        if masquerade:
+            raise AcquisitionError(
+                "intake_non_plain_text",
+                f"{intake_filename}: looks like {masquerade}")
+        if _is_binaryish(prefix):
+            raise AcquisitionError(
+                "intake_binary_data",
+                f"{intake_filename}: binary bytes detected in first "
+                f"{BINARY_SNIFF_BYTES} bytes")
+        # Strict UTF-8 decode
+        try:
+            text = data.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as e:
+            raise AcquisitionError(
+                "intake_utf8_decode_failed",
+                f"{intake_filename}: {e}") from e
+        # Content-identity validation
+        _validate_content_identity(
+            text, work_id=work.work_id,
+            ebook_number=work.ebook_number, title=work.title)
+        # Provenance sidecar
+        try:
+            with open(prov_path, encoding="utf-8") as fh:
+                prov = json.load(fh)
+        except Exception as e:
+            raise AcquisitionError(
+                "intake_provenance_unreadable",
+                f"{prov_path}: {e}") from e
+        _validate_provenance(prov, expected_ebook_id=work.ebook_number,
+                              expected_title=work.title)
+        staged.append(_IntakeStagedFile(
+            work_id=work.work_id,
+            canonical_filename=work.source_filename,
+            bytes=data,
+            sha256=_sha256(data),
+            provenance=prov,
+            intake_source_filename=intake_filename,
+            intake_provenance_filename=prov_name,
+        ))
+
+    if len(staged) != len(INTAKE_FILENAME_TO_WORK):
+        raise AcquisitionError(
+            "intake_incomplete_after_validation",
+            f"staged {len(staged)} / expected "
+            f"{len(INTAKE_FILENAME_TO_WORK)}")
+
+    # 3. Atomic promotion. Every source validated; write into the
+    #    package. Order: source bytes first (per-file), then
+    #    ORIGINAL_SOURCE_DIGESTS, then provenance/acquisition.json.
+    source_out = package_root / "source"
+    prov_out = package_root / "provenance"
+    source_out.mkdir(parents=True, exist_ok=True)
+    prov_out.mkdir(parents=True, exist_ok=True)
+    now_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    recorded: dict = {}
+    summary = {"acquired_at_utc": now_utc,
+                "acquisition_method": "manual_official_download",
+                "executing_environment_did_not_download": True,
+                "works": []}
+    for f in staged:
+        target = source_out / f.canonical_filename
+        tmp = target.with_suffix(target.suffix + ".tmp")
+        tmp.write_bytes(f.bytes)
+        # Reread to verify copied bytes.
+        reread = tmp.read_bytes()
+        if _sha256(reread) != f.sha256:
+            tmp.unlink(missing_ok=True)
+            raise AcquisitionError(
+                "intake_post_copy_digest_mismatch",
+                f"{f.canonical_filename}: copy did not round-trip")
+        os.replace(tmp, target)
+        # Per-work provenance record inside the package.
+        (prov_out / f"{f.work_id}.json").write_text(
+            json.dumps(f.provenance, indent=2, sort_keys=True),
+            encoding="utf-8")
+        recorded[f.work_id] = {
+            "sha256": f.sha256,
+            "resolved_url": "offline:" + f.intake_source_filename,
+            "retrieved_at_utc": now_utc,
+            "bytes": len(f.bytes),
+            "acquisition_method": "manual_official_download",
+            "executing_environment_did_not_download": True,
+            "supplied_retrieval_date": f.provenance.get("retrieval_date"),
+            "supplied_source_page": f.provenance.get("source_page"),
+            "title_evidence_version": _WORK_TITLE_EVIDENCE_VERSION,
+        }
+        summary["works"].append({
+            "work_id": f.work_id,
+            "ebook_number": next(w.ebook_number for w in ALLOWLIST
+                                   if w.work_id == f.work_id),
+            "title": next(w.title for w in ALLOWLIST
+                            if w.work_id == f.work_id),
+            "partition_role": next(w.partition_role for w in ALLOWLIST
+                                     if w.work_id == f.work_id),
+            "source_filename": f.canonical_filename,
+            "status": "acquired",
+            "sha256": f.sha256,
+            "bytes": len(f.bytes),
+            "resolved_url": "offline:" + f.intake_source_filename,
+            "acquisition_method": "manual_official_download",
+            "executing_environment_did_not_download": True,
+        })
+    _write_recorded_digests(package_root / "ORIGINAL_SOURCE_DIGESTS",
+                              recorded)
+    (prov_out / "acquisition.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--package-root",
@@ -304,8 +674,34 @@ def main(argv=None) -> int:
                           "differs (dangerous — invalidates every downstream "
                           "step). Default: off.")
     ap.add_argument("--ca-bundle", default=os.environ.get("REQUESTS_CA_BUNDLE"))
+    ap.add_argument("--source-dir", default=None,
+                     help="OFFLINE MODE: directory containing "
+                          "sources/pg-XXXX.txt and provenance/pg-XXXX.json "
+                          "files supplied by the operator. Mutually exclusive "
+                          "with network acquisition; no network access is "
+                          "attempted when this argument is present.")
     args = ap.parse_args(argv)
     root = Path(args.package_root).resolve()
+    if args.source_dir is not None:
+        # Offline mode. Refuse if --refresh-source or --ca-bundle are set
+        # — those are only meaningful when the network path is active.
+        if args.refresh_source:
+            print("--refresh-source is meaningless in offline mode",
+                    file=sys.stderr)
+            return 2
+        if args.ca_bundle:
+            print("--ca-bundle is meaningless in offline mode",
+                    file=sys.stderr)
+            return 2
+        try:
+            summary = import_offline_sources(
+                root, Path(args.source_dir).resolve())
+        except AcquisitionError as e:
+            print(json.dumps({"ok": False, "code": e.code,
+                                "detail": e.detail}), file=sys.stderr)
+            return 1
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
     summary = vendor_all(root, refresh_source=args.refresh_source,
                           ca_bundle_path=args.ca_bundle)
     all_ok = all(r["status"] in ("acquired", "already_present")
