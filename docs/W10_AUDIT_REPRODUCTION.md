@@ -52,6 +52,27 @@ guarantees. Every row below explicitly identifies:
 | N3 | "torch.compile / TorchScript deprecation warnings during build" | Emitted by PyTorch 2.5.1 during PyInstaller's analysis phase; not a defect in Aeon | ACKNOWLEDGED, not owned by W10. |
 | N4 | "the manifest is not itself rooted in a trusted signature" | Correct as stated; the current manifest is a bare JSON file beside the files it verifies | REPRODUCED. Correct under W10-6 (trusted root — signed manifest OR embedded digest). |
 
+## Cross-reference: follow-on program (post-W10)
+
+Once W10-11 closes, a separate research and runtime program — the
+**L-series (Latent Bypass and Hidden-State Efficiency Upgrade)** — begins
+from the certified W10 final commit. The L-series proves or disproves,
+with causal and cost-adjusted evidence, whether Aeon's hidden Recursion
+state provides a lower-cost computational route around barriers in visible
+local computation.
+
+The L-series is mechanically gated. The gate lives at
+`docs/W10_CLOSURE_STATE.json` and is enforced by
+`tests/test_l_series_prerequisite_lock.py`. No L-series runtime file
+(reaction-coordinate estimator, barrier registry, intervention harness,
+Bayes-factor analysis, matched-control experiment) can land in the repo
+while any W10 tranche's `closed` field is still `false`.
+
+The full L-series directive text is preserved at
+`docs/directives/L_SERIES_LATENT_BYPASS_AND_HIDDEN_STATE_EFFICIENCY_UPGRADE.md`
+so W10 work can proceed with clear sight of the downstream requirement
+without executing it prematurely.
+
 ## Cross-reference: what W10-0 does NOT do
 
 W10-0 does not fix ANY of the reproduced findings. Its only responsibilities:
