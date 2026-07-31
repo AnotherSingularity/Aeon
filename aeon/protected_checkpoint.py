@@ -299,15 +299,26 @@ def protected_load(
     current_authorized_step: Optional[int] = None,
     recovery_decision: Optional[RecoveryDecision] = None,
     enforce_anti_rollback: bool = True,
+    expected_release_identity: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Load an F3-protected checkpoint. Fails closed on any of:
       - missing / mismatched sha256
       - missing .meta.json
       - MAC verification failure
       - schema / K / vocab / patch_manifest / envelope_version mismatch
+      - release-identity mismatch (W10-R/R20; unless recovery_decision
+        supplied — authorized rollback across releases is explicit)
       - anti-rollback violation (unless recovery_decision supplied)
       - encrypted payload without keyref_encrypt
       - AEAD decrypt failure
+
+    ``expected_release_identity`` is the caller's binding of the
+    running release (typically ``aeon.version.RELEASE_METADATA[
+    'source_commit']``). When supplied and the checkpoint's stored
+    ``source_commit`` differs, the load raises
+    ``CheckpointIncompatible`` — a resume across releases is a
+    policy decision that must go through Recovery. Passing None
+    disables the check (Recovery path).
     """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
@@ -351,6 +362,20 @@ def protected_load(
     ex_vocab = expected_model_config.get("transformer", {}).get("vocab_size")
     if ck_vocab is not None and ex_vocab is not None and ck_vocab != ex_vocab:
         raise CheckpointIncompatible(f"vocab_size mismatch: {ck_vocab} vs {ex_vocab}")
+
+    # W10-R/R20: release-identity compatibility check. When the caller
+    # binds a running release identity, the checkpoint's stored
+    # source_commit must match — a resume across releases must go
+    # through Recovery, not Resume. Recovery passes
+    # expected_release_identity=None and supplies a RecoveryDecision.
+    if expected_release_identity is not None and recovery_decision is None:
+        ck_release = meta.get("source_commit")
+        if ck_release and ck_release != "unknown" and ck_release != expected_release_identity:
+            raise CheckpointIncompatible(
+                f"release_identity mismatch: checkpoint source_commit="
+                f"{ck_release!r} but running release={expected_release_identity!r}. "
+                "Cross-release resume is refused; use Recovery with an "
+                "operator-authorized RecoveryDecision.")
 
     # Anti-rollback gate (§F3.3)
     if enforce_anti_rollback and current_authorized_step is not None:

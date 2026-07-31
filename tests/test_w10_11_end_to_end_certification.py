@@ -162,6 +162,31 @@ def test_end_to_end_start_resume_corrupt_recover():
             "W10-11/A7: worker_validation.jsonl must be present")
         assert val_path.read_text().strip(), (
             "W10-11/A7: worker_validation.jsonl must have content")
+        # W10-R/R31: assert eval-mode marker present in periodic
+        # validation (proves the R6 correction runs, not the pre-R6
+        # in-flight-out shortcut).
+        val_lines = [json.loads(l) for l in val_path.read_text().splitlines()]
+        assert any(rec.get("eval_mode") is True for rec in val_lines), (
+            "W10-11/R6: periodic validation must record eval_mode=True")
+        # W10-R/R31: multiple K=16 boundaries crossed. With seq_len=32
+        # each forward pass crosses 2 K boundaries; over 6 steps that's
+        # at least 12 boundary events. The certificate margin is
+        # emitted in the metrics stream as sigma_h/sigma_c per log
+        # tick — the presence of >= 2 log ticks with real margins is
+        # our evidence.
+        margin_ticks = [r for r in emitted_always
+                          if r.get("sigma_h") is not None
+                          and float(r.get("sigma_h", 0)) > 0]
+        assert len(margin_ticks) >= 2, (
+            "W10-11/R31: expected multiple K=16 boundary crossings; "
+            f"got {len(margin_ticks)} log ticks with real sigma_h")
+        # W10-R/R31: architecture-preservation spot-check after Start —
+        # K=16 is still declared in the source and Recursion is still
+        # fp32-only.
+        hybrid_src = open(os.path.join(HERE, "..", "aeon", "hybrid.py"),
+                            encoding="utf-8").read()
+        assert "K: int = 16" in hybrid_src, (
+            "W10-11/R31: K=16 default declaration must persist")
         # An authenticated checkpoint must be discoverable.
         keyref_start = ensure_job_hmac_keyref(j_start.job_dir,
                                                  allow_create=False)

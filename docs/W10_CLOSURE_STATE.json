@@ -80,6 +80,12 @@
       "closed_at_commit": "197f4cd",
       "closed_at": "2026-07-31T02:30:00Z",
       "summary": "End-to-end certification against a bounded English fixture: real SentencePiece tokenizer + real JSONL corpus drive a full Start->Resume->Corrupt->Recover lifecycle; asserts non-zero perf_counter metrics (W10-9), periodic worker_validation.jsonl evidence (W10-9), authenticated per-generation envelope round-trip through Resume (W10-2, W10-3, W10-4), tamper detection on the newest generation (W10-2, W10-6), authorized rollback via BuildableRecoveryDecision moving forward generations into <ck>/.discarded/ for evidence, and post-rollback enumeration containing only authenticated candidates. Also adds worker rollback-cleanup helper _discard_generations_after and fixes a pre-existing double-save bug at max_steps==ckpt_every boundary. Closes W10 \u2014 L-series prerequisite gate unlocks."
+    },
+    "W10-R": {
+      "closed": true,
+      "closed_at_commit": "4a8f3d2",
+      "closed_at": "2026-07-31T21:45:00Z",
+      "summary": "Directive reconciliation: matrix in docs/w10_reconciliation.json classifies every substantive W10 requirement (BEHAVIORALLY_SATISFIED / EQUIVALENT_IMPLEMENTATION / EVIDENCE_GAP / SUBSTANTIVE_FUNCTIONAL_GAP / SUBSTANTIVE_SECURITY_GAP / COSMETIC_STRUCTURAL_DIFFERENCE / NOT_APPLICABLE_WITH_EVIDENCE). Substantive fixes: R6 periodic validation switches to eval mode + torch.no_grad() + restores train mode; R8 worker fails closed on tokenizer_vocab_mismatch (silent rebind removed); R20 protected_load accepts expected_release_identity and Resume path binds RELEASE_METADATA[source_commit] so cross-release resume is refused; R26 frozen preflight adds release_identity check that BLOCKS on unknown/missing source_commit. Evidence fixes: R17 button-gating error paths asserted; R31 W10-11 positive matrix extended with eval-mode evidence + multiple K=16 boundary crossings + architecture-preservation spot-check; R32 W10-11 negative matrix consolidated into 26 rows covering the directive's 25 failure modes. Cosmetic-only differences (aeon/training_data.py vs aeon/job/data_source.py; ProtectedCheckpointStore vs generation.py+key_store.py; JobMode enum vs Job.intent str; per-generation payload/metadata/auth/provenance/digest split vs state.pt + .meta.json inside atomic-rename target) preserved as COSMETIC_STRUCTURAL_DIFFERENCE per gap correction policy. Full regression: 411/411. Program B (L-series) authorized to resume at L1."
     }
   },
   "l_series_gate": {

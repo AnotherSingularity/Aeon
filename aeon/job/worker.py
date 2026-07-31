@@ -180,12 +180,31 @@ def _run_training_loop(job: Job) -> None:
         raise RuntimeError(f"data_unavailable:{e.reason}") from e
 
     tcfg_model = AeonTransformerConfig(**mcfg.get("transformer", {}))
-    # W10-1: bind the transformer's vocab_size to the loaded tokenizer's
-    # vocab (matches scripts/train.py::main). Random-init cannot happen
-    # against a vocab that does not match the tokenizer that produces the
-    # ids.
-    if data_source.tokenizer.vocab_size != tcfg_model.vocab_size:
-        tcfg_model.vocab_size = data_source.tokenizer.vocab_size
+    # W10-R/R8: tokenizer vocab and model vocab must agree BEFORE model
+    # construction. The old silent rebind was a fail-safe (prevented
+    # embedding OOB) but violated the directive's fail-closed principle
+    # — a misconfigured job needs to be visible to the operator, not
+    # silently corrected. A caller who genuinely wants the tokenizer's
+    # vocab to drive the model config declares it by leaving
+    # transformer.vocab_size at 0 or omitting it entirely; in that
+    # narrow case the rebind still applies.
+    _tok_vocab = int(data_source.tokenizer.vocab_size)
+    _cfg_vocab = int(tcfg_model.vocab_size)
+    _cfg_uninit = ("vocab_size" not in mcfg.get("transformer", {})
+                    or _cfg_vocab in (0, None))
+    if _cfg_uninit:
+        tcfg_model.vocab_size = _tok_vocab
+    elif _tok_vocab != _cfg_vocab:
+        mark_status(job, JobStatus.FAILED,
+                     note=(f"data unavailable (tokenizer_vocab_mismatch): "
+                           f"tokenizer vocab={_tok_vocab} != model config "
+                           f"vocab={_cfg_vocab}"))
+        _write_result(job, {"ok": False,
+                             "reason": "data_unavailable",
+                             "code": "tokenizer_vocab_mismatch",
+                             "detail": (f"tokenizer.vocab_size={_tok_vocab} vs "
+                                          f"config.transformer.vocab_size={_cfg_vocab}")})
+        raise RuntimeError("data_unavailable:tokenizer_vocab_mismatch")
     model = HybridModel(
         h_rec=mcfg["h_rec"], K=mcfg["K"], transformer_config=tcfg_model,
         substrate=mcfg.get("substrate"), margin_h=mcfg["margin_h"],
@@ -288,10 +307,21 @@ def _run_training_loop(job: Job) -> None:
                 _write_result(job, {"ok": False, "reason": "recover_no_checkpoint"})
                 raise RuntimeError("recover_no_checkpoint")
 
+        # W10-R/R20: on Resume, bind the running release identity so a
+        # cross-release load is refused. On Recovery, leave it None; the
+        # RecoveryDecision is the explicit operator authorization for
+        # the cross-release load.
+        _expected_release = None
+        if intent == "resume":
+            from aeon.version import RELEASE_METADATA as _RM
+            _expected_release = _RM.get("source_commit")
+            if _expected_release == "unknown":
+                _expected_release = None
         try:
             blob = protected_load(ck, keyref_mac=keyref,
                                    expected_model_config=mcfg,
-                                   recovery_decision=recovery_decision)
+                                   recovery_decision=recovery_decision,
+                                   expected_release_identity=_expected_release)
         except CheckpointAuthenticationError as e:
             mark_status(job, JobStatus.FAILED,
                          note=f"checkpoint authentication failed: {e}"[:400])
@@ -451,14 +481,15 @@ def _run_training_loop(job: Job) -> None:
                          loss=float(out.loss.item()),
                          holds=bool(a["holds"]))
 
-        # W10-9/A7: honor validation_interval. Every N steps, run a
-        # bounded structural validation — no gradient math, no
-        # side-effects: the model still-holds-certificate check, plus a
-        # NaN sweep of the current logits. Records an evidence line so
-        # the desktop Validate button has something concrete to display.
+        # W10-9/A7 + W10-R/R6: honor validation_interval. Every N steps,
+        # switch to eval mode, run a fresh forward pass under
+        # torch.no_grad(), and restore train mode. Records an evidence
+        # line the desktop Validate button can display. This validation
+        # is separated from the in-flight training `out` so no training
+        # RNG state is consulted and no optimizer step is possible.
         if (validation_interval is not None and validation_interval > 0
                 and step % validation_interval == 0):
-            _run_periodic_validation(job, model, out, step)
+            _run_periodic_validation(job, model, batch, step)
         if step % int(tcfg.get("ckpt_every", 1000)) == 0:
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
                               data_position, obs,
@@ -525,39 +556,63 @@ def _discard_generations_after(checkpoint_dir: str, keep_step: int) -> None:
             pass
 
 
-def _run_periodic_validation(job: Job, model, out, step: int) -> None:
-    """W10-9/A7: periodic in-worker validation. Cheap: certificate audit +
-    NaN sweep on the most recent forward pass. Records a JSONL line at
-    job.audit_dir/worker_validation.jsonl so the launcher's Validate
-    button can surface the latest live check."""
+def _run_periodic_validation(job: Job, model, batch, step: int) -> None:
+    """W10-9/A7 + W10-R/R6: periodic in-worker validation.
+
+    Runs a fresh forward pass under torch.no_grad() with the model
+    switched to eval mode; restores training mode before returning.
+    Never mutates the optimizer, never advances the corpus cursor,
+    never touches the training RNG. Records a JSONL evidence line
+    the launcher's Validate button can surface.
+
+    ``batch`` is the training batch that just completed; the
+    validation re-runs the forward pass on the same tokens under
+    eval() so the certificate audit reflects the model's post-step
+    state and the NaN sweep sees eval-mode logits rather than the
+    train-mode ones. A separate held-out validation partition is a
+    larger architectural change tracked as a W10-R follow-on; the
+    directive's minimum-correct requirement (eval mode, no_grad, no
+    training RNG mutation, no optimizer step, own audit log) is met.
+    """
     import math
     import torch
+    was_training = model.training
     try:
-        a = model.audit()
-        nan = False
-        for t in (out.loss, getattr(out, "logits", None)):
-            if t is None:
-                continue
-            if not torch.isfinite(t).all():
-                nan = True
-                break
-        rec = {
-            "ts": time.time(),
-            "kind": "periodic_validation",
-            "step": int(step),
-            "certificate_holds": bool(a["holds"]),
-            "sigma_h": float(a["sigma_Wh"]),
-            "sigma_c": float(a["sigma_Wc"]),
-            "gamma": float(a["gamma"]),
-            "loss_finite": bool(math.isfinite(float(out.loss.item()))),
-            "logits_have_nan_or_inf": bool(nan),
-        }
+        model.eval()
+        with torch.no_grad():
+            out = model(input_ids=batch["input_ids"],
+                          attention_mask=batch["attention_mask"],
+                          labels=batch["labels"])
+            a = model.audit()
+            nan = False
+            for t in (out.loss, getattr(out, "logits", None)):
+                if t is None:
+                    continue
+                if not torch.isfinite(t).all():
+                    nan = True
+                    break
+            rec = {
+                "ts": time.time(),
+                "kind": "periodic_validation",
+                "step": int(step),
+                "eval_mode": True,
+                "no_grad": True,
+                "certificate_holds": bool(a["holds"]),
+                "sigma_h": float(a["sigma_Wh"]),
+                "sigma_c": float(a["sigma_Wc"]),
+                "gamma": float(a["gamma"]),
+                "loss_finite": bool(math.isfinite(float(out.loss.item()))),
+                "logits_have_nan_or_inf": bool(nan),
+            }
         path = os.path.join(job.audit_dir, "worker_validation.jsonl")
         os.makedirs(job.audit_dir, exist_ok=True)
         with open(path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
     except Exception:
         pass
+    finally:
+        if was_training:
+            model.train()
 
 
 def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,

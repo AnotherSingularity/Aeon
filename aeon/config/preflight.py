@@ -162,6 +162,30 @@ def run_preflight(user_cfg: Dict[str, Any]) -> PreflightResult:
         else:
             _add(res, "corpus", unusable_status, f"corpus unusable: {err}")
 
+    # --- 6b. Release identity (W10-R/R26) ---
+    # In frozen mode, RELEASE_METADATA must carry a valid source_commit
+    # (not 'unknown'). Without it, protected save/load loses provenance
+    # — see aeon/checkpoint.py::source_commit_id which raises
+    # SourceCommitUnavailable on the same condition. Source-tree runs
+    # skip this check because git rev-parse is a legitimate fallback.
+    try:
+        from aeon.version import RELEASE_METADATA
+        _release = RELEASE_METADATA.get("source_commit")
+    except Exception as e:
+        _release = None
+        _detail = f"RELEASE_METADATA unreadable: {e}"
+    else:
+        _detail = f"source_commit={_release!r}"
+    if not frozen:
+        _add(res, "release_identity", "skip",
+             f"source-tree run — git rev-parse is authoritative ({_detail})")
+    elif _release and _release != "unknown":
+        _add(res, "release_identity", "pass", _detail)
+    else:
+        _add(res, "release_identity", "fail",
+             "frozen build without a valid embedded source_commit — "
+             "protected save/load will fail on SourceCommitUnavailable")
+
     # --- 7. Configuration identity ---
     tcid = user_cfg.get("training_config_id") or "aeon_350m_primary.yaml"
     resolved = installed_resource_root() / "configs" / tcid
