@@ -24,8 +24,10 @@
       "summary": "Authoritative signal trace on HybridModel.forward via optional AeonDiagnosticObserver (aeon/bypass/signal_trace.py). Default forward path byte-identical to observer=None: logits, loss, and gradients agree exactly under identical RNG state. One RecursionWindowEvent per K=16 boundary; both transformer and substrate source norms non-zero; single broadcast per window; Recursion state fp32 at every boundary; K=16 numbering correct with short-final-window handling; observer cannot mutate parameters; raw text never captured by default; TensorCaptureBudget defined and defaults to disabled; observer exceptions propagate. IP-preservation firewall passes. Runtime forward path unchanged. Claim level remains 0 (no observational or causal claim earned)."
     },
     "L2": {
-      "closed": false,
-      "summary": "Visible barrier registry (aeon/bypass/barriers.py + benchmarks/latent_bypass/barriers.json). Metrics operate on visible data only. Thresholds calibrated on calibration partition, locked before evaluation."
+      "closed": true,
+      "closed_at_content_commit": "PENDING",
+      "closed_at_closure_commit": "PENDING",
+      "summary": "Visible barrier registry + candidate search + corpus-package validator machinery. aeon/bypass/barriers.py loads benchmarks/latent_bypass/barriers.json (8 required rows: HIGH_LOCAL_LOSS, LOW_TARGET_MARGIN, HIGH_VISIBLE_ENTROPY, LONG_DEPENDENCY, LOCAL_STATE_ALIASING, CONTRADICTION_REGION, DELAYED_INSTRUCTION_REGION, ENTITY_STATE_DISCONTINUITY). All metrics from ALLOWED_VISIBLE_METRICS only; FORBIDDEN_REGISTRY_INPUTS enforces no hidden-state reads. Thresholds LOCK after calibration; recalibration refused unless allow_recalibration=True. aeon/bypass/candidates.py provides exact-prefix and declared-projection matching; build_locked_set produces a stable SHA-256 digest so downstream L3 code binds to a specific set. aeon/bypass/corpus_package.py validates a corpus package layout and refuses to inspect the sealed test partition unless allow_test_partition_access=True. Achieved claim level remains 0 (synthetic-fixture implementation only). IP-preservation manifest unchanged."
     },
     "L3": {
       "closed": false,

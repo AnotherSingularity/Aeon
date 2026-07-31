@@ -1,0 +1,79 @@
+{
+  "$schema_version": 1,
+  "tranche": "L2",
+  "base_commit_l1": "537c972",
+  "registry_file": "benchmarks/latent_bypass/barriers.json",
+  "registry_file_digest": "sha256:375ca75d57f61d61f7c9a35abffc9e8c61cda1a9b3500adbf86a40b0273b9216",
+  "registry_row_count": 8,
+  "required_barrier_ids": [
+    "HIGH_LOCAL_LOSS",
+    "LOW_TARGET_MARGIN",
+    "HIGH_VISIBLE_ENTROPY",
+    "LONG_DEPENDENCY",
+    "LOCAL_STATE_ALIASING",
+    "CONTRADICTION_REGION",
+    "DELAYED_INSTRUCTION_REGION",
+    "ENTITY_STATE_DISCONTINUITY"
+  ],
+  "allowed_visible_metrics": [
+    "dependency_distance",
+    "local_state_repetition",
+    "pre_broadcast_correct_token_margin",
+    "pre_broadcast_output_entropy",
+    "pre_broadcast_target_rank",
+    "pre_broadcast_token_loss",
+    "task_progress",
+    "visible_failure_to_resolve_task_state",
+    "visible_prediction_instability"
+  ],
+  "forbidden_registry_inputs": [
+    "broadcast_norm",
+    "h_after",
+    "h_before",
+    "h_cond",
+    "recursion_delta_norm",
+    "recursion_state",
+    "substrate_state",
+    "transformer_attention"
+  ],
+  "candidate_search": {
+    "exact_prefix": "aeon.bypass.candidates.find_exact_prefix_matches",
+    "declared_projection": "aeon.bypass.candidates.find_projection_matches",
+    "locking": "aeon.bypass.candidates.build_locked_set (SHA-256 digest over sorted pair list)"
+  },
+  "corpus_package_validator": "aeon.bypass.corpus_package.validate_corpus_package",
+  "corpus_package_expected_layout": [
+    "source/original.txt",
+    "processed/{train,calibration,validation,test}.jsonl",
+    "manifest.json",
+    "provenance.json",
+    "license.txt",
+    "partition_report.json",
+    "SEALED_TEST_DIGEST"
+  ],
+  "results": {
+    "registry_loads_eight_definitions": true,
+    "duplicate_id_refused": true,
+    "unknown_visible_metric_refused": true,
+    "hidden_state_input_refused_at_load_time": true,
+    "top_percent_calibration_ok_and_locks": true,
+    "insufficient_samples_refused": true,
+    "calibration_partition_distinct_from_evaluation_partition": true,
+    "evaluate_top_percent_behaves_correctly": true,
+    "missing_data_action_respected": true,
+    "exact_prefix_search_deterministic_and_visible_only": true,
+    "declared_projection_bounded_by_epsilon": true,
+    "corpus_package_validator_refuses_partial_package": true,
+    "corpus_package_validator_accepts_well_formed_package": true,
+    "sealed_test_partition_not_inspected_by_default": true,
+    "ip_preservation_manifest_unchanged": true
+  },
+  "claim_level_after_L2": 0,
+  "next_gate": "L3 \u2014 hidden reaction coordinates (requires vendored real-English corpus package)",
+  "l3_gate_precondition": "aeon.bypass.corpus_package.validate_corpus_package(package_root).ready_for_L3 == True",
+  "closure_state": {
+    "closed": true,
+    "closed_at_content_commit": "PENDING",
+    "closed_at_closure_commit": "PENDING"
+  }
+}
