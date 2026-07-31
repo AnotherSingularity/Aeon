@@ -299,16 +299,18 @@ def test_checkpoint_rotation_is_atomic_across_envelope():
 
 
 # ---------------------------------------------------------------------------
-# A17 — preflight does not block on missing tokenizer or corpus
+# A17 — preflight does not block on missing tokenizer or corpus  [CORRECTED W10-8]
 # ---------------------------------------------------------------------------
 def test_preflight_does_not_block_on_missing_tokenizer_or_corpus():
     src = _read("aeon/config/preflight.py")
-    # No pass/fail check that opens the tokenizer file and validates it
-    assert "load_tokenizer" not in src and "SentencePieceProcessor" not in src, (
-        "preflight must not YET actually load the tokenizer (flip at W10-8)")
-    # No pass/fail check that reads the corpus
-    assert "corpus_manifest_open" not in src and "verify_corpus" not in src, (
-        "preflight must not YET verify the corpus (flip at W10-8)")
+    # W10-8 flip: frozen mode now fails closed on missing tokenizer/corpus.
+    assert "_is_frozen" in src, (
+        "W10-8/A17: preflight must distinguish frozen from source mode")
+    assert "unusable_status" in src, (
+        "W10-8/A17: preflight must select fail-vs-warn on frozen mode")
+    assert "iter_text_records" in src or "_corpus_read_fails" in src, (
+        "W10-8/A17: preflight must actually attempt to READ the corpus, "
+        "not merely check for existence")
 
 
 # ---------------------------------------------------------------------------

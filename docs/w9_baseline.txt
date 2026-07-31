@@ -27,10 +27,11 @@ test_w10_4_atomic_generation     12
 test_w10_5_frozen_provenance     7
 test_w10_6_runtime_integrity     10
 test_w10_7_installer_correctness  8
+test_w10_8_fail_closed_preflight  8
 test_w10_audit_reproduction      24
 test_windows_packaging           15
 test_windows_workflows           16
-TOTAL: 329
+TOTAL: 337
 INHERITED (E/F-series, unchanged): 155
 NEW (W-series): 68   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 15 + test_windows_workflows 16)
 NEW (W10-0 reproductions): 24  (test_w10_audit_reproduction — A1/A2/A3 flipped by W10-1; A4/A5 by W10-2; A6 by W10-3; A16 by W10-4; A15 by W10-5; A9/A10/A11 by W10-6)
@@ -41,6 +42,7 @@ NEW (W10-4): 12  (test_w10_4_atomic_generation — per-generation dir + COMPLETE
 NEW (W10-5):  7  (test_w10_5_frozen_provenance — RELEASE_METADATA source_commit + SourceCommitUnavailable)
 NEW (W10-6): 10  (test_w10_6_runtime_integrity — manifest schema v2 + top-level scope + malformed/traversal/unexpected fail-closed)
 NEW (W10-7):  8  (test_w10_7_installer_correctness — SourceDir + manifest SHA-256 sidecar + expanded upgrade guard + no CloseApplications=force)
+NEW (W10-8):  8  (test_w10_8_fail_closed_preflight — frozen mode BLOCKS on missing/unloadable tokenizer or corpus; source mode preserves WARN)
 NEW (L-series gate): 3  (test_l_series_prerequisite_lock — refuses landings until every W10 tranche closed)
 
 Note: the W10-0 reproductions lock the audit-reported broken state so future

@@ -46,9 +46,55 @@ def _add(res: PreflightResult, name: str, status: str, detail: str = "") -> None
     res.checks.append(PreflightCheck(name=name, status=status, detail=detail))
 
 
+def _is_frozen() -> bool:
+    """Frozen mode is the PyInstaller-built Windows bundle. In that mode
+    the tokenizer and corpus MUST be present + loadable — falling back to
+    torch.randint synthetic tokens produced the shipped-broken worker the
+    audit found in W10-0/A17. Source-tree runs continue to warn (dev
+    convenience) but the frozen desktop path fails closed.
+    """
+    return bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"))
+
+
+def _tokenizer_load_fails(path: str) -> Optional[str]:
+    try:
+        from aeon.tokenizer import AeonTokenizer
+        AeonTokenizer(path)
+        return None
+    except Exception as e:
+        return str(e)
+
+
+def _corpus_read_fails(path: str) -> Optional[str]:
+    """Attempt to yield at least one text record from the corpus. If the
+    file is empty, unreadable, or produces zero records, the corpus is
+    unusable and the check fails closed."""
+    try:
+        from aeon.data import iter_text_records
+        it = iter_text_records(path)
+        first = next(it, None)
+        if first is None:
+            return "corpus yields zero records"
+        return None
+    except Exception as e:
+        return str(e)
+
+
 def run_preflight(user_cfg: Dict[str, Any]) -> PreflightResult:
-    """Run every §W4 check. Never raises — always returns a result."""
+    """Run every §W4 check. Never raises — always returns a result.
+
+    W10-8 correction: in FROZEN mode (Windows PyInstaller bundle), the
+    tokenizer_path and corpus_path checks fail (BLOCKED) instead of warn
+    when either is missing or unloadable. The corrective directive's A17
+    finding was that the frozen desktop preflight would return
+    READY_WITH_WARNINGS on a bundle that could not actually train — the
+    worker would then fall back to torch.randint synthetic tokens. In
+    source-tree mode the previous WARN behaviour is preserved for
+    developer convenience.
+    """
     res = PreflightResult(verdict=PreflightVerdict.READY)
+    frozen = _is_frozen()
+    unusable_status = "fail" if frozen else "warn"
 
     # --- 1. OS + arch ---
     plat = sys.platform
@@ -78,30 +124,43 @@ def run_preflight(user_cfg: Dict[str, Any]) -> PreflightResult:
         _add(res, "user_data_writable", "fail", f"cannot write under user_data_root: {e}")
 
     # --- 5. Tokenizer identity + presence ---
+    # W10-8/A17: in frozen mode, missing/unloadable tokenizer BLOCKS.
     tok = user_cfg.get("tokenizer_path")
     if not tok:
-        _add(res, "tokenizer", "warn", "no tokenizer configured (synthetic-token fallback will apply)")
+        _add(res, "tokenizer", unusable_status,
+             "no tokenizer configured "
+             + ("(frozen mode requires a tokenizer — BLOCKED)" if frozen
+                else "(synthetic-token fallback will apply)"))
     elif not os.path.exists(tok):
         _add(res, "tokenizer", "fail", f"tokenizer file not found: {tok}")
     else:
-        try:
+        err = _tokenizer_load_fails(tok)
+        if err is None:
             from aeon.tokenizer import AeonTokenizer
             t = AeonTokenizer(tok)
             _add(res, "tokenizer", "pass",
                  f"loaded vocab={t.vocab_size} bos={t.bos_id} eos={t.eos_id}")
-        except Exception as e:
-            _add(res, "tokenizer", "fail", f"tokenizer load failed: {e}")
+        else:
+            _add(res, "tokenizer", "fail", f"tokenizer load failed: {err}")
 
     # --- 6. Corpus identity + provenance ---
+    # W10-8/A17: in frozen mode, missing/empty/unreadable corpus BLOCKS.
+    # A corpus that yields zero records is unusable — the worker would fall
+    # through to torch.randint synthetic tokens.
     corpus = user_cfg.get("corpus_path")
     if not corpus:
-        _add(res, "corpus", "warn", "no corpus configured (synthetic-token fallback will apply)")
+        _add(res, "corpus", unusable_status,
+             "no corpus configured "
+             + ("(frozen mode requires a corpus — BLOCKED)" if frozen
+                else "(synthetic-token fallback will apply)"))
     elif not os.path.exists(corpus):
         _add(res, "corpus", "fail", f"corpus not found: {corpus}")
     else:
-        # F2 provenance: unidentified corpus refused. Wizard writes a manifest;
-        # here we only check for existence.
-        _add(res, "corpus", "pass", f"corpus present at {corpus}")
+        err = _corpus_read_fails(corpus)
+        if err is None:
+            _add(res, "corpus", "pass", f"corpus present and readable at {corpus}")
+        else:
+            _add(res, "corpus", unusable_status, f"corpus unusable: {err}")
 
     # --- 7. Configuration identity ---
     tcid = user_cfg.get("training_config_id") or "aeon_350m_primary.yaml"

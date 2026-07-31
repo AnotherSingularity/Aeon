@@ -58,8 +58,10 @@
       "summary": "Installer correctness: SourceDir=..\\.. pins [Files] Source, PrepareToInstall verifies manifest SHA-256 against RUNTIME_MANIFEST.sha256 sidecar (generator emits it), upgrade guard blocks on RUNNING/STARTING/STOP_REQUESTED/CHECKPOINTING, CloseApplications=force removed (A12/A13/A14 flipped)"
     },
     "W10-8": {
-      "closed": false,
-      "summary": "Fail-closed frozen preflight"
+      "closed": true,
+      "closed_at_commit": "c67ab42",
+      "closed_at": "2026-07-31T01:00:00Z",
+      "summary": "Fail-closed frozen preflight: in frozen mode (sys.frozen / _MEIPASS) missing or unloadable tokenizer/corpus BLOCKS instead of WARN; corpus check now attempts to read one text record via iter_text_records; source-tree mode preserves WARN (A17 flipped)"
     },
     "W10-9": {
       "closed": false,
