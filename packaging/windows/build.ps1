@@ -72,14 +72,32 @@ foreach ($t in $suite) {
 }
 Write-Host "[build] test total: $total"
 
-# 4. Ensure licences directory exists — operator populates it before build
+# 4. W10-10/A23: real third-party licences are REQUIRED. The old build
+#    silently created a PLACEHOLDER.txt "Place third-party licences here
+#    before shipping." and continued — that meant an installer could ship
+#    with no upstream notices. We now:
+#      * refuse the build if packaging\windows\licenses\ does not exist,
+#      * refuse if the directory contains no files or only PLACEHOLDER.txt,
+#      * refuse if any required license file is missing (torch, pyinstaller,
+#        sentencepiece, safetensors, numpy, pyyaml — the runtime deps).
+#    Operators must populate the licenses/ directory from the actual
+#    upstream sources before invoking build.ps1.
 $Licenses = Join-Path $Pkg 'licenses'
 if (-not (Test-Path $Licenses)) {
-    New-Item -ItemType Directory -Path $Licenses | Out-Null
-    Set-Content -Path (Join-Path $Licenses 'PLACEHOLDER.txt') `
-        -Value "Place third-party licences here before shipping." `
-        -Encoding UTF8
+    throw "[build] licences directory missing at $Licenses. W10-10/A23: populate it with the real third-party notices for torch, sentencepiece, safetensors, numpy, pyyaml, and pyinstaller before running build.ps1."
 }
+$LicenseFiles = Get-ChildItem -Path $Licenses -File | Where-Object { $_.Name -ne 'PLACEHOLDER.txt' }
+if (-not $LicenseFiles -or $LicenseFiles.Count -eq 0) {
+    throw "[build] licences directory at $Licenses is empty (or only contains PLACEHOLDER.txt). W10-10/A23: real third-party licences required — refusing to ship without them."
+}
+$RequiredLicenses = @('torch', 'pyinstaller', 'sentencepiece', 'safetensors', 'numpy', 'pyyaml')
+foreach ($req in $RequiredLicenses) {
+    $match = $LicenseFiles | Where-Object { $_.Name -match "(?i)$req" }
+    if (-not $match) {
+        throw "[build] licences directory at $Licenses is missing the license for '$req'. W10-10/A23: every runtime dependency must have its upstream LICENSE file present before the installer can be built."
+    }
+}
+Write-Host "[build] licences OK — $($LicenseFiles.Count) files, all required deps covered"
 
 # 5. Prepare release metadata
 & (Join-Path $Venv 'Scripts\python.exe') (Join-Path $Pkg 'release_metadata.py') `

@@ -1,23 +1,29 @@
-# Aeon Windows CPU build — pinned deps
+# Aeon Windows CPU build — fully-pinned deps (W10-10/A21)
 # Install with:
 #     pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-windows.lock
 #
 # The torch pin is the CPU wheel for Windows x64. GPU / CUDA is out of scope
 # for the first Windows installer (§2 "CPU-only PyTorch for the first
 # installer").
+#
+# W10-10 correction: every runtime and build-tool dependency is pinned by
+# exact "==" version. Range pins (">=", "<") were the audit's A21 finding
+# — they invited transitive drift on rebuild. Wheel hashes are a stronger
+# follow-up (--hash=sha256:...) and land with a subsequent build-tool
+# refresh; the exact-version pattern here is the audit's minimum correction.
 
 # Runtime
 torch==2.5.1+cpu
-safetensors>=0.4,<1.0
-sentencepiece>=0.2,<1.0
-pyyaml>=6.0
+safetensors==0.4.5
+sentencepiece==0.2.0
+pyyaml==6.0.2
 # torch 2.5.1 was built against numpy 1.x. Numpy 2.x has known ABI issues
 # with older torch native extensions on Windows-frozen builds (triggers
 # ImportError('cannot load module more than once per process') inside the
 # frozen worker even when Python 3.11 caches sys.modules correctly).
-numpy>=1.24,<2.0
+numpy==1.26.4
 
 # Build tooling. PyInstaller 6.10+ contains the fix that lets torch 2.5+
 # survive freezing without double-loading torch._C.
 pyinstaller==6.11.1
-pyinstaller-hooks-contrib>=2024.1
+pyinstaller-hooks-contrib==2024.10

@@ -376,50 +376,59 @@ def test_gui_diagnose_discards_output():
 
 
 # ---------------------------------------------------------------------------
-# A21 — lockfile has range pins
+# A21 — lockfile has range pins  [CORRECTED W10-10]
 # ---------------------------------------------------------------------------
 def test_windows_lock_has_range_pins_not_exact():
     src = _read("packaging/windows/requirements-windows.lock")
-    # Exact pins with '==' for torch and pyinstaller; ranges (>= or <) for others
-    assert "torch==2.5.1+cpu" in src
-    ranges = [line for line in src.splitlines()
-                if line and not line.startswith("#")
-                and (">=" in line or "<" in line and "==" not in line)]
-    assert ranges, "lockfile must still contain range pins at W10-0 (flip at W10-10)"
+    # W10-10 flip: every non-comment line is an exact pin.
+    for line in src.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        assert "==" in s, f"W10-10/A21: non-exact pin in lockfile: {s!r}"
+        assert ">=" not in s and "<" not in s, (
+            f"W10-10/A21: range operator survives in lockfile: {s!r}")
 
 
 # ---------------------------------------------------------------------------
-# A22 — workflow actions pinned by tag not SHA
+# A22 — workflow actions pinned by tag not SHA  [CORRECTED W10-10]
 # ---------------------------------------------------------------------------
 def test_workflow_actions_pinned_by_tag_not_sha():
     src = _read(".github/workflows/windows-release.yml")
     tag_pins = re.findall(r"uses:\s*(actions/[\w-]+@v\d+)\b", src)
-    assert tag_pins, "expected version-tag pins for GitHub actions"
-    assert not re.search(r"uses:\s*actions/[\w-]+@[0-9a-f]{40}", src), (
-        "workflow must not YET pin actions by SHA (flip at W10-10)")
+    assert not tag_pins, (
+        f"W10-10/A22: workflow must not pin actions by tag; got {tag_pins}")
+    sha_pins = re.findall(r"uses:\s*actions/[\w-]+@[0-9a-f]{40}", src)
+    assert sha_pins, "W10-10/A22: workflow must pin actions by SHA"
 
 
 # ---------------------------------------------------------------------------
-# A23 — build.ps1 creates a placeholder license and continues
+# A23 — build.ps1 creates a placeholder license and continues  [CORRECTED W10-10]
 # ---------------------------------------------------------------------------
 def test_build_ps1_creates_placeholder_license_and_continues():
     src = _read("packaging/windows/build.ps1")
-    assert "PLACEHOLDER.txt" in src, (
-        "build.ps1 must still create a PLACEHOLDER license at W10-0 baseline")
-    assert "Place third-party licences here before shipping" in src
+    # W10-10 flip: build.ps1 THROWs on missing/placeholder licenses.
+    assert "throw" in src, "W10-10/A23: build.ps1 must throw on missing licences"
+    assert "licences directory missing" in src or "licences directory at" in src, (
+        "W10-10/A23: build.ps1 must refuse to proceed without real licences")
+    # The old Set-Content that wrote PLACEHOLDER.txt is gone.
+    assert not re.search(
+        r"Set-Content -Path \(Join-Path \$Licenses 'PLACEHOLDER\.txt'\)", src), (
+        "W10-10/A23: build.ps1 must not write a PLACEHOLDER.txt license")
 
 
 # ---------------------------------------------------------------------------
-# A25 — attestation may be unavailable
+# A25 — attestation may be unavailable  [CORRECTED W10-10]
 # ---------------------------------------------------------------------------
 def test_workflow_attestation_may_be_unavailable_on_current_plan():
     src = _read(".github/workflows/windows-release.yml")
     assert "actions/attest-build-provenance" in src, (
-        "workflow still references attest-build-provenance at W10-0")
-    # No ATTESTATION_NOT_AVAILABLE_FOR_CURRENT_PLAN handling yet
-    assert "ATTESTATION_NOT_AVAILABLE" not in src, (
-        "workflow must not YET record the unavailable-attestation status "
-        "(flip at W10-10)")
+        "workflow still references attest-build-provenance")
+    # W10-10 flip: ATTESTATION_NOT_AVAILABLE_FOR_CURRENT_PLAN is now emitted.
+    assert "ATTESTATION_NOT_AVAILABLE_FOR_CURRENT_PLAN" in src, (
+        "W10-10/A25: workflow must record the unavailable-attestation status")
+    assert "continue-on-error: true" in src, (
+        "W10-10/A25: attestation step must not fail the build on private-repo condition")
 
 
 # ---------------------------------------------------------------------------

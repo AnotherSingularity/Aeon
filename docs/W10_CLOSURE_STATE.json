@@ -70,8 +70,10 @@
       "summary": "Real desktop operations + real metrics: worker consumes cpu_thread_limit/memory_ceiling_gb/validation_interval from Job.compute_policy and applies them (torch.set_num_threads, safe-stop on ceiling, periodic in-worker validation writing worker_validation.jsonl). Metrics computed via perf_counter \u2014 no more step_time_s=0.0 placeholders. GUI Validate runs --diagnose against the latest authenticated checkpoint with subprocess.run(capture_output=True) into a scrollable text window. GUI Diagnose captures output identically. GUI Recovery enumerates authenticated candidates via aeon.launcher.resume.enumerate_checkpoints, builds the RecoveryDecision in-process via BuildableRecoveryDecision, and spawns intent=recover. A7/A8/A18/A19/A20 flipped."
     },
     "W10-10": {
-      "closed": false,
-      "summary": "Fully-pinned deps + real licenses + attestation handling"
+      "closed": true,
+      "closed_at_commit": "ebf472c",
+      "closed_at": "2026-07-31T02:00:00Z",
+      "summary": "Build reproducibility + real licences + attestation handling: requirements-windows.lock now uses exact == pins for every runtime and build-tool dependency (no >= or < ranges); windows-release.yml and windows-certification.yml pin all actions/* references to 40-char commit SHAs (with vX.Y.Z comment tags); build.ps1 throws when packaging/windows/licences/ is missing, empty, PLACEHOLDER-only, or missing any required upstream LICENSE (torch/pyinstaller/sentencepiece/safetensors/numpy/pyyaml); attest step uses continue-on-error and records attestation_status=ATTESTED or ATTESTATION_NOT_AVAILABLE_FOR_CURRENT_PLAN so private-repo builds succeed without a GHEC-only attestation (A21/A22/A23/A25 flipped)"
     },
     "W10-11": {
       "closed": false,
