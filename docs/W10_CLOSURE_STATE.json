@@ -76,8 +76,10 @@
       "summary": "Build reproducibility + real licences + attestation handling: requirements-windows.lock now uses exact == pins for every runtime and build-tool dependency (no >= or < ranges); windows-release.yml and windows-certification.yml pin all actions/* references to 40-char commit SHAs (with vX.Y.Z comment tags); build.ps1 throws when packaging/windows/licences/ is missing, empty, PLACEHOLDER-only, or missing any required upstream LICENSE (torch/pyinstaller/sentencepiece/safetensors/numpy/pyyaml); attest step uses continue-on-error and records attestation_status=ATTESTED or ATTESTATION_NOT_AVAILABLE_FOR_CURRENT_PLAN so private-repo builds succeed without a GHEC-only attestation (A21/A22/A23/A25 flipped)"
     },
     "W10-11": {
-      "closed": false,
-      "summary": "End-to-end certification against a real English fixture"
+      "closed": true,
+      "closed_at_commit": "197f4cd",
+      "closed_at": "2026-07-31T02:30:00Z",
+      "summary": "End-to-end certification against a bounded English fixture: real SentencePiece tokenizer + real JSONL corpus drive a full Start->Resume->Corrupt->Recover lifecycle; asserts non-zero perf_counter metrics (W10-9), periodic worker_validation.jsonl evidence (W10-9), authenticated per-generation envelope round-trip through Resume (W10-2, W10-3, W10-4), tamper detection on the newest generation (W10-2, W10-6), authorized rollback via BuildableRecoveryDecision moving forward generations into <ck>/.discarded/ for evidence, and post-rollback enumeration containing only authenticated candidates. Also adds worker rollback-cleanup helper _discard_generations_after and fixes a pre-existing double-save bug at max_steps==ckpt_every boundary. Closes W10 \u2014 L-series prerequisite gate unlocks."
     }
   },
   "l_series_gate": {

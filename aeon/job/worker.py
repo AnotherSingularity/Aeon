@@ -319,6 +319,17 @@ def _run_training_loop(job: Job) -> None:
                            f"{os.path.basename(ck)} step={start_step} "
                            f"authorized_step="
                            f"{blob['envelope_metadata'].get('authorized_step')}"))
+        # W10-11: authorized rollback semantics — recovery to step N
+        # must discard every generation with step > N that would
+        # otherwise sit in the checkpoint dir ahead of the rollback
+        # anchor. This is the semantic contract of RecoveryDecision:
+        # the operator explicitly declares the newer generations
+        # unfit. Without this discard, a subsequent Resume would pick
+        # them back up. The tampered / corrupted state is preserved on
+        # disk only as long as needed by this loop; the worker moves
+        # them aside so future enumerators no longer surface them.
+        if intent == "recover":
+            _discard_generations_after(job.checkpoint_dir, start_step)
     else:
         raise ValueError(f"unknown intent: {intent!r}")
 
@@ -455,16 +466,63 @@ def _run_training_loop(job: Job) -> None:
                               corpus_id=data_source.corpus_id,
                               keyref=keyref)
 
-    # Final checkpoint on clean completion
-    _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs,
-                      tokenizer_id=data_source.tokenizer_id,
-                      corpus_id=data_source.corpus_id,
-                      keyref=keyref)
+    # Final checkpoint on clean completion. Guard against a double-save
+    # when max_steps landed exactly on a ckpt_every boundary (the periodic
+    # tick already wrote generation-<step>).
+    latest = latest_authorized_generation(job.checkpoint_dir)
+    if latest is None or int(latest.step) < step:
+        _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs,
+                          tokenizer_id=data_source.tokenizer_id,
+                          corpus_id=data_source.corpus_id,
+                          keyref=keyref)
     mark_status(job, JobStatus.STOPPED, note="max_steps reached", step=step)
     _write_result(job, {"ok": True, "final_step": step, "reason": "max_steps",
                          "data_position": int(data_position),
                          "tokenizer_id": data_source.tokenizer_id,
                          "corpus_id": data_source.corpus_id})
+
+
+def _discard_generations_after(checkpoint_dir: str, keep_step: int) -> None:
+    """W10-11: rollback anchor cleanup. Move every ``generation-<N>/``
+    directory with N > keep_step aside so future enumerators no longer
+    surface them. Uses rename (not delete) into a ``.discarded/`` sibling
+    so evidence is preserved for post-mortem — the audit trail still
+    contains the original bytes.
+    """
+    if not os.path.isdir(checkpoint_dir):
+        return
+    from aeon.job.generation import parse_generation_dir
+    graveyard = os.path.join(checkpoint_dir, ".discarded")
+    os.makedirs(graveyard, exist_ok=True)
+    for name in sorted(os.listdir(checkpoint_dir)):
+        parsed = parse_generation_dir(name)
+        if parsed is None:
+            continue
+        gen_step, is_tmp = parsed
+        if is_tmp:
+            continue
+        if gen_step > keep_step:
+            src = os.path.join(checkpoint_dir, name)
+            dst = os.path.join(graveyard, name)
+            # Keep evidence — if a collision exists (unlikely), append a
+            # numeric suffix rather than overwriting.
+            candidate = dst
+            suffix = 1
+            while os.path.exists(candidate):
+                candidate = f"{dst}.{suffix}"
+                suffix += 1
+            os.rename(src, candidate)
+    # Reset latest-authorized pointer to keep_step so a subsequent
+    # enumerator/loader agrees with the rollback.
+    pointer = os.path.join(checkpoint_dir, "latest-authorized.txt")
+    keeper = os.path.join(checkpoint_dir,
+                             f"generation-{int(keep_step):08d}")
+    if os.path.isdir(keeper):
+        try:
+            with open(pointer, "w", encoding="utf-8") as fh:
+                fh.write(os.path.basename(keeper) + "\n")
+        except Exception:
+            pass
 
 
 def _run_periodic_validation(job: Job, model, out, step: int) -> None:
