@@ -31,15 +31,18 @@
     },
     "L3": {
       "closed": false,
-      "summary": "Hidden reaction-coordinate framework (norm / directional / predictive). Fit on calibration only, evaluated held-out."
+      "structural_implementation": "landed_pending_corpus",
+      "summary": "Hidden reaction-coordinate framework (norm / directional / predictive) landed in aeon/bypass/reaction.py with calibration-only fit contract, calibration digest binding, ridge solve, and shuffled-state control. Calibration fit against real corpus BLOCKED by STATE B (docs/latent_bypass/L2_TO_L3_STATE_B.md). No observational or causal claim derived \u2014 achieved_claim_level remains 0."
     },
     "L4": {
       "closed": false,
-      "summary": "Bounded bypass telemetry per sampled window; sub-10% overhead target, 15% hard ceiling."
+      "structural_implementation": "landed_pending_corpus",
+      "summary": "Bounded telemetry landed in aeon/bypass/telemetry.py. SamplingTelemetryObserver is L1-shaped, disabled by default, byte and window ceilings fail closed, delta_loss = pre \u2212 post arithmetic, persistent flush writes locally only. Real observational runs BLOCKED by STATE B."
     },
     "L5": {
       "closed": false,
-      "summary": "Causal intervention engine (evaluation-only), training-guarded."
+      "structural_implementation": "landed_pending_corpus",
+      "summary": "Evaluation-only interventions landed in aeon/bypass/interventions.py. All 8 declared kinds enumerated, assert_evaluation_mode refuses training-mode, refuses_persistence decorator refuses checkpoint_dir/generation_dir/save_path keywords, InterventionRunner returns delta_L_c. Causal-checkpoint evidence BLOCKED by STATE B."
     },
     "L6": {
       "closed": false,
@@ -101,8 +104,8 @@
   "achieved_claim_level": 0,
   "provisional_notes": "Level 0 (theory only). No observational, causal, efficiency, or bypass claim has been derived. L1 must not raise this above 1; L2 remains at 1. Levels 2+ require the vendored real-English corpus per the corpus_staging block.",
   "program_state": "authorized",
-  "highest_completed_tranche": "L0",
+  "highest_completed_tranche": "L2",
   "execution_authorized": true,
   "real_corpus_claims_authorized": false,
-  "freeze_notes": "L0.1 correction: separated execution authorization from real-corpus claim authorization. execution_authorized=true permits L1 (signal trace) and L2 (barrier registry) work on the bounded synthetic-English fixture; real_corpus_claims_authorized=false blocks any elevation of achieved_claim_level above 1 (STRUCTURALLY_IMPLEMENTED) until a vendored authenticated real-English corpus lands. achieved_claim_level=0 does not prohibit L1/L2 execution — it means no observational or causal claim has yet been earned."
+  "freeze_notes": "L0.1 correction: separated execution authorization from real-corpus claim authorization. execution_authorized=true permits L1 (signal trace) and L2 (barrier registry) work on the bounded synthetic-English fixture; real_corpus_claims_authorized=false blocks any elevation of achieved_claim_level above 1 (STRUCTURALLY_IMPLEMENTED) until a vendored authenticated real-English corpus lands. achieved_claim_level=0 does not prohibit L1/L2 execution \u2014 it means no observational or causal claim has yet been earned."
 }

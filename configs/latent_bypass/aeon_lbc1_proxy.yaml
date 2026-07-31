@@ -1,0 +1,74 @@
+# configs/latent_bypass/aeon_lbc1_proxy.yaml
+#
+# Bounded research configuration for the AEON-LBC-1 research checkpoint
+# (§10). Preserves every Aeon architectural invariant. Do NOT edit the
+# invariant block below to change K, dtype, broadcast, substrate gate,
+# or certificate policy — Program B does not redesign the architecture.
+#
+# Three staged budgets. The runner scripts/run_aeon_lbc1_stage.py picks
+# ONE stage per invocation. Budgets are in USEFUL TRAINING TOKENS
+# (non-padded, non-BOS token count) — the worker's data source
+# accumulates these directly.
+#
+# NOTE: This configuration is dormant until the AEON-LBC-1 corpus
+# lands. The runner refuses to start when
+# aeon/bypass/corpus_package.py::validate_corpus_package(...) returns
+# ready_for_L3=False.
+
+model:
+  h_rec: 128
+  K: 16                  # IMMUTABLE — architectural invariant
+  margin_h: 0.02
+  margin_c: 0.02
+  dtype: bfloat16        # compute dtype for embedding/transformer;
+                         # Recursion state remains fp32 (worker cast)
+  transformer:
+    hidden_size: 256
+    num_hidden_layers: 4
+    num_attention_heads: 4
+    num_key_value_heads: 4
+    head_dim: 64
+    intermediate_size: 512
+    vocab_size: 32000    # bound at Start to tokenizer identity;
+                         # a mismatch is a fail-closed condition
+    max_position_embeddings: 512
+
+data:
+  seq_len: 256
+  # corpus_path resolved from AEON-LBC-1 partition; corpus_manifest_path
+  # validated by aeon.corpus_manifest.validate_manifest at Start.
+
+train:
+  seed: 20260731
+  lr: 0.0003
+  batch_size: 8
+  grad_clip: 1.0
+  aux_gate_penalty: 0.0
+  weight_decay: 0.01
+  log_every: 32
+  ckpt_every: 512
+  observability: true
+  sample_every: 4096
+  # max_steps is overridden per stage by the runner:
+  #   P0 (pipeline proof)     — 16,384 useful tokens
+  #   P1 (calibration ckpt)   — 262,144 useful tokens
+  #   P2 (primary bounded)    — 1,048,576 useful tokens
+  # max_steps is derived from the token budget divided by
+  # batch_size * seq_len.
+
+stages:
+  P0:
+    useful_training_tokens: 16384
+    seeds: [20260731]
+    partition: "train"
+    scientific_claim: "none — pipeline proof only"
+  P1:
+    useful_training_tokens: 262144
+    seeds: [20260731]
+    partition: "train"
+    scientific_claim: "none — calibration checkpoint"
+  P2:
+    useful_training_tokens: 1048576
+    seeds: [20260731]
+    partition: "train"
+    scientific_claim: "primary bounded checkpoint used for L3-L5"

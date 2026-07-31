@@ -84,6 +84,13 @@ class RecursionWindowEvent:
 
     certificate_margin: Optional[float]
     source_record_ids: Tuple[str, ...] = field(default_factory=tuple)
+    # Task-level labels populated by L4 telemetry when the caller
+    # supplies them; None otherwise.
+    task_id: Optional[str] = None
+    record_id: Optional[str] = None
+    # Optional substrate gate mean captured by L4; not part of the
+    # noninterference contract (L1 leaves it None).
+    substrate_gate_mean: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
