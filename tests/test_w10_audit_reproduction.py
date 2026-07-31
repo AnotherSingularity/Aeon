@@ -74,26 +74,39 @@ def test_worker_uses_corpus_path():
 
 
 # ---------------------------------------------------------------------------
-# A4 — worker uses aeon.checkpoint, NOT aeon.protected_checkpoint
+# A4 — FLIPPED by W10-2. The worker now uses the F3 protected envelope.
 # ---------------------------------------------------------------------------
-def test_worker_does_not_import_protected_checkpoint():
+def test_worker_uses_protected_checkpoint():
     src = _read("aeon/job/worker.py")
-    assert "from aeon.checkpoint import" in src, (
-        "worker still imports the non-protected checkpoint APIs at W10-0")
-    assert "protected_save" not in src, (
-        "worker must not YET call protected_save (flip at W10-2)")
-    assert "protected_load" not in src, (
-        "worker must not YET call protected_load (flip at W10-2)")
+    assert "from aeon.protected_checkpoint import" in src, (
+        "W10-2: worker must import the protected envelope APIs")
+    assert "protected_save" in src, (
+        "W10-2: worker must call protected_save")
+    assert "protected_load" in src, (
+        "W10-2: worker must call protected_load on resume")
+    # Direct atomic_save/strict_load calls are forbidden in code lines
+    # (comments still allowed).
+    code_lines = [line for line in src.splitlines()
+                    if not line.lstrip().startswith("#")]
+    body = "\n".join(code_lines)
+    assert "atomic_save(" not in body
+    assert "strict_load(" not in body
 
 
 # ---------------------------------------------------------------------------
-# A5 — GUI falsely claims "authenticated checkpoint"
+# A5 — FLIPPED by W10-2. The "authenticated checkpoint" claim in the GUI
+# is now accurate: the worker actually calls protected_save under the
+# per-job HMAC key.
 # ---------------------------------------------------------------------------
-def test_gui_falsely_claims_authenticated_checkpoint():
-    src = _read("aeon/launcher/gui.py")
-    assert "authenticated checkpoint" in src, (
-        "GUI still contains the misleading 'authenticated checkpoint' string "
-        "at W10-0 (flip at W10-2)")
+def test_gui_authenticated_checkpoint_claim_is_accurate():
+    gui = _read("aeon/launcher/gui.py")
+    worker = _read("aeon/job/worker.py")
+    assert "authenticated checkpoint" in gui, (
+        "GUI still uses the 'authenticated checkpoint' wording (that's fine)")
+    assert "protected_save" in worker, (
+        "W10-2: the claim is now backed by protected_save in the worker")
+    assert "ensure_job_hmac_keyref" in worker, (
+        "W10-2: the HMAC key comes from the per-job key store")
 
 
 # ---------------------------------------------------------------------------

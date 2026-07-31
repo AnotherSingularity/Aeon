@@ -81,8 +81,12 @@ def _run_training_loop(job: Job) -> None:
     import torch
     from aeon.hybrid import HybridModel
     from aeon.transformer import AeonTransformerConfig
-    from aeon.checkpoint import (atomic_save, strict_load, build_metadata,
-                                  latest_checkpoint as latest_ckpt)
+    from aeon.checkpoint import build_metadata, latest_checkpoint as latest_ckpt
+    from aeon.protected_checkpoint import (
+        protected_load,
+        CheckpointAuthenticationError, AntiRollbackViolation,
+    )
+    from aeon.job.key_store import ensure_job_hmac_keyref
     from aeon.observability import (Observer, parameter_accounting,
                                      optimizer_bytes_estimate, state_bytes,
                                      static_op_estimates,
@@ -149,21 +153,47 @@ def _run_training_loop(job: Job) -> None:
         "checkpoint_bytes_estimate": checkpoint_size_estimate(model),
     })
 
-    # Resume if a valid checkpoint exists
+    # W10-2: per-job HMAC key backs the protected checkpoint envelope. Created
+    # on first save, reused across restarts, kept out of the runtime manifest.
+    keyref = ensure_job_hmac_keyref(job.job_dir, allow_create=True)
+
+    # Resume if a valid checkpoint exists — via protected_load, which enforces
+    # HMAC verification, anti-rollback (F3.3), and E3 sha256/schema/K/vocab
+    # gates in one call. Failures raise back to run_worker and mark FAILED.
     start_step, data_position = 0, 0
     if tcfg.get("resume"):
         ck = latest_ckpt(job.checkpoint_dir)
         if ck:
-            blob = strict_load(ck, expected_model_config=mcfg)
+            try:
+                blob = protected_load(ck, keyref_mac=keyref,
+                                       expected_model_config=mcfg)
+            except CheckpointAuthenticationError as e:
+                mark_status(job, JobStatus.FAILED,
+                             note=f"checkpoint authentication failed: {e}"[:400])
+                _write_result(job, {"ok": False,
+                                     "reason": "checkpoint_authentication_failed",
+                                     "detail": str(e)})
+                raise
+            except AntiRollbackViolation as e:
+                mark_status(job, JobStatus.FAILED,
+                             note=f"anti-rollback: {e}"[:400])
+                _write_result(job, {"ok": False,
+                                     "reason": "anti_rollback_violation",
+                                     "detail": str(e)})
+                raise
             model.load_state_dict(blob["model"])
             opt.load_state_dict(blob["optim"])
-            start_step = int(blob["metadata"]["step"])
-            data_position = int(blob["metadata"].get("data_position", 0))
+            inner = blob["envelope_metadata"]["inner_metadata"]
+            start_step = int(inner["step"])
+            data_position = int(inner.get("data_position", 0))
             rng = blob.get("rng") or {}
             if "torch_cpu" in rng:
                 torch.random.set_rng_state(rng["torch_cpu"])
             mark_status(job, JobStatus.STARTING,
-                         note=f"resumed from {os.path.basename(ck)} step={start_step}")
+                         note=(f"resumed (protected) from "
+                               f"{os.path.basename(ck)} step={start_step} "
+                               f"authorized_step="
+                               f"{blob['envelope_metadata'].get('authorized_step')}"))
 
     # W10-1: real corpus batches. The synthetic torch.randint next_batch is
     # gone. batches is a generator of (batch_dict, position_after) pairs
@@ -192,7 +222,8 @@ def _run_training_loop(job: Job) -> None:
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
                               data_position, obs,
                               tokenizer_id=data_source.tokenizer_id,
-                              corpus_id=data_source.corpus_id)
+                              corpus_id=data_source.corpus_id,
+                              keyref=keyref)
             mark_status(job, JobStatus.STOPPED, note="safe stop complete", step=step)
             _write_result(job, {"ok": True, "stopped_at_step": step,
                                  "reason": "safe_stop_requested",
@@ -237,7 +268,8 @@ def _run_training_loop(job: Job) -> None:
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
                               data_position, obs,
                               tokenizer_id=data_source.tokenizer_id,
-                              corpus_id=data_source.corpus_id)
+                              corpus_id=data_source.corpus_id,
+                              keyref=keyref)
 
     # Final checkpoint on clean completion
     _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs,
@@ -252,17 +284,26 @@ def _run_training_loop(job: Job) -> None:
 
 def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,
                       data_position: int, obs,
-                      *, tokenizer_id: str, corpus_id: str) -> None:
-    """Save an atomic checkpoint. W10-1 note: this still uses the ordinary
-    `atomic_save` (SHA-256 sidecar). The HMAC/anti-rollback envelope is
-    wired in at W10-2; the audit reproduction test A4 remains asserted
-    until that tranche flips it. What W10-1 changes is that the
-    `tokenizer_id`/`corpus_id` fields are now content-hashes of the
-    actual bound artifacts, not paths — so subsequent W10-2 authentication
-    can rely on them."""
-    from aeon.checkpoint import atomic_save, build_metadata
-    mark_status(job, JobStatus.CHECKPOINTING, note="saving atomic checkpoint",
-                 step=step)
+                      *, tokenizer_id: str, corpus_id: str, keyref) -> None:
+    """Save a PROTECTED checkpoint (W10-2). This calls
+    ``aeon.protected_checkpoint.protected_save`` which:
+
+      * writes payload + `.meta.json` + `.sha256` atomically,
+      * computes an HMAC-SHA256 tag over (payload bytes ‖ metadata json)
+        under the per-job key returned by ``ensure_job_hmac_keyref``,
+      * records ``authorized_step`` so a subsequent resume enforces
+        anti-rollback,
+      * binds K=K_LOCKED and the E3 patch manifest into the envelope.
+
+    The launcher's Safe Stop message and the Resume selector can now
+    truthfully call these checkpoints authenticated — the flipping of
+    audit findings A4 and A5 is the whole point of this tranche.
+    """
+    from aeon.checkpoint import build_metadata
+    from aeon.protected_checkpoint import protected_save
+
+    mark_status(job, JobStatus.CHECKPOINTING,
+                 note="saving protected authenticated checkpoint", step=step)
     path = os.path.join(job.checkpoint_dir, f"ckpt_{step}.pt")
     md = build_metadata(step=step, model_cfg=mcfg, train_cfg=tcfg, data_cfg=dcfg,
                          tokenizer_id=tokenizer_id,
@@ -271,6 +312,8 @@ def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,
                          instrumentation_cfg={
                              "sample_every": int(tcfg.get("sample_every", 512)),
                              "enabled": bool(tcfg.get("observability", True))})
-    atomic_save(path, model=model, optimizer=opt, metadata=md)
-    mark_status(job, JobStatus.RUNNING, note=f"checkpoint saved: {os.path.basename(path)}",
+    protected_save(path, model=model, optimizer=opt, metadata=md,
+                    keyref_mac=keyref, authorized_step=int(step))
+    mark_status(job, JobStatus.RUNNING,
+                 note=f"protected checkpoint saved: {os.path.basename(path)}",
                  step=step)

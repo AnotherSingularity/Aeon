@@ -21,10 +21,11 @@ test_threat_model                8
 test_tokenizer                   2
 test_l_series_prerequisite_lock  3
 test_w10_1_real_corpus           15
+test_w10_2_protected_checkpoint  13
 test_w10_audit_reproduction      24
 test_windows_packaging           15
 test_windows_workflows           16
-TOTAL: 265
+TOTAL: 278
 INHERITED (E/F-series, unchanged): 155
 NEW (W-series): 68   (test_entry 17 + test_launcher_and_job 20 + test_windows_packaging 15 + test_windows_workflows 16)
 NEW (W10-0 reproductions): 24  (test_w10_audit_reproduction — assert CURRENT broken behavior; flip at W10-1..W10-11)
