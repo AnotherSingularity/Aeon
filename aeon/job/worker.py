@@ -96,7 +96,30 @@ def _run_training_loop(job: Job) -> None:
     torch.manual_seed(tcfg["seed"])
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # W10-1: real tokenizer + corpus is the ONLY production data path.
+    # Fail closed BEFORE model construction so we never touch torch on an
+    # invalid data configuration. DataSourceError is re-raised into the
+    # outer except-Exception block, which writes result.json and marks
+    # the job FAILED with a structured `data_unavailable` reason.
+    from aeon.job.data_source import build_data_source, DataSourceError
+    try:
+        data_source = build_data_source(job, tcfg, dcfg)
+    except DataSourceError as e:
+        mark_status(job, JobStatus.FAILED,
+                     note=f"data unavailable ({e.reason}): {e.detail}"[:400])
+        _write_result(job, {"ok": False, "reason": "data_unavailable",
+                             "code": e.reason, "detail": e.detail})
+        # Bubble a plain RuntimeError so run_worker returns rc=8; the
+        # structured code is already in result.json.
+        raise RuntimeError(f"data_unavailable:{e.reason}") from e
+
     tcfg_model = AeonTransformerConfig(**mcfg.get("transformer", {}))
+    # W10-1: bind the transformer's vocab_size to the loaded tokenizer's
+    # vocab (matches scripts/train.py::main). Random-init cannot happen
+    # against a vocab that does not match the tokenizer that produces the
+    # ids.
+    if data_source.tokenizer.vocab_size != tcfg_model.vocab_size:
+        tcfg_model.vocab_size = data_source.tokenizer.vocab_size
     model = HybridModel(
         h_rec=mcfg["h_rec"], K=mcfg["K"], transformer_config=tcfg_model,
         substrate=mcfg.get("substrate"), margin_h=mcfg["margin_h"],
@@ -142,28 +165,40 @@ def _run_training_loop(job: Job) -> None:
             mark_status(job, JobStatus.STARTING,
                          note=f"resumed from {os.path.basename(ck)} step={start_step}")
 
-    # Batch iterator — synthetic in this worker until tokenizer+corpus are set.
-    B, T = tcfg["batch_size"], dcfg["seq_len"]
-    g = torch.Generator(device=device).manual_seed(tcfg["seed"])
-    def next_batch():
-        return torch.randint(0, tcfg_model.vocab_size, (B, T),
-                              generator=g, device=device)
+    # W10-1: real corpus batches. The synthetic torch.randint next_batch is
+    # gone. batches is a generator of (batch_dict, position_after) pairs
+    # from the fail-closed data source constructed above.
+    B, T = data_source.batch_size, data_source.seq_len
+    batches = data_source.iter_batches(device=device,
+                                        start_position=int(data_position))
 
     model.train()
-    mark_status(job, JobStatus.RUNNING, note="training loop started",
+    mark_status(job, JobStatus.RUNNING,
+                 note=(f"training loop started; corpus_id="
+                       f"{data_source.corpus_id[:23]}… "
+                       f"tokenizer_id={data_source.tokenizer_id[:23]}… "
+                       f"records={data_source.records} "
+                       f"total_tokens={data_source.total_tokens}"),
                  step=start_step)
 
     step = start_step
-    while step < tcfg["max_steps"]:
+    for batch, position_after in batches:
+        if step >= tcfg["max_steps"]:
+            break
         # ---- safe-stop check at CHECKPOINT BOUNDARIES only ----------------
         if is_stop_requested(job) and step > start_step:
             mark_status(job, JobStatus.STOP_REQUESTED,
                          note="stop request observed at checkpoint boundary")
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
-                              data_position, obs)
+                              data_position, obs,
+                              tokenizer_id=data_source.tokenizer_id,
+                              corpus_id=data_source.corpus_id)
             mark_status(job, JobStatus.STOPPED, note="safe stop complete", step=step)
             _write_result(job, {"ok": True, "stopped_at_step": step,
-                                 "reason": "safe_stop_requested"})
+                                 "reason": "safe_stop_requested",
+                                 "data_position": int(data_position),
+                                 "tokenizer_id": data_source.tokenizer_id,
+                                 "corpus_id": data_source.corpus_id})
             return
         if is_emergency_terminate_requested(job):
             mark_status(job, JobStatus.FAILED,
@@ -171,8 +206,9 @@ def _run_training_loop(job: Job) -> None:
             _write_result(job, {"ok": False, "reason": "emergency_terminate"})
             return
 
-        ids = next_batch()
-        out = model(input_ids=ids, labels=ids)
+        out = model(input_ids=batch["input_ids"],
+                     attention_mask=batch["attention_mask"],
+                     labels=batch["labels"])
         loss = out.loss
         beta = float(tcfg.get("aux_gate_penalty", 0.0))
         if beta and out.gate_mean is not None:
@@ -182,7 +218,7 @@ def _run_training_loop(job: Job) -> None:
             torch.nn.utils.clip_grad_norm_(params, tcfg["grad_clip"])
         opt.step()
         step += 1
-        data_position += B * T
+        data_position = position_after
 
         if step % int(tcfg.get("log_every", 20)) == 0:
             a = model.audit()
@@ -199,23 +235,38 @@ def _run_training_loop(job: Job) -> None:
                          holds=bool(a["holds"]))
         if step % int(tcfg.get("ckpt_every", 1000)) == 0:
             _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg,
-                              data_position, obs)
+                              data_position, obs,
+                              tokenizer_id=data_source.tokenizer_id,
+                              corpus_id=data_source.corpus_id)
 
     # Final checkpoint on clean completion
-    _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs)
+    _save_checkpoint(job, step, model, opt, mcfg, tcfg, dcfg, data_position, obs,
+                      tokenizer_id=data_source.tokenizer_id,
+                      corpus_id=data_source.corpus_id)
     mark_status(job, JobStatus.STOPPED, note="max_steps reached", step=step)
-    _write_result(job, {"ok": True, "final_step": step, "reason": "max_steps"})
+    _write_result(job, {"ok": True, "final_step": step, "reason": "max_steps",
+                         "data_position": int(data_position),
+                         "tokenizer_id": data_source.tokenizer_id,
+                         "corpus_id": data_source.corpus_id})
 
 
 def _save_checkpoint(job: Job, step: int, model, opt, mcfg, tcfg, dcfg,
-                      data_position: int, obs) -> None:
+                      data_position: int, obs,
+                      *, tokenizer_id: str, corpus_id: str) -> None:
+    """Save an atomic checkpoint. W10-1 note: this still uses the ordinary
+    `atomic_save` (SHA-256 sidecar). The HMAC/anti-rollback envelope is
+    wired in at W10-2; the audit reproduction test A4 remains asserted
+    until that tranche flips it. What W10-1 changes is that the
+    `tokenizer_id`/`corpus_id` fields are now content-hashes of the
+    actual bound artifacts, not paths — so subsequent W10-2 authentication
+    can rely on them."""
     from aeon.checkpoint import atomic_save, build_metadata
     mark_status(job, JobStatus.CHECKPOINTING, note="saving atomic checkpoint",
                  step=step)
     path = os.path.join(job.checkpoint_dir, f"ckpt_{step}.pt")
     md = build_metadata(step=step, model_cfg=mcfg, train_cfg=tcfg, data_cfg=dcfg,
-                         tokenizer_id=job.tokenizer_path,
-                         corpus_id=job.corpus_path,
+                         tokenizer_id=tokenizer_id,
+                         corpus_id=corpus_id,
                          data_position=int(data_position),
                          instrumentation_cfg={
                              "sample_every": int(tcfg.get("sample_every", 512)),

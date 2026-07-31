@@ -4,8 +4,8 @@
   "branch": "claude/funny-cori-a3k5cf",
   "tranches": {
     "W10-0":  {"closed": true,  "closed_at_commit": "ef84482", "closed_at": "2026-07-30T13:59:00Z", "summary": "Audit reproduction + claim withdrawal"},
-    "W10-0.1":{"closed": false, "summary": "Persist directives + prerequisite lock (this commit)"},
-    "W10-1":  {"closed": false, "summary": "Real tokenizer and corpus training path in the GUI worker"},
+    "W10-0.1":{"closed": true,  "closed_at_commit": "0e12948", "closed_at": "2026-07-30T15:00:00Z", "summary": "Persist directives + prerequisite lock"},
+    "W10-1":  {"closed": true,  "closed_at_commit": "PENDING", "closed_at": "2026-07-30T15:15:00Z", "summary": "Real tokenizer and corpus training path in the GUI worker (aeon/job/data_source.py; fail-closed factory; audit findings A1/A2/A3 flipped)"},
     "W10-2":  {"closed": false, "summary": "Protected checkpoint integration in the GUI worker"},
     "W10-3":  {"closed": false, "summary": "Distinct Start / Resume / Recovery flows"},
     "W10-4":  {"closed": false, "summary": "Atomic per-generation checkpoint chain with COMPLETE marker"},

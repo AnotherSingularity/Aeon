@@ -24,47 +24,53 @@ def _read(rel):
 
 
 # ---------------------------------------------------------------------------
-# A1, A2, A3 — worker uses synthetic torch.randint; tokenizer_path / corpus_path
-# are recorded but never opened
+# A1, A2, A3 — FLIPPED by W10-1. The worker no longer generates synthetic
+# random tokens; it consumes real corpus tokens through
+# aeon.job.data_source.build_data_source, which fail-closes when tokenizer
+# or corpus is absent.
 # ---------------------------------------------------------------------------
-def test_worker_next_batch_is_random_not_corpus():
-    src = _read("aeon/job/worker.py")
-    assert "torch.randint(0, tcfg_model.vocab_size" in src, (
-        "worker's training batch generator should still be torch.randint at "
-        "W10-0 baseline (this test flips at W10-1)")
-
-
-def test_worker_ignores_tokenizer_path():
-    """tokenizer_path may appear as a metadata identifier in _save_checkpoint,
-    but the training loop must not open or consume it — that's the audit
-    finding (flip at W10-1 when the tokenizer is actually loaded)."""
-    src = _read("aeon/job/worker.py")
-    # Isolate _run_training_loop body (up to the next def) and check it
-    # neither opens the tokenizer file nor imports a tokenizer loader.
-    m = re.search(r"def _run_training_loop.*?(?=\n(?:def |\Z))", src, re.DOTALL)
-    assert m, "_run_training_loop not found"
-    body = m.group(0)
-    forbidden = ["load_tokenizer", "SentencePieceProcessor",
-                  "open(job.tokenizer_path", "Tokenizer(", "from aeon.tokenizer"]
-    for f in forbidden:
-        assert f not in body, (
-            f"_run_training_loop must not YET contain {f!r} (flip at W10-1)")
-
-
-def test_worker_ignores_corpus_path():
-    """corpus_path may appear as a metadata identifier in _save_checkpoint,
-    but the training loop must not open or consume it — that's the audit
-    finding (flip at W10-1 when the corpus is actually consumed)."""
+def test_worker_next_batch_is_real_corpus_not_random():
+    """W10-1 flipped this assertion. The worker used to call
+    torch.randint(0, vocab_size, ...); it now iterates over the batches
+    produced by aeon.job.data_source.TokenizedCorpusBatchSource. The old
+    W10-0 form of this test asserted the presence of `torch.randint`; the
+    new form asserts its absence in the training loop and the presence of
+    the data-source contract."""
     src = _read("aeon/job/worker.py")
     m = re.search(r"def _run_training_loop.*?(?=\n(?:def |\Z))", src, re.DOTALL)
     assert m
-    body = m.group(0)
-    forbidden = ["open(job.corpus_path", "corpus_manifest",
-                  "read_corpus", "from aeon.corpus",
-                  "iter_tokens", "next_token_batch"]
-    for f in forbidden:
-        assert f not in body, (
-            f"_run_training_loop must not YET contain {f!r} (flip at W10-1)")
+    code_lines = [
+        line for line in m.group(0).splitlines()
+        if not line.lstrip().startswith("#")]
+    body_code = "\n".join(code_lines)
+    assert "torch.randint" not in body_code, (
+        "W10-1: _run_training_loop must not contain torch.randint in code")
+    assert "data_source.iter_batches" in body_code, (
+        "W10-1: _run_training_loop must drive batches through the "
+        "TokenizedCorpusBatchSource")
+
+
+def test_worker_uses_tokenizer_path():
+    """W10-1 flipped. build_data_source now loads job.tokenizer_path via
+    AeonTokenizer and refuses to proceed if it's absent."""
+    src = _read("aeon/job/worker.py")
+    assert "from aeon.job.data_source import build_data_source" in src
+    ds = _read("aeon/job/data_source.py")
+    assert "tokenizer_path = getattr(job, \"tokenizer_path\", None)" in ds
+    assert "AeonTokenizer(tokenizer_path)" in ds
+    assert "tokenizer_absent" in ds and "tokenizer_missing" in ds
+
+
+def test_worker_uses_corpus_path():
+    """W10-1 flipped. build_data_source now reads job.corpus_path through
+    aeon.data.iter_text_records via the TokenizedCorpusBatchSource, and
+    refuses to proceed if it's absent or empty."""
+    ds = _read("aeon/job/data_source.py")
+    assert "corpus_path = getattr(job, \"corpus_path\", None)" in ds
+    assert "from aeon.data import iter_text_records" in ds
+    for reason in ("corpus_absent", "corpus_missing", "corpus_empty",
+                    "corpus_too_small"):
+        assert reason in ds, f"data source must handle {reason}"
 
 
 # ---------------------------------------------------------------------------
