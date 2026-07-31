@@ -31,6 +31,12 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
+; W10-7/A12: pin the base directory relative paths resolve from. Without
+; SourceDir=, ISCC resolves [Files] Source: from the directory containing
+; this .iss file (packaging\windows), which would look at
+; packaging\windows\dist\Aeon — the wrong tree. This .iss lives at
+; packaging\windows\AeonInstaller.iss; the repo root is two levels up.
+SourceDir=..\..
 OutputDir=dist\installer
 OutputBaseFilename=AeonSetup
 Compression=lzma2
@@ -38,7 +44,10 @@ SolidCompression=yes
 WizardStyle=modern
 DisableDirPage=auto
 UsedUserAreasWarning=no
-CloseApplications=force
+; W10-7/A14: CloseApplications=force would forcibly kill a running Aeon
+; worker mid-write. Refuse the upgrade instead — the worker owns
+; checkpoint atomicity. RestartApplications=no is kept explicit.
+CloseApplications=no
 RestartApplications=no
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName} {#AppVersion}
@@ -117,24 +126,61 @@ begin
   end;
 end;
 
-// --- Pre-install: verify the bundled RUNTIME_MANIFEST.json exists ----------
+// --- Pre-install: verify the bundled RUNTIME_MANIFEST.json contents --------
+// W10-7/A13 correction: the old pre-install check was `FileExists` only —
+// presence, not payload. A tampered manifest would pass and only be caught
+// at first launch. The corrected check:
+//   1. Locates RUNTIME_MANIFEST.json inside the packaged onedir payload.
+//   2. Locates RUNTIME_MANIFEST.sha256 (sidecar written by
+//      packaging\windows\generate_runtime_manifest.py at build time).
+//   3. Computes SHA-256 of the manifest and compares byte-for-byte.
+// The manifest itself hashes every payload file, so a matching manifest
+// digest transitively verifies the whole payload against the build tree.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  ManifestPath: string;
+  ManifestPath, SidecarPath, ExpectedSha, ActualSha: string;
 begin
   NeedsRestart := False;
   ManifestPath := ExpandConstant('{src}\dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json');
+  SidecarPath := ExpandConstant('{src}\dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.sha256');
   if not FileExists(ManifestPath) then
   begin
     Result := 'Installer payload is missing RUNTIME_MANIFEST.json. ' +
               'Re-run packaging\windows\generate_runtime_manifest.py before packaging.';
     exit;
   end;
+  if not FileExists(SidecarPath) then
+  begin
+    Result := 'Installer payload is missing RUNTIME_MANIFEST.sha256. ' +
+              'Re-run packaging\windows\generate_runtime_manifest.py before packaging.';
+    exit;
+  end;
+  if not LoadStringFromFile(SidecarPath, ExpectedSha) then
+  begin
+    Result := 'Cannot read RUNTIME_MANIFEST.sha256 sidecar. Refusing install.';
+    exit;
+  end;
+  ExpectedSha := Trim(Lowercase(ExpectedSha));
+  ActualSha := Lowercase(GetSHA256OfFile(ManifestPath));
+  if ExpectedSha <> ActualSha then
+  begin
+    Result := 'Runtime manifest SHA-256 does not match its recorded value. ' +
+              'Payload integrity check FAILED. Refusing install.' + #13#10 +
+              'expected: ' + ExpectedSha + #13#10 +
+              'actual:   ' + ActualSha;
+    exit;
+  end;
   Result := '';
 end;
 
-// --- Upgrade behaviour: refuse to run if a worker is writing a checkpoint --
-function IsAnActiveJobWritingCheckpoint(): Boolean;
+// --- Upgrade behaviour: refuse to run if a worker is active ---------------
+// W10-7/A14 correction: original guard triggered only on 'CHECKPOINTING',
+// allowing an in-flight upgrade to overwrite bundle files while a
+// RUNNING / STARTING / STOP_REQUESTED worker was mid-batch. Combined with
+// CloseApplications=force (removed above), that meant an upgrade could
+// forcibly kill a live worker between checkpoint boundaries. All four
+// live-status values now block.
+function IsAnActiveJob(): Boolean;
 var
   UserDataPath, JobsPath, StatusPath, Status: string;
   FindRec: TFindRec;
@@ -155,7 +201,10 @@ begin
           begin
             if LoadStringFromFile(StatusPath, Status) then
             begin
-              if Pos('CHECKPOINTING', Status) > 0 then
+              if (Pos('CHECKPOINTING', Status) > 0)
+                 or (Pos('RUNNING', Status) > 0)
+                 or (Pos('STARTING', Status) > 0)
+                 or (Pos('STOP_REQUESTED', Status) > 0) then
               begin
                 Result := True;
                 exit;
@@ -173,11 +222,12 @@ end;
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  if IsAnActiveJobWritingCheckpoint() then
+  if IsAnActiveJob() then
   begin
-    MsgBox('Aeon is currently saving a checkpoint. Please wait until the '
-        + 'checkpoint completes, then use Stop Safely in the Aeon launcher '
-        + 'before running the installer again.', mbError, MB_OK);
+    MsgBox('An Aeon training job is currently active (RUNNING, STARTING, '
+        + 'STOP_REQUESTED, or CHECKPOINTING). Please use Stop Safely in '
+        + 'the Aeon launcher and wait for the job to reach a terminal '
+        + 'state before running the installer again.', mbError, MB_OK);
     Result := False;
   end;
 end;

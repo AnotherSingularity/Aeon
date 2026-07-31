@@ -85,8 +85,13 @@ def main() -> int:
         for fn in filenames:
             full = os.path.join(root, fn)
             rel = os.path.relpath(full, walk_root).replace(os.sep, "/")
-            # Skip the manifest itself if it already exists
+            # Skip the manifest itself (chicken-and-egg) and its SHA-256
+            # sidecar (W10-7/A13: the sidecar hashes the manifest for the
+            # Inno pre-install check; listing itself inside the manifest
+            # would be a circular reference).
             if rel == "packaging/windows/RUNTIME_MANIFEST.json":
+                continue
+            if rel == "packaging/windows/RUNTIME_MANIFEST.sha256":
                 continue
             size = os.path.getsize(full)
             total_bytes += size
@@ -122,7 +127,15 @@ def main() -> int:
     Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, sort_keys=True, indent=2, ensure_ascii=False)
+    # W10-7/A13: emit a SHA-256 sidecar so the Inno Setup pre-install check
+    # can verify the manifest payload byte-for-byte before install (not just
+    # its presence). The manifest itself already hashes every file it lists,
+    # so a matching manifest digest transitively verifies the whole payload.
+    sidecar_path = str(Path(out_path).with_suffix(".sha256"))
+    with open(sidecar_path, "w", encoding="utf-8") as fh:
+        fh.write(_sha256(out_path))
     print(f"[manifest] wrote {out_path} ({len(files_meta)} files, {total_bytes/1e6:.1f} MB)")
+    print(f"[manifest] wrote {sidecar_path} (sha256 sidecar for installer pre-install check)")
     return 0
 
 

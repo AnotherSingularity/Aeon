@@ -208,50 +208,54 @@ def test_verifier_ignores_unexpected_extra_files():
 
 
 # ---------------------------------------------------------------------------
-# A12 — Inno relative paths without SourceDir
+# A12 — Inno relative paths without SourceDir  [CORRECTED W10-7]
 # ---------------------------------------------------------------------------
 def test_iss_relative_paths_without_sourcedir():
     src = _read("packaging/windows/AeonInstaller.iss")
-    assert "OutputDir=dist\\installer" in src or "OutputDir=dist\\\\installer" in src
-    assert 'Source: "dist\\Aeon\\*"' in src or 'Source: "dist\\\\Aeon\\\\*"' in src
-    assert not re.search(r"^\s*SourceDir\s*=", src, re.MULTILINE), (
-        "ISS must not YET declare SourceDir= — the audit reproduction is "
-        "that relative paths resolve from the ISS directory (flip at W10-7)")
+    # Strip ; comments (Inno) and // comments before searching for the
+    # SourceDir declaration so a corrective docstring can't spoof the check.
+    non_comment = "\n".join(l for l in src.splitlines()
+                              if not l.lstrip().startswith(";")
+                              and not l.lstrip().startswith("//"))
+    assert re.search(r"^\s*SourceDir\s*=", non_comment, re.MULTILINE), (
+        "W10-7/A12: [Setup] must declare SourceDir= so [Files] Source paths "
+        "resolve from a stable base")
 
 
 # ---------------------------------------------------------------------------
-# A13 — pre-install check is only FileExists
+# A13 — pre-install check is only FileExists  [CORRECTED W10-7]
 # ---------------------------------------------------------------------------
 def test_iss_preinstall_is_only_presence_check():
     src = _read("packaging/windows/AeonInstaller.iss")
-    m = re.search(r"function PrepareToInstall.*?end;", src, re.DOTALL)
+    m = re.search(r"function PrepareToInstall.*?(?=\nfunction |\Z)", src, re.DOTALL)
     assert m, "PrepareToInstall function not found"
     body = m.group(0)
-    assert "FileExists(ManifestPath)" in body
-    # No hash / signature / checksum in the pre-install check
-    for stronger in ("SHA256", "SHA1", "CryptCreateHash", "VerifySignature"):
-        assert stronger not in body, (
-            f"PrepareToInstall must not YET perform {stronger!r} (flip at W10-7)")
+    assert "GetSHA256OfFile" in body, (
+        "W10-7/A13: PrepareToInstall must compute a SHA-256 of the manifest, "
+        "not just FileExists")
+    assert "RUNTIME_MANIFEST.sha256" in body, (
+        "W10-7/A13: PrepareToInstall must read the sha256 sidecar written "
+        "by generate_runtime_manifest.py")
 
 
 # ---------------------------------------------------------------------------
-# A14 — upgrade only blocks on CHECKPOINTING
+# A14 — upgrade only blocks on CHECKPOINTING  [CORRECTED W10-7]
 # ---------------------------------------------------------------------------
 def test_iss_upgrade_only_blocks_on_checkpointing():
     src = _read("packaging/windows/AeonInstaller.iss")
-    # Only CHECKPOINTING is checked; RUNNING/STARTING/STOP_REQUESTED are not
-    m = re.search(r"function IsAnActiveJobWritingCheckpoint.*?end;",
+    m = re.search(r"function IsAnActiveJob(?:WritingCheckpoint)?\(\).*?(?=\nfunction |\Z)",
                     src, re.DOTALL)
     assert m
     body = m.group(0)
-    assert "CHECKPOINTING" in body
-    for still_ignored in ("RUNNING", "STARTING", "STOP_REQUESTED"):
-        assert still_ignored not in body, (
-            f"upgrade guard must not YET check {still_ignored!r} "
-            "(flip at W10-7)")
-    assert "CloseApplications=force" in src, (
-        "CloseApplications=force must still be present at W10-0 baseline "
-        "(flip at W10-7 — remove or gate)")
+    for required in ("CHECKPOINTING", "RUNNING", "STARTING", "STOP_REQUESTED"):
+        assert required in body, (
+            f"W10-7/A14: upgrade guard must block on {required!r}")
+    # Strip comments before checking the removal of CloseApplications=force
+    non_comment = "\n".join(l for l in src.splitlines()
+                              if not l.lstrip().startswith(";")
+                              and not l.lstrip().startswith("//"))
+    assert "CloseApplications=force" not in non_comment, (
+        "W10-7/A14: CloseApplications=force must be removed")
 
 
 # ---------------------------------------------------------------------------
