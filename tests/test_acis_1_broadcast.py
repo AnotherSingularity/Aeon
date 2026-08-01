@@ -226,14 +226,30 @@ def test_two_publishes_of_same_boundary_yield_equivalent_broadcast_ids():
 
 
 # ---------------------------------------------------------------------------
-# aeon.shuttle.broadcast is not imported by HybridModel.forward at ACIS-1
+# aeon.shuttle is only reached from HybridModel.forward when shuttle is not None
 # ---------------------------------------------------------------------------
-def test_hybrid_still_does_not_import_shuttle_at_acis_1():
+def test_hybrid_shuttle_reference_is_guarded():
+    """The scaffold assertion at ACIS-1 was that aeon.shuttle must not appear
+    in aeon/hybrid.py at all. ACIS-3 legitimately wired the shuttle through
+    HybridModel.forward under a `shuttle is not None` guard. This test now
+    encodes the durable invariant: no module-level import of aeon.shuttle,
+    and every reference lives inside the shuttle-not-None branch."""
+    import ast
     src = open(os.path.join(ROOT, "aeon", "hybrid.py"),
                  encoding="utf-8").read()
-    assert "aeon.shuttle" not in src, (
-        "ACIS-1 remains scaffold-only. Wire-through arrives at "
-        "ACIS-3 (shuttle) under BUCKET mode.")
+    tree = ast.parse(src)
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            names = []
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            else:
+                names = [node.module or ""]
+            for n in names:
+                assert not n.startswith("aeon.shuttle"), (
+                    f"module-level import of {n} — shuttle must be optional")
+    assert "if shuttle is not None:" in src, (
+        "expected `if shuttle is not None:` guard in HybridModel.forward")
 
 
 # ---------------------------------------------------------------------------

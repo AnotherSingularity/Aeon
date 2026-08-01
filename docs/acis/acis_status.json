@@ -39,8 +39,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-5": {
-      "closed": false,
-      "summary": "Bucket lane + freshness + backpressure."
+      "closed": true,
+      "summary": "Bucket lane + freshness + backpressure.",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-6": {
       "closed": false,
