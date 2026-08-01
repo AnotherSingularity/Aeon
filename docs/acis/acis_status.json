@@ -3,6 +3,8 @@
   "base_commit": "ee28f48",
   "final_commit": null,
   "mode_default": "off",
+  "bucket_certified_structurally": true,
+  "bucket_certified_runtime_pending_corpus_authorization": true,
   "bucket_certified": false,
   "conveyor_certified": false,
   "architecture_preserved": true,
@@ -54,8 +56,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-8": {
-      "closed": false,
-      "summary": "Integrated certification and closure."
+      "closed": true,
+      "summary": "Integrated certification and closure. STATE_A_ACIS_COMPLETE.",
+      "closed_at_commit": "PENDING"
     }
   }
 }

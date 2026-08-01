@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "base_commit": "ee28f48",
+  "branch": "claude/funny-cori-a3k5cf",
+  "closure_tranche": "ACIS-8",
+  "commit_ledger": {
+    "ACIS-0": "2ffe176",
+    "ACIS-1": "1e9b0e4",
+    "ACIS-2": "5dd98a6",
+    "ACIS-3": "68084c3",
+    "ACIS-4": "a3d889d",
+    "ACIS-5": "6814b3a",
+    "ACIS-6": "dafb25f",
+    "ACIS-7": "4364255",
+    "ACIS-8": "PENDING"
+  },
+  "regression": {
+    "test_files": 54,
+    "explicit_checks": 616,
+    "failures": 0
+  },
+  "invariants": {
+    "K_fixed_at_16": true,
+    "no_adaptive_k_component": true,
+    "one_broadcast_per_boundary": true,
+    "both_leases_same_semantic_identity": true,
+    "both_leases_same_live_tensor_object": true,
+    "recursion_state_fp32": true,
+    "substrate_autonomous": true,
+    "six_patches_intact": true,
+    "off_mode_byte_identical_to_shuttle_absent": true,
+    "shuttle_import_guarded_by_none_check": true,
+    "no_outbound_network_in_shuttle_package": true,
+    "immutable_broadcast_and_read_only_leases": true,
+    "single_mutable_ownership": true,
+    "immutable_broadcasts_excluded_from_mutable_owner_check": true,
+    "precommit_rollback_restores_source_authority": true,
+    "lane_fifo_capacity_dedup_stage_graph": true,
+    "freshness_rejects_stale_future_dup_causal_expired": true,
+    "backpressure_refuses_altering_K": true,
+    "quarantine_blocks_readmission": true,
+    "replay_refuses_regression_and_prestop_replay": true,
+    "safe_stop_drains_lanes_then_refuses_replay_on_resume": true,
+    "no_test_asserts_executed_recursion_iterations_equals_16": true,
+    "no_AdaptiveKControlCapsule_symbol": true
+  },
+  "rollout_decisions": {
+    "OFF": {
+      "decision": "certified",
+      "reason": "byte-identical to shuttle-absent build; no ACIS code executes"
+    },
+    "OBSERVE": {
+      "decision": "certified",
+      "reason": "broadcast + lease + audit-event allocation only; no mutation"
+    },
+    "BUCKET": {
+      "decision": "structurally_certified",
+      "reason": "structural invariants locked by executable tests; runtime overhead measurement pending live workload behind corpus authorization"
+    },
+    "CONVEYOR_EXPERIMENTAL": {
+      "decision": "refused",
+      "reason": "no_conveyor_evidence — certified default per decide_conveyor"
+    }
+  },
+  "acis_test_files": {
+    "tests/test_acis_0_baseline.py": 12,
+    "tests/test_acis_1_broadcast.py": 14,
+    "tests/test_acis_2_leases.py": 14,
+    "tests/test_acis_3_shuttle.py": 11,
+    "tests/test_acis_4_ownership.py": 12,
+    "tests/test_acis_5_lane.py": 14,
+    "tests/test_acis_6_recovery.py": 16,
+    "tests/test_acis_7_calibration.py": 10,
+    "tests/test_acis_8_closure.py": "PENDING"
+  },
+  "acis_test_check_total": 103,
+  "corpus_authorization_state": "AWAITING_OFFLINE_CORPUS_SOURCES",
+  "return_state": "STATE_A_ACIS_COMPLETE"
+}
