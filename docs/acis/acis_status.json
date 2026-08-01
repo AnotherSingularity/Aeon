@@ -49,8 +49,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-7": {
-      "closed": false,
-      "summary": "Calibration + conveyor decision."
+      "closed": true,
+      "summary": "Transport calibration + conveyor decision gates. Default decision: conveyor_refused (no measured evidence).",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-8": {
       "closed": false,
