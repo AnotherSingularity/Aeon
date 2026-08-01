@@ -44,8 +44,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-6": {
-      "closed": false,
-      "summary": "Recovery + replay + protected checkpoint integration."
+      "closed": true,
+      "summary": "Recovery + replay + quarantine + coherence + protected checkpoint integration.",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-7": {
       "closed": false,
