@@ -34,8 +34,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-4": {
-      "closed": false,
-      "summary": "Mutable-state capsule + ownership ledger."
+      "closed": true,
+      "summary": "Mutable-state capsule + ownership ledger.",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-5": {
       "closed": false,
