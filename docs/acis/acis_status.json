@@ -24,8 +24,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-2": {
-      "closed": false,
-      "summary": "Destination read leases + lifecycle custody."
+      "closed": true,
+      "summary": "Destination read leases + lifecycle custody.",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-3": {
       "closed": false,
