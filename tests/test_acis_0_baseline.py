@@ -173,12 +173,27 @@ def test_audit_log_never_holds_payload_reference():
 # ---------------------------------------------------------------------------
 # Scaffold guarantees — aeon.shuttle is not imported by hybrid.py
 # ---------------------------------------------------------------------------
-def test_hybrid_does_not_import_aeon_shuttle_at_acis_0():
+def test_hybrid_shuttle_import_is_guarded_by_none_check():
+    """After ACIS-3 the shuttle wire-through lands: `from aeon.shuttle
+    ... import ...` appears inside a `if shuttle is not None:` branch.
+    Prove that (a) any aeon.shuttle import in hybrid.py sits INSIDE
+    a function body (not module-level, so an aeon build without
+    aeon.shuttle still loads), and (b) the default forward path when
+    shuttle is None never touches aeon.shuttle."""
     src = _hybrid_source()
-    assert "aeon.shuttle" not in src, (
-        "ACIS-0 is scaffold-only. The shuttle wire-through arrives at "
-        "ACIS-1 (OBSERVE), and even then it is guarded by the observer "
-        "kwarg. hybrid.py must not import aeon.shuttle at ACIS-0.")
+    tree = ast.parse(src)
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in getattr(node, "names", []) or []:
+                assert "aeon.shuttle" not in getattr(alias, "name", ""), (
+                    "aeon.shuttle must not be imported at module level "
+                    "in aeon/hybrid.py")
+            if isinstance(node, ast.ImportFrom):
+                assert node.module != "aeon.shuttle", (
+                    "aeon.shuttle module-level from-import forbidden")
+    # And the shuttle branch must be gated by the None check.
+    assert "if shuttle is not None:" in src, (
+        "ACIS-3: shuttle branch must be gated by `if shuttle is not None:`")
 
 
 def test_shuttle_package_has_no_outbound_network_reference():

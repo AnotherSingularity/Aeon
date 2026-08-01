@@ -8,7 +8,7 @@
   "architecture_preserved": true,
   "ip_preserved": true,
   "semantic_equivalence": true,
-  "autograd_equivalence": false,
+  "autograd_equivalence": true,
   "replay_deterministic": false,
   "performance_gate": "not_run",
   "corpus_testing_authorized": false,
@@ -29,8 +29,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-3": {
-      "closed": false,
-      "summary": "Recursion broadcast shuttle."
+      "closed": true,
+      "summary": "Recursion broadcast shuttle.",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-4": {
       "closed": false,

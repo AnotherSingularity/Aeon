@@ -110,7 +110,7 @@ class HybridModel(nn.Module):
 
     # ---- forward ----------------------------------------------------------
     def forward(self, input_ids, attention_mask=None, labels=None,
-                *, observer=None, intervention=None):
+                *, observer=None, intervention=None, shuttle=None):
         # L1: `observer` is an optional AeonDiagnosticObserver. When
         # None (the default), the forward path below runs unchanged —
         # NO diagnostic allocation, copy, sync, serialization, or
@@ -119,6 +119,15 @@ class HybridModel(nn.Module):
         # here so the L0 signature contract is stable) and MUST be
         # None outside evaluation-only diagnostic runs; the L5 tranche
         # owns the training-guard check.
+        #
+        # ACIS-3: `shuttle` is an optional AcisBoundaryShuttle. When
+        # None (the default), the forward path is unchanged and NO
+        # ACIS code executes — same OFF-mode contract as the observer.
+        # When set, the shuttle receives one BoundaryInfo per K=16
+        # boundary AFTER the recursion.step; the shuttle's on_boundary
+        # runs synchronously and never clones, detaches, or moves the
+        # payload tensor. The shuttle imports live inside the guarded
+        # branch so a build without aeon.shuttle would still work.
         B, T = input_ids.shape
         device = input_ids.device
 
@@ -212,6 +221,35 @@ class HybridModel(nn.Module):
                         getattr(observer, "source_record_ids", ())),
                 )
                 observer.on_recursion_window(_event)
+
+            # ACIS-3: hand the live boundary tensors to the shuttle.
+            # Guarded by `shuttle is not None` — OFF path never runs.
+            # The shuttle receives LIVE tensor references; it must not
+            # clone, detach, or move them. autograd graph is preserved
+            # because h_cond continues to flow into inject_cols
+            # unchanged (this call happens AFTER the inject_cols.append
+            # inside the per-token loop above, but only the LAST
+            # append reference is what matters for graph continuity).
+            if shuttle is not None:
+                from aeon.shuttle.routing import (
+                    BoundaryInfo as _BI,
+                    default_recursion_contract as _drc,
+                )
+                _contract = _drc(
+                    h_rec=int(h_cond.shape[-1]),
+                    batch_size=int(h_cond.shape[0]),
+                    model_identity=str(getattr(shuttle, "model_identity",
+                                                 "aeon-hybrid-v1")),
+                    architecture_identity=str(getattr(
+                        shuttle, "architecture_identity",
+                        "aeon-arch-v1")),
+                    recursion_epoch=int(w))
+                shuttle.on_boundary(_BI(
+                    window_index=w, recursion_epoch=int(w),
+                    token_start=start, token_end=end,
+                    h_cond=h_cond, t_w=t_w, s_w=s_w,
+                    hidden=hidden, injected=None,
+                    contract=_contract))
 
         inject_signal = torch.stack(inject_cols, dim=1).to(compute_dtype)    # (B,T,H_rec)
         injected = self.transformer.inject(hidden, inject_signal)            # (B,T,D)
