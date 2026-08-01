@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "base_commit": "ee28f48",
+  "final_commit": null,
+  "mode_default": "off",
+  "bucket_certified": false,
+  "conveyor_certified": false,
+  "architecture_preserved": true,
+  "ip_preserved": true,
+  "semantic_equivalence": false,
+  "autograd_equivalence": false,
+  "replay_deterministic": false,
+  "performance_gate": "not_run",
+  "corpus_testing_authorized": false,
+  "tranches": {
+    "ACIS-0": {
+      "closed": true,
+      "summary": "Invariant lock + baseline. ShuttleMode enum + audit-log ledger + scaffolding.",
+      "closed_at_commit": "PENDING"
+    },
+    "ACIS-1": {
+      "closed": false,
+      "summary": "Immutable broadcast + representation contract (OBSERVE only)."
+    },
+    "ACIS-2": {
+      "closed": false,
+      "summary": "Destination read leases + lifecycle custody."
+    },
+    "ACIS-3": {
+      "closed": false,
+      "summary": "Recursion broadcast shuttle."
+    },
+    "ACIS-4": {
+      "closed": false,
+      "summary": "Mutable-state capsule + ownership ledger."
+    },
+    "ACIS-5": {
+      "closed": false,
+      "summary": "Bucket lane + freshness + backpressure."
+    },
+    "ACIS-6": {
+      "closed": false,
+      "summary": "Recovery + replay + protected checkpoint integration."
+    },
+    "ACIS-7": {
+      "closed": false,
+      "summary": "Calibration + conveyor decision."
+    },
+    "ACIS-8": {
+      "closed": false,
+      "summary": "Integrated certification and closure."
+    }
+  }
+}
