@@ -7,7 +7,7 @@
   "conveyor_certified": false,
   "architecture_preserved": true,
   "ip_preserved": true,
-  "semantic_equivalence": false,
+  "semantic_equivalence": true,
   "autograd_equivalence": false,
   "replay_deterministic": false,
   "performance_gate": "not_run",
@@ -19,8 +19,9 @@
       "closed_at_commit": "PENDING"
     },
     "ACIS-1": {
-      "closed": false,
-      "summary": "Immutable broadcast + representation contract (OBSERVE only)."
+      "closed": true,
+      "summary": "Immutable broadcast + representation contract (OBSERVE only).",
+      "closed_at_commit": "PENDING"
     },
     "ACIS-2": {
       "closed": false,
