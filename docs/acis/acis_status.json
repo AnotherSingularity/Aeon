@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "base_commit": "ee28f48",
-  "final_commit": null,
+  "final_commit": "4c3c16e",
   "mode_default": "off",
   "bucket_certified_structurally": true,
   "bucket_certified_runtime_pending_corpus_authorization": true,
@@ -11,54 +11,55 @@
   "ip_preserved": true,
   "semantic_equivalence": true,
   "autograd_equivalence": true,
-  "replay_deterministic": false,
-  "performance_gate": "not_run",
+  "replay_deterministic": true,
+  "performance_gate": "structural_only_pending_corpus_workload",
   "corpus_testing_authorized": false,
+  "return_state": "STATE_A_ACIS_COMPLETE",
   "tranches": {
     "ACIS-0": {
       "closed": true,
       "summary": "Invariant lock + baseline. ShuttleMode enum + audit-log ledger + scaffolding.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "2ffe176"
     },
     "ACIS-1": {
       "closed": true,
       "summary": "Immutable broadcast + representation contract (OBSERVE only).",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "1e9b0e4"
     },
     "ACIS-2": {
       "closed": true,
       "summary": "Destination read leases + lifecycle custody.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "5dd98a6"
     },
     "ACIS-3": {
       "closed": true,
-      "summary": "Recursion broadcast shuttle.",
-      "closed_at_commit": "PENDING"
+      "summary": "Recursion broadcast shuttle wire-through under shuttle=None guard.",
+      "closed_at_commit": "68084c3"
     },
     "ACIS-4": {
       "closed": true,
       "summary": "Mutable-state capsule + ownership ledger.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "a3d889d"
     },
     "ACIS-5": {
       "closed": true,
       "summary": "Bucket lane + freshness + backpressure.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "6814b3a"
     },
     "ACIS-6": {
       "closed": true,
       "summary": "Recovery + replay + quarantine + coherence + protected checkpoint integration.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "dafb25f"
     },
     "ACIS-7": {
       "closed": true,
       "summary": "Transport calibration + conveyor decision gates. Default decision: conveyor_refused (no measured evidence).",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "4364255"
     },
     "ACIS-8": {
       "closed": true,
       "summary": "Integrated certification and closure. STATE_A_ACIS_COMPLETE.",
-      "closed_at_commit": "PENDING"
+      "closed_at_commit": "4c3c16e"
     }
   }
 }

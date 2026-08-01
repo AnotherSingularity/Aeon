@@ -12,7 +12,7 @@
     "ACIS-5": "6814b3a",
     "ACIS-6": "dafb25f",
     "ACIS-7": "4364255",
-    "ACIS-8": "PENDING"
+    "ACIS-8": "4c3c16e"
   },
   "regression": {
     "test_files": 54,
@@ -71,7 +71,7 @@
     "tests/test_acis_5_lane.py": 14,
     "tests/test_acis_6_recovery.py": 16,
     "tests/test_acis_7_calibration.py": 10,
-    "tests/test_acis_8_closure.py": "PENDING"
+    "tests/test_acis_8_closure.py": 11
   },
   "acis_test_check_total": 103,
   "corpus_authorization_state": "AWAITING_OFFLINE_CORPUS_SOURCES",
