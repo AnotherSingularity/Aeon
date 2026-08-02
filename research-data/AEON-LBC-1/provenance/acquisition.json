@@ -1,0 +1,85 @@
+{
+  "acquired_at_utc": "2026-08-02T23:16:36Z",
+  "acquisition_method": "manual_official_download",
+  "executing_environment_did_not_download": true,
+  "works": [
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 174311,
+      "ebook_number": 11,
+      "executing_environment_did_not_download": true,
+      "partition_role": "train",
+      "resolved_url": "offline:pg-0011.txt",
+      "sha256": "sha256:01b38ea4c710a84bc18d0bd41271a5a1a92b94e97b2812f4dece97d4a694725e",
+      "source_filename": "pg-0011-alice.txt",
+      "status": "acquired",
+      "title": "Alice's Adventures in Wonderland",
+      "work_id": "pg-11"
+    },
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 237232,
+      "ebook_number": 55,
+      "executing_environment_did_not_download": true,
+      "partition_role": "validation",
+      "resolved_url": "offline:pg-0055.txt",
+      "sha256": "sha256:969bffab7740d4d8a0bac332d78bd0152ad4a40a2efc52f06c74a9bb6120be75",
+      "source_filename": "pg-0055-wizard-of-oz.txt",
+      "status": "acquired",
+      "title": "The Wonderful Wizard of Oz",
+      "work_id": "pg-55"
+    },
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 448885,
+      "ebook_number": 84,
+      "executing_environment_did_not_download": true,
+      "partition_role": "calibration",
+      "resolved_url": "offline:pg-0084.txt",
+      "sha256": "sha256:7810cd483cffcf2cc8a1d8f0d5807931e69d4f48cd14149b8c76f88af82fead3",
+      "source_filename": "pg-0084-frankenstein.txt",
+      "status": "acquired",
+      "title": "Frankenstein; Or, The Modern Prometheus",
+      "work_id": "pg-84"
+    },
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 772386,
+      "ebook_number": 1342,
+      "executing_environment_did_not_download": true,
+      "partition_role": "train",
+      "resolved_url": "offline:pg-1342.txt",
+      "sha256": "sha256:74f2665d6e6925fc2c17dec644bec9e87df478a0f1836822125e8acbb3777806",
+      "source_filename": "pg-1342-pride-and-prejudice.txt",
+      "status": "acquired",
+      "title": "Pride and Prejudice",
+      "work_id": "pg-1342"
+    },
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 607606,
+      "ebook_number": 1661,
+      "executing_environment_did_not_download": true,
+      "partition_role": "test",
+      "resolved_url": "offline:pg-1661.txt",
+      "sha256": "sha256:922e2a12ccb43a4c9544c260b2166c6ad2097aeb5957faeee113f173bb857cd0",
+      "source_filename": "pg-1661-sherlock-holmes.txt",
+      "status": "acquired",
+      "title": "The Adventures of Sherlock Holmes",
+      "work_id": "pg-1661"
+    },
+    {
+      "acquisition_method": "manual_official_download",
+      "bytes": 1276263,
+      "ebook_number": 2701,
+      "executing_environment_did_not_download": true,
+      "partition_role": "train",
+      "resolved_url": "offline:pg-2701.txt",
+      "sha256": "sha256:9a6844ac0703853720010787c7b6c70b0020f1ab1862dcd74452fa46474d1215",
+      "source_filename": "pg-2701-moby-dick.txt",
+      "status": "acquired",
+      "title": "Moby-Dick; Or, The Whale",
+      "work_id": "pg-2701"
+    }
+  ]
+}

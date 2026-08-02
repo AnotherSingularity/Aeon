@@ -1,0 +1,68 @@
+{
+  "pg-11": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 174311,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-0011.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:01b38ea4c710a84bc18d0bd41271a5a1a92b94e97b2812f4dece97d4a694725e",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/11",
+    "title_evidence_version": 1
+  },
+  "pg-1342": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 772386,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-1342.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:74f2665d6e6925fc2c17dec644bec9e87df478a0f1836822125e8acbb3777806",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/1342",
+    "title_evidence_version": 1
+  },
+  "pg-1661": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 607606,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-1661.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:922e2a12ccb43a4c9544c260b2166c6ad2097aeb5957faeee113f173bb857cd0",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/1661",
+    "title_evidence_version": 1
+  },
+  "pg-2701": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 1276263,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-2701.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:9a6844ac0703853720010787c7b6c70b0020f1ab1862dcd74452fa46474d1215",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/2701",
+    "title_evidence_version": 1
+  },
+  "pg-55": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 237232,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-0055.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:969bffab7740d4d8a0bac332d78bd0152ad4a40a2efc52f06c74a9bb6120be75",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/55",
+    "title_evidence_version": 1
+  },
+  "pg-84": {
+    "acquisition_method": "manual_official_download",
+    "bytes": 448885,
+    "executing_environment_did_not_download": true,
+    "resolved_url": "offline:pg-0084.txt",
+    "retrieved_at_utc": "2026-08-02T23:16:36Z",
+    "sha256": "sha256:7810cd483cffcf2cc8a1d8f0d5807931e69d4f48cd14149b8c76f88af82fead3",
+    "supplied_retrieval_date": "2026-08-02",
+    "supplied_source_page": "https://www.gutenberg.org/ebooks/84",
+    "title_evidence_version": 1
+  }
+}
