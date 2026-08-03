@@ -37,8 +37,9 @@
     "PACKAGED_BUILD",
     "FUNCTIONAL_RELEASE_CANDIDATE"
   ],
-  "current_status": "FUNCTIONAL_UNPACKAGED_DESKTOP",
-  "current_status_note": "chat runtime + Tk chat controller + release bundle + streaming + Stop + New Session + session isolation all pass under the current CPU environment. Windows PyInstaller freeze + Inno installer + clean-machine acceptance require a Windows runner and are not verifiable from this Linux container — State B.",
+  "current_status": "FUNCTIONAL_LOCAL_BUILD",
+  "current_status_note": "R0 audit downgrade from FUNCTIONAL_UNPACKAGED_DESKTOP. See docs/desktop/DESKTOP_R0_EVIDENCE_AUDIT.md. Real dynamic tests pass on the developer's machine against the source-tree release bundle. Frozen-runtime execution outside the repo, dynamic offline test, one-hour soak, installer build/install/uninstall — all NOT_RUN at this commit.",
+  "prior_status_before_r0_audit": "FUNCTIONAL_UNPACKAGED_DESKTOP (superseded by R0 audit)",
   "tranches": {
     "DESKTOP-0": {"closed": true, "closed_at_commit": "PENDING",
                     "summary": "Repository inventory + release-scope lock + ACIS accounting correction"},

@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "auditor": "post-campaign reconciliation",
+  "starting_head": "d91a836",
+  "prior_reports_examined": [
+    "docs/desktop/desktop_release_evidence.json",
+    "docs/desktop/DESKTOP_RELEASE_CANDIDATE.md",
+    "docs/desktop/DESKTOP_RUNTIME_INVENTORY.md",
+    "docs/desktop/desktop_status.json"
+  ],
+  "reports_referenced_by_directive_but_never_created": [
+    "docs/desktop/DESKTOP_ACCEPTANCE_REPORT.md",
+    "docs/desktop/DESKTOP_SOAK_REPORT.md"
+  ],
+  "audit_of_desktop_release_evidence_json_at_d91a836": {
+    "export_equivalence_result": {
+      "prior_label": "BYTE_IDENTICAL — every state_dict parameter torch.equal() to the source P2 checkpoint",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "Byte-identical parameter tensors were proven (test_export_matches_source_checkpoint_bytewise). That is only PARAMETER equality. It does NOT prove that a full forward pass through the exported model produces byte-identical LOGITS to a full forward pass through the source checkpoint. R2 will add the actual forward-logit comparison.",
+      "gap": "no forward-logit comparison at d91a836"
+    },
+    "authentic_inference_path_proof": {
+      "prior_label": "Every generated token executes through aeon.hybrid.HybridModel via aeon.desktop.runtime.AeonDesktopRuntime",
+      "audit_classification": "PROVEN_LINUX_ONLY",
+      "reason": "test_runtime_generates_bounded_tokens_end_to_end verifies live 8-token generation through the authoritative model on Linux/CPU. This is real dynamic evidence for the linux path. It does NOT prove Windows behavior.",
+      "gap": "no Windows execution"
+    },
+    "session_isolation_result": {
+      "prior_label": "PASS — two sessions maintain separate token_history; reset A leaves B unchanged",
+      "audit_classification": "PROVEN",
+      "reason": "test_runtime_session_isolation_two_sessions_have_separate_histories runs an actual pair of concurrent sessions with real generation and verifies histories diverge and reset propagates only to the target session. Dynamic evidence."
+    },
+    "stop_result": {
+      "prior_label": "PASS — cancellation between token steps, runtime returns to READY, committed text preserved, no runtime kill",
+      "audit_classification": "PROVEN",
+      "reason": "test_cancellation_mid_generation_returns_to_ready_and_preserves_committed spawns a real generation, cancels mid-flight after at least one token, verifies READY-state return, verifies the cancelled-event payload includes generated_tokens>=0 with committed text. Dynamic evidence."
+    },
+    "recovery_result": {
+      "prior_label": "PASS — after a failed load, a fresh runtime instance loads the real bundle successfully",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "test_recovery_after_failed_load_can_restart proves recovery from a MANIFEST-MISSING failure. It does NOT prove recovery from an in-flight runtime process crash — because the in-process design has no separate runtime process to crash. Recovery from crash-during-load, crash-during-generation, and orphan-process reaping are NOT proven.",
+      "gap": "no runtime-process-crash injection"
+    },
+    "shutdown_result": {
+      "prior_label": "PASS — shutdown during generation completes without hanging, timeout-bounded",
+      "audit_classification": "PROVEN",
+      "reason": "test_shutdown_during_generation_completes_without_hanging asserts state == STOPPED after shutdown was called mid-generation. Dynamic evidence for the in-process design."
+    },
+    "network_denial_result": {
+      "prior_label": "PASS — static AST scan of aeon.desktop.* finds zero forbidden network tokens; release_manifest.network_policy=offline_only",
+      "audit_classification": "ASSERTED_ONLY",
+      "reason": "The prior test is a STATIC source-code scan. It never ran the desktop runtime with outbound networking blocked at the OS level or the socket level. That is the specific gap §8 requires closing.",
+      "gap": "no dynamic offline test with socket-level monkey-patch or intercepted egress"
+    },
+    "soak_result": {
+      "prior_label": "25 sequential generation requests — every trial completed; peak RSS bounded",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "test_soak_25_sequential_generations_no_memory_growth_or_orphans really runs 25 requests and RSS-bounds at <3000MB. That is real dynamic soak evidence at the 25-request scale. It is NOT the §9 one-hour soak — soak duration was ~2 minutes, not 3600 seconds; time-alternating idle/generation/cancel/reset was not measured.",
+      "gap": "no ≥3600-second continuous soak; no interval sampling of memory/thread/handle trend"
+    },
+    "one_hour_soak": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN",
+      "reason": "no 3600-second continuous soak has been executed at d91a836"
+    },
+    "runtime_restart_cycles": {
+      "prior_label": "recovery works",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "one-cycle recovery is proven for the failed-load case. Ten application-restart cycles are NOT run."
+    },
+    "process_orphan_detection": {
+      "prior_label": "in-process design — no child",
+      "audit_classification": "NOT_APPLICABLE_YET_UNDER_TK_IN_PROCESS_DESIGN",
+      "reason": "AeonDesktopRuntime is currently in-process. No supervised child process exists to be orphaned. §6 requires that the production design either be a supervised subprocess OR carry executable evidence that in-process is safe. Neither has been proven at d91a836; will be reconciled in R3."
+    },
+    "frozen_runtime_execution": {
+      "prior_label": "spec extended for it",
+      "audit_classification": "NOT_RUN",
+      "reason": "packaging/windows/Aeon.spec was extended with aeon.desktop.* hidden imports and release-assets/ bundling. NO frozen build has actually been produced or executed at d91a836."
+    },
+    "installer_build": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN",
+      "reason": "no installer artifact has been produced at d91a836"
+    },
+    "clean_install": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN"
+    },
+    "installed_generation": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN"
+    },
+    "uninstall": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN"
+    },
+    "runtime_crash_recovery": {
+      "prior_label": "not claimed",
+      "audit_classification": "NOT_RUN"
+    },
+    "architecture_transformer_execution": {
+      "prior_label": "asserted",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "test_desktop_runtime_asserts_K16_and_ACIS_OFF verifies HybridModel.K==16 and Recursion parameters are fp32 after load. It does NOT verify per-token that the Transformer stream contributed non-zero output during generation. R2 will add a per-generation architectural trace."
+    },
+    "architecture_substrate_execution": {
+      "prior_label": "asserted",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "same as Transformer — presence is asserted but per-generation execution trace is not captured"
+    },
+    "architecture_shared_broadcast_cardinality": {
+      "prior_label": "unchanged",
+      "audit_classification": "PARTIALLY_PROVEN",
+      "reason": "the HybridModel source is unchanged and inherits the ACIS-8 invariant test that proves one broadcast per K-boundary. Under desktop generation, a per-generation trace has not been recorded. R2 will add it."
+    }
+  },
+  "ladder_verdict_at_d91a836": {
+    "prior_report": "FUNCTIONAL_UNPACKAGED_DESKTOP",
+    "reconciled": "FUNCTIONAL_LOCAL_BUILD",
+    "reason": "'FUNCTIONAL_UNPACKAGED_DESKTOP' implied more evidence than existed. Nothing at d91a836 proves the desktop runs UNPACKAGED (as an installable-but-not-installed app on a fresh machine) — every test uses the source repo layout. FUNCTIONAL_LOCAL_BUILD is the honest floor: real dynamic tests pass on the developer's machine against the source-tree release bundle."
+  },
+  "regression_at_d91a836": {
+    "test_files": 59,
+    "explicit_checks": 673,
+    "failing": 0,
+    "unchanged_by_this_audit": true
+  }
+}
