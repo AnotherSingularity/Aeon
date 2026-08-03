@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "verdict": "STATE_B_WINDOWS_EXECUTION_REQUIRED",
+  "reason": "All repository-side reconciliation (R0..R5) is complete. Windows-native operations (WINDOWS-0..5) require a Windows environment (PowerShell + PyInstaller + Inno Setup + clean profile). This container is Linux; those steps cannot execute here.",
+  "linux_headless_evidence_status": {
+    "R0_evidence_audit": "COMPLETED",
+    "R1_authoritative_path": "COMPLETED — Architecture B (native Python/Tk)",
+    "R2_export_equivalence_and_trace": "COMPLETED",
+    "R3_in_process_supervision": "COMPLETED",
+    "R4_dynamic_offline": "COMPLETED",
+    "R5_full_soak": "RUNNING (see docs/desktop/desktop_full_soak_evidence.json) — 3600 s target"
+  },
+  "windows_native_evidence_status": {
+    "WINDOWS_0_preflight": "NOT_RUN",
+    "WINDOWS_1_frozen_runtime": "NOT_RUN",
+    "WINDOWS_2_installer": "NOT_RUN",
+    "WINDOWS_3_clean_install_vertical_slice": "NOT_RUN",
+    "WINDOWS_4_restart_recovery_upgrade_uninstall": "NOT_RUN",
+    "WINDOWS_5_release_candidate_closure": "NOT_RUN"
+  },
+  "exact_next_command": "On a Windows runner: git switch claude/aeon-desktop-7m-validation && git pull --ff-only && python scripts/export_aeon_desktop_model.py && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build.ps1 && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build_installer.ps1",
+  "required_tools": {
+    "windows_version": "Windows 10 or 11 x64",
+    "python_version": "3.11 x64",
+    "pytorch": "CPU wheel; version pinned in packaging/windows/requirements-windows.lock",
+    "sentencepiece": "pinned in packaging/windows/requirements-windows.lock",
+    "pyinstaller": "6.x",
+    "inno_setup": "6.x",
+    "powershell": "5.1 or 7+",
+    "git": "for clone / pull only"
+  },
+  "expected_artifacts": {
+    "frozen_directory": "dist/Aeon/ containing Aeon.exe + _internal/",
+    "installer": "dist/AeonSetup.exe",
+    "installer_should_carry_shortcut": "Aeon Chat (passes --chat)"
+  },
+  "expected_release_bundle_sha256": "sha256:c10350ac5569cd44e93226b40b1aa4cd0b8b2773ebe45401719946038015f1e4",
+  "expected_release_bundle_sha256_note": "computed by scripts/export_aeon_desktop_model.py on the reconciliation head on Linux. HONEST FINDING: torch.save produces a ZIP archive whose bytes include per-write timestamps (test_exporter_produces_tensor_deterministic_output_across_runs confirmed byte-hash divergence across two consecutive in-process saves). CROSS-MACHINE and CROSS-RUN byte-hash determinism is therefore NOT a property of the current exporter. The release manifest instead binds:  (i) the SHIPPED bundle's SHA-256 (stamped at export time)  (ii) the exact bytes of every packed tensor (verified via torch.equal after weights_only=True reload). Consumers verify their local model file against manifests/release_manifest.json.model_artifact_sha256, not against a hash pinned in this repository. For truly deterministic cross-machine bundles the exporter would need to write raw tensor bytes + a JSON manifest instead of relying on torch.save — deferred as a follow-up.",
+  "why_this_is_state_B_not_state_C": "Every executable Linux-side step completes cleanly. There is no correctable implementation failure. What blocks FUNCTIONAL_RELEASE_CANDIDATE is the physical requirement of running PyInstaller + Inno Setup + clean-Windows-install on a Windows machine.",
+  "clean_pushed_state_expected": true
+}
