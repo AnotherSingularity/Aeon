@@ -1,0 +1,84 @@
+{
+  "ACIS_mode_during_trace": "OFF",
+  "K_config_asserted": 16,
+  "K_config_expected": 16,
+  "boundaries_all_had_two_destination_consumers": true,
+  "boundaries_all_produced_exactly_one_broadcast": true,
+  "deterministic_generation_16_tokens": "byte_identical",
+  "fixture_prompt_len_chars": 3,
+  "fixture_seed": 20260803,
+  "fixture_seq_len": 40,
+  "logit_equivalence_source_vs_export": "byte_identical (torch.equal)",
+  "loss_equivalence_source_vs_export": "exact",
+  "n_K_boundaries_expected": 3,
+  "n_K_boundaries_traced": 3,
+  "per_boundary_events": [
+    {
+      "K": 16,
+      "boundary_index": 0,
+      "broadcasts_produced": 1,
+      "destination_paths_consuming_broadcast": 2,
+      "h_new_dtype": "torch.float32",
+      "h_new_shape": [
+        1,
+        128
+      ],
+      "s_dtype": "torch.float32",
+      "substrate_source_shape": [
+        1,
+        128
+      ],
+      "t_dtype": "torch.float32",
+      "transformer_source_shape": [
+        1,
+        128
+      ]
+    },
+    {
+      "K": 16,
+      "boundary_index": 1,
+      "broadcasts_produced": 1,
+      "destination_paths_consuming_broadcast": 2,
+      "h_new_dtype": "torch.float32",
+      "h_new_shape": [
+        1,
+        128
+      ],
+      "s_dtype": "torch.float32",
+      "substrate_source_shape": [
+        1,
+        128
+      ],
+      "t_dtype": "torch.float32",
+      "transformer_source_shape": [
+        1,
+        128
+      ]
+    },
+    {
+      "K": 16,
+      "boundary_index": 2,
+      "broadcasts_produced": 1,
+      "destination_paths_consuming_broadcast": 2,
+      "h_new_dtype": "torch.float32",
+      "h_new_shape": [
+        1,
+        128
+      ],
+      "s_dtype": "torch.float32",
+      "substrate_source_shape": [
+        1,
+        128
+      ],
+      "t_dtype": "torch.float32",
+      "transformer_source_shape": [
+        1,
+        128
+      ]
+    }
+  ],
+  "recursion_state_dtype": "torch.float32",
+  "schema_version": 1,
+  "substrate_execution_observed": true,
+  "transformer_execution_observed": true
+}
