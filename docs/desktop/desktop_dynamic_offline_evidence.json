@@ -1,0 +1,26 @@
+{
+  "attempted_outbound_connections": 0,
+  "attempted_urlopen": 0,
+  "authentic_desktop_path_ran_under_guard": true,
+  "cancel_returned_to_ready": true,
+  "generated_at_utc": "2026-08-03T02:26:56Z",
+  "generation_completed_events_observed": true,
+  "guards_installed": [
+    "socket.socket.connect",
+    "socket.create_connection",
+    "urllib.request.urlopen"
+  ],
+  "pipeline_steps_executed_with_network_denied": [
+    "preflight",
+    "load_release",
+    "create_session",
+    "submit_prompt_sync (6 tokens, temp=0, greedy)",
+    "submit_prompt async + cancel + join",
+    "reset_session",
+    "shutdown"
+  ],
+  "python_process_scope": "Linux CPU container (development environment)",
+  "schema_version": 1,
+  "test_name": "tests/test_desktop_r3_r4_supervision_and_offline.py::test_R4_desktop_pipeline_runs_without_any_outbound_network_attempt",
+  "windows_frozen_scope": "NOT_RUN \u2014 awaiting WINDOWS-1..3"
+}
