@@ -1,25 +1,75 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "verdict": "STATE_B_WINDOWS_EXECUTION_REQUIRED",
-  "reason": "All repository-side reconciliation (R0..R5) is complete. Windows-native operations (WINDOWS-0..5) require a Windows environment (PowerShell + PyInstaller + Inno Setup + clean profile). This container is Linux; those steps cannot execute here.",
+  "verdict_note": "Unchanged from 09201ac after a direct attempt to execute the WINDOWS-1..5 tranche in this environment. This container is Linux 6.18.5 and has no Windows tooling. Every §3-§9 command targets Windows binaries that are unreachable here.",
+  "windows_native_certification_attempt_log": {
+    "attempted_at_utc": "2026-08-03T soon (see git commit timestamp)",
+    "attempted_from_branch": "claude/aeon-desktop-7m-validation",
+    "attempted_from_commit": "09201ac555f7d5059343f3dfd1599272bd0426ef",
+    "environment_check": {
+      "uname": "Linux 6.18.5",
+      "platform_system": "Linux",
+      "powershell_exe": "not found",
+      "pwsh": "not found",
+      "pyinstaller_on_path": "not found",
+      "iscc_exe": "not found",
+      "windows_C_drive": "not present"
+    },
+    "commands_that_would_be_needed": [
+      "powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build.ps1",
+      "powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build_installer.ps1",
+      "clean-Windows-profile install of AeonSetup.exe",
+      "Start Menu launch of the installed Aeon.exe --chat shortcut",
+      "Windows firewall / netsh outbound-block for the dynamic denial trial",
+      "Task Manager kill for the runtime-crash injection",
+      "Add/Remove Programs uninstall"
+    ],
+    "steps_completable_from_this_container": {
+      "§1 pre-flight git state check": "COMPLETED — HEAD=09201ac, remote in sync, working tree clean",
+      "§2 regenerate release bundle": "COMPLETED — see fresh_bundle_digests below",
+      "§2 tokenizer digest verification": "COMPLETED — matches expected 064ab6a9...",
+      "§2 forward-logit equivalence + arch trace": "COMPLETED — R2 tests re-run against the fresh bundle, 7/7 pass",
+      "§3 frozen build": "NOT_RUN — powershell.exe unavailable",
+      "§4 installer": "NOT_RUN — Inno Setup unavailable",
+      "§5 clean-install vertical slice": "NOT_RUN — no Windows profile",
+      "§6 dynamic OS-level offline": "NOT_RUN — Linux socket-level monkey-patch was already run and evidenced at fc69994 / R4",
+      "§7 restart / lifecycle matrix": "NOT_RUN — requires Windows",
+      "§8 upgrade + uninstall": "NOT_RUN — no installer produced",
+      "§9 Windows performance measurements": "NOT_RUN — no Windows"
+    }
+  },
+  "expected_release_bundle_sha256": "sha256:bb55a60cfdf5ccce8b257de592bad00dd7ad74ab37de7f1870729ac7f6dcb39f",
+  "expected_release_bundle_sha256_note": "This is the digest of the FRESH bundle regenerated on the reconciliation head at this commit. Byte-hash reproducibility is NOT a property of torch.save (ZIP mtime); consumers verify against the manifest shipped inside the bundle, not against this repo-pinned hash. Prior in-container export at 09201ac produced sha256:c10350ac...; the two exports produce byte-identical TENSORS on reload (R2 re-verified 7/7).",
+  "fresh_bundle_digests": {
+    "generated_at_utc": "captured at export-time; see release-assets/aeon-desktop-p2-proxy/manifests/release_manifest.json",
+    "model_export_sha256": "sha256:bb55a60cfdf5ccce8b257de592bad00dd7ad74ab37de7f1870729ac7f6dcb39f",
+    "tokenizer_sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "model_bytes": 28083005,
+    "parameter_count": 7015366,
+    "K": 16,
+    "arch_digest": "sha256:175c554fb3b03d961874815824b71b9f75ca44ca6e622bae2f4b854c45a95995",
+    "cfg_digest": "sha256:188245cb0edf921b1652bbc40dd1e21255d68cd2f723d91096500e4c4cdd8446",
+    "release_id": "aeon-desktop-p2-proxy-bb55a60cfdf5",
+    "note": "The model_export_sha256 differs from the prior in-container export (c10350ac...) because torch.save is NOT byte-deterministic across runs (ZIP mtime — noted in test_exporter_produces_tensor_deterministic_output_across_runs). Both exports produce byte-identical TENSORS on reload, which R2 re-verified against the fresh bundle: 7/7 tests pass, including test_R2_forward_logits_are_byte_identical."
+  },
   "linux_headless_evidence_status": {
     "R0_evidence_audit": "COMPLETED",
     "R1_authoritative_path": "COMPLETED — Architecture B (native Python/Tk)",
-    "R2_export_equivalence_and_trace": "COMPLETED",
+    "R2_export_equivalence_and_trace": "COMPLETED (re-verified against fresh bundle)",
     "R3_in_process_supervision": "COMPLETED",
     "R4_dynamic_offline": "COMPLETED",
-    "R5_full_soak": "RUNNING (see docs/desktop/desktop_full_soak_evidence.json) — 3600 s target"
+    "R5_full_soak": "COMPLETED — 3600.58 s, 6/6 gates GREEN"
   },
   "windows_native_evidence_status": {
-    "WINDOWS_0_preflight": "NOT_RUN",
-    "WINDOWS_1_frozen_runtime": "NOT_RUN",
-    "WINDOWS_2_installer": "NOT_RUN",
-    "WINDOWS_3_clean_install_vertical_slice": "NOT_RUN",
-    "WINDOWS_4_restart_recovery_upgrade_uninstall": "NOT_RUN",
-    "WINDOWS_5_release_candidate_closure": "NOT_RUN"
+    "WINDOWS_0_preflight": "PARTIAL — git-state + bundle-regen + digest verification COMPLETED from Linux; Windows-tool inventory recorded",
+    "WINDOWS_1_frozen_runtime": "NOT_RUN — requires PowerShell + PyInstaller on Windows",
+    "WINDOWS_2_installer": "NOT_RUN — requires Inno Setup on Windows",
+    "WINDOWS_3_clean_install_vertical_slice": "NOT_RUN — requires clean Windows profile",
+    "WINDOWS_4_restart_recovery_upgrade_uninstall": "NOT_RUN — requires Windows",
+    "WINDOWS_5_release_candidate_closure": "NOT_RUN — awaits WINDOWS-1..4"
   },
-  "exact_next_command": "On a Windows runner: git switch claude/aeon-desktop-7m-validation && git pull --ff-only && python scripts/export_aeon_desktop_model.py && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build.ps1 && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build_installer.ps1",
-  "required_tools": {
+  "exact_next_command_on_windows_runner": "git switch claude/aeon-desktop-7m-validation && git pull --ff-only && python scripts/export_aeon_desktop_model.py && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build.ps1 && powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build_installer.ps1",
+  "required_tools_on_windows": {
     "windows_version": "Windows 10 or 11 x64",
     "python_version": "3.11 x64",
     "pytorch": "CPU wheel; version pinned in packaging/windows/requirements-windows.lock",
@@ -29,13 +79,12 @@
     "powershell": "5.1 or 7+",
     "git": "for clone / pull only"
   },
-  "expected_artifacts": {
+  "expected_artifacts_on_windows_runner": {
     "frozen_directory": "dist/Aeon/ containing Aeon.exe + _internal/",
-    "installer": "dist/AeonSetup.exe",
+    "installer": "dist/AeonSetup.exe (unsigned per §33 authorization for research preview)",
     "installer_should_carry_shortcut": "Aeon Chat (passes --chat)"
   },
-  "expected_release_bundle_sha256": "sha256:c10350ac5569cd44e93226b40b1aa4cd0b8b2773ebe45401719946038015f1e4",
-  "expected_release_bundle_sha256_note": "computed by scripts/export_aeon_desktop_model.py on the reconciliation head on Linux. HONEST FINDING: torch.save produces a ZIP archive whose bytes include per-write timestamps (test_exporter_produces_tensor_deterministic_output_across_runs confirmed byte-hash divergence across two consecutive in-process saves). CROSS-MACHINE and CROSS-RUN byte-hash determinism is therefore NOT a property of the current exporter. The release manifest instead binds:  (i) the SHIPPED bundle's SHA-256 (stamped at export time)  (ii) the exact bytes of every packed tensor (verified via torch.equal after weights_only=True reload). Consumers verify their local model file against manifests/release_manifest.json.model_artifact_sha256, not against a hash pinned in this repository. For truly deterministic cross-machine bundles the exporter would need to write raw tensor bytes + a JSON manifest instead of relying on torch.save — deferred as a follow-up.",
-  "why_this_is_state_B_not_state_C": "Every executable Linux-side step completes cleanly. There is no correctable implementation failure. What blocks FUNCTIONAL_RELEASE_CANDIDATE is the physical requirement of running PyInstaller + Inno Setup + clean-Windows-install on a Windows machine.",
-  "clean_pushed_state_expected": true
+  "why_this_is_state_B_not_state_C": "Every executable Linux-side step completes cleanly. There is no correctable implementation failure. What blocks FUNCTIONAL_RELEASE_CANDIDATE is the physical requirement of running PyInstaller + Inno Setup + clean-Windows-install on a Windows machine. No amount of code change in this container can execute a Windows binary.",
+  "clean_pushed_state_expected": true,
+  "exact_remaining_blocker_before_350M_authorization": "Execute the WINDOWS-1..5 tranche on a Windows machine per docs/desktop/DESKTOP_WINDOWS_BUILD_REPORT.md, populate docs/desktop/DESKTOP_WINDOWS_ACCEPTANCE_REPORT.md with the vertical-slice evidence, then flip docs/desktop/desktop_status.json.current_status = FUNCTIONAL_RELEASE_CANDIDATE. Only after that gate does 350M training become authorized per §43 of the desktop program directive."
 }
