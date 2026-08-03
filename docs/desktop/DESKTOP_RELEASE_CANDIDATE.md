@@ -1,11 +1,10 @@
 # Desktop Release Candidate — Aeon Desktop 7M Research Preview
 ### Reconciled (R0–R5) + Windows-State-B
 
-**Ladder position:** **`FUNCTIONAL_LOCAL_BUILD`** (post-R0 audit)
-transitioning to **`FUNCTIONAL_UNPACKAGED_DESKTOP`** once the R5
-1-hour soak completes with passing acceptance gates.
+**Ladder position:** **`FUNCTIONAL_UNPACKAGED_DESKTOP`** — the R5
+1-hour soak completed cleanly with all 6 acceptance gates GREEN.
 **`FUNCTIONAL_RELEASE_CANDIDATE`** requires WINDOWS-1..5 which
-are STATE B.
+are STATE B (require a Windows runner).
 
 **Reconciliation commit ledger** (added to `d91a836`):
 ```
@@ -44,7 +43,7 @@ WINDOWS-0..5 — STATE B (Windows execution required)
 | Bounded event queue never blocks runtime                             | **PROVEN**         | `test_R3_bounded_queue_never_blocks_runtime_on_overflow`                                        |
 | **Dynamic** network denial (socket + urllib patched)                 | **PROVEN**         | `test_R4_desktop_pipeline_runs_without_any_outbound_network_attempt`                            |
 | No thread leak across 5 gen+cancel cycles                            | **PROVEN**         | `test_R4_no_new_thread_leaks_after_repeated_gen_cancel`                                          |
-| Continuous 1-hour soak                                                | **RUNNING** → filled in on completion in `docs/desktop/desktop_full_soak_evidence.json` |
+| Continuous 1-hour soak (3600.58 s)                                    | **PROVEN** — 2,712 gens / 771 cancels / 915 resets / 902 new sessions / RSS plateau at 679 MB after 10-min warm-up / 1 thread constant / 0 errors / all 6 acceptance gates GREEN. See `docs/desktop/DESKTOP_FULL_SOAK_REPORT.md` |
 | Runtime CRASH recovery (kill mid-generation, shell dies)             | **DISCLOSED**      | in-process design trade-off; documented in AUTHORITATIVE_PATH §5                                 |
 | Orphan-process detection                                             | **NOT_APPLICABLE** | in-process design (no subprocess)                                                                |
 

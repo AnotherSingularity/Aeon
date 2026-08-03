@@ -37,9 +37,23 @@
     "PACKAGED_BUILD",
     "FUNCTIONAL_RELEASE_CANDIDATE"
   ],
-  "current_status": "FUNCTIONAL_LOCAL_BUILD",
-  "current_status_note": "R0 audit downgrade from FUNCTIONAL_UNPACKAGED_DESKTOP. See docs/desktop/DESKTOP_R0_EVIDENCE_AUDIT.md. Real dynamic tests pass on the developer's machine against the source-tree release bundle. Frozen-runtime execution outside the repo, dynamic offline test, one-hour soak, installer build/install/uninstall — all NOT_RUN at this commit.",
-  "prior_status_before_r0_audit": "FUNCTIONAL_UNPACKAGED_DESKTOP (superseded by R0 audit)",
+  "current_status": "FUNCTIONAL_UNPACKAGED_DESKTOP",
+  "current_status_note": "Post-R5 promotion. R0 audit downgraded from the earlier (unsupported) FUNCTIONAL_UNPACKAGED_DESKTOP claim to FUNCTIONAL_LOCAL_BUILD. R2 (forward-logit + architectural trace), R3 (in-process supervision), R4 (dynamic offline denial), and R5 (3600.58 s continuous soak — 2,712 gens, 771 cancels, 6/6 acceptance gates GREEN, RSS plateau at 679 MB after 10-min warm-up) restored the ladder to FUNCTIONAL_UNPACKAGED_DESKTOP on the basis of real dynamic evidence. FUNCTIONAL_RELEASE_CANDIDATE awaits WINDOWS-1..5 which are STATE B (Windows runner required).",
+  "prior_status_before_r0_audit": "FUNCTIONAL_UNPACKAGED_DESKTOP (unsupported; downgraded by R0 audit; re-earned by R2-R5)",
+  "r5_soak_summary": {
+    "duration_seconds": 3600.58,
+    "generations": 2712,
+    "cancels": 771,
+    "resets": 915,
+    "new_sessions": 902,
+    "starting_rss_mb": 558.17,
+    "ending_rss_mb": 678.95,
+    "linear_memory_trend_mb": 120.78,
+    "growth_pattern": "warm-up 558->672 MB in first 10 min, plateau at 679 MB for remaining 50 min",
+    "threads_baseline": 1,
+    "threads_final": 1,
+    "acceptance_gates_all_green": true
+  },
   "tranches": {
     "DESKTOP-0": {"closed": true, "closed_at_commit": "PENDING",
                     "summary": "Repository inventory + release-scope lock + ACIS accounting correction"},
