@@ -1,0 +1,108 @@
+{
+  "cross_partition_overlaps": {
+    "calibration__test": {
+      "exact_paragraph_overlap_count": 1,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 2,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 0,
+      "work_id_overlap": []
+    },
+    "calibration__validation": {
+      "exact_paragraph_overlap_count": 0,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 1,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 0,
+      "work_id_overlap": []
+    },
+    "train__calibration": {
+      "exact_paragraph_overlap_count": 1,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 1,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 0,
+      "work_id_overlap": []
+    },
+    "train__test": {
+      "exact_paragraph_overlap_count": 3,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 3,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 2,
+      "work_id_overlap": []
+    },
+    "train__validation": {
+      "exact_paragraph_overlap_count": 2,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 2,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 2,
+      "work_id_overlap": []
+    },
+    "validation__test": {
+      "exact_paragraph_overlap_count": 1,
+      "hard_failure": false,
+      "normalized_paragraph_overlap_count": 1,
+      "record_id_overlap": [],
+      "shared_word_8gram_count": 0,
+      "work_id_overlap": []
+    }
+  },
+  "example_train_paragraphs_first_three": [
+    "EXTRACTS (Supplied by a Sub-Sub-Librarian).",
+    "CHAPTER 50. Ahab\u2019s Boat and Crew. Fedallah.",
+    "CHAPTER 55. Of the Monstrous Pictures of Whales."
+  ],
+  "generated_at_utc": "2026-08-03T00:16:18Z",
+  "gutenberg_boilerplate_check": {
+    "calibration": {
+      "header_footer_marker_hits": 0,
+      "project_gutenberg_mentions": 0
+    },
+    "test": {
+      "header_footer_marker_hits": 0,
+      "project_gutenberg_mentions": 0
+    },
+    "train": {
+      "header_footer_marker_hits": 0,
+      "project_gutenberg_mentions": 1
+    },
+    "validation": {
+      "header_footer_marker_hits": 0,
+      "project_gutenberg_mentions": 0
+    }
+  },
+  "partitions": {
+    "calibration": {
+      "bytes": 769050,
+      "partition": "calibration",
+      "records": 821,
+      "sha256": "sha256:bf7f722d9c8778ccf9ca445457b3c5c3bc2c4fcd78994ee4a39b39cdb110c1eb"
+    },
+    "test": {
+      "bytes": 1620097,
+      "partition": "test",
+      "records": 2546,
+      "sha256": "sha256:a64f4cb9673f8b867cc81b041bda8198a6c403921ccf27f5546c32930e35947e"
+    },
+    "train": {
+      "bytes": 4582224,
+      "partition": "train",
+      "records": 6139,
+      "sha256": "sha256:5c33cbcbe0e4ca6ad84bd6d27a751f1791e504945f82eee108f27ba4d7b07c59"
+    },
+    "validation": {
+      "bytes": 683753,
+      "partition": "validation",
+      "records": 1164,
+      "sha256": "sha256:ed75c7a4408d7839b2400b8cae2aaee17769aea28e57965edce3b26b60255b35"
+    }
+  },
+  "preprocessing_version": "aeon-lbc1-v1",
+  "record_id_collision_count": 0,
+  "record_id_collisions": {},
+  "schema_version": 1,
+  "sealed_test_disciplined": true,
+  "test_content_exposed_in_this_report": false
+}

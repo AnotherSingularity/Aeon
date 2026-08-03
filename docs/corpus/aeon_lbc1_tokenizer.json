@@ -1,0 +1,33 @@
+{
+  "byte_fallback": true,
+  "character_coverage": 0.9999,
+  "fitted_on_partition_sha256": {
+    "train": "sha256:5c33cbcbe0e4ca6ad84bd6d27a751f1791e504945f82eee108f27ba4d7b07c59"
+  },
+  "fitted_on_partitions": [
+    "train"
+  ],
+  "model_bytes": 528129,
+  "model_sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+  "model_type": "unigram",
+  "not_fitted_on": [
+    "calibration",
+    "validation",
+    "test"
+  ],
+  "preprocessing_version": "aeon-lbc1-v1",
+  "roundtrip_verified": true,
+  "schema_version": 1,
+  "sealed_test_never_touched_by_fit": true,
+  "sentencepiece_version": "0.2.2",
+  "special_tokens": {
+    "bos_id": 2,
+    "eos_id": 3,
+    "pad_id": 0,
+    "unk_id": 1
+  },
+  "tokenizer_implementation": "sentencepiece",
+  "tokenizer_name": "aeon-lbc1",
+  "vocab_sha256": "sha256:e324450d7393d8d39a6a04aa1eb60fa2c5775799edc624f11ffb1f84e1f72494",
+  "vocab_size": 16000
+}
