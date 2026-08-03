@@ -1,0 +1,121 @@
+{
+  "generated_at_utc": "2026-08-03T00:10:52Z",
+  "preprocessing_version": "aeon-lbc1-v1",
+  "schema_version": 1,
+  "works": [
+    {
+      "output_partition": "train",
+      "output_partition_sha256_after_write": "sha256:368f0d2d589dde6e867a852006343b8421255e88d2add51c8208c5a164b3bf4d",
+      "preprocessing_log": {
+        "input_bytes": 1276263,
+        "input_sha256": "sha256:9a6844ac0703853720010787c7b6c70b0020f1ab1862dcd74452fa46474d1215",
+        "paragraph_count": 2802,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-2701"
+      },
+      "records": 2802,
+      "status": "ok",
+      "work_id": "pg-2701"
+    },
+    {
+      "output_partition": "train",
+      "output_partition_sha256_after_write": "sha256:f88ac2212d73122d90ec854fd8522923e19d9d48c61bc16ab83126fad3542f9e",
+      "preprocessing_log": {
+        "input_bytes": 772386,
+        "input_sha256": "sha256:74f2665d6e6925fc2c17dec644bec9e87df478a0f1836822125e8acbb3777806",
+        "paragraph_count": 2509,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-1342"
+      },
+      "records": 2509,
+      "status": "ok",
+      "work_id": "pg-1342"
+    },
+    {
+      "output_partition": "train",
+      "output_partition_sha256_after_write": "sha256:5c33cbcbe0e4ca6ad84bd6d27a751f1791e504945f82eee108f27ba4d7b07c59",
+      "preprocessing_log": {
+        "input_bytes": 174311,
+        "input_sha256": "sha256:01b38ea4c710a84bc18d0bd41271a5a1a92b94e97b2812f4dece97d4a694725e",
+        "paragraph_count": 828,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-11"
+      },
+      "records": 828,
+      "status": "ok",
+      "work_id": "pg-11"
+    },
+    {
+      "output_partition": "calibration",
+      "output_partition_sha256_after_write": "sha256:bf7f722d9c8778ccf9ca445457b3c5c3bc2c4fcd78994ee4a39b39cdb110c1eb",
+      "preprocessing_log": {
+        "input_bytes": 448885,
+        "input_sha256": "sha256:7810cd483cffcf2cc8a1d8f0d5807931e69d4f48cd14149b8c76f88af82fead3",
+        "paragraph_count": 821,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-84"
+      },
+      "records": 821,
+      "status": "ok",
+      "work_id": "pg-84"
+    },
+    {
+      "output_partition": "validation",
+      "output_partition_sha256_after_write": "sha256:ed75c7a4408d7839b2400b8cae2aaee17769aea28e57965edce3b26b60255b35",
+      "preprocessing_log": {
+        "input_bytes": 237232,
+        "input_sha256": "sha256:969bffab7740d4d8a0bac332d78bd0152ad4a40a2efc52f06c74a9bb6120be75",
+        "paragraph_count": 1164,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-55"
+      },
+      "records": 1164,
+      "status": "ok",
+      "work_id": "pg-55"
+    },
+    {
+      "output_partition": "test",
+      "output_partition_sha256_after_write": "sha256:a64f4cb9673f8b867cc81b041bda8198a6c403921ccf27f5546c32930e35947e",
+      "preprocessing_log": {
+        "input_bytes": 607606,
+        "input_sha256": "sha256:922e2a12ccb43a4c9544c260b2166c6ad2097aeb5957faeee113f173bb857cd0",
+        "paragraph_count": 2546,
+        "transformations": [
+          "normalize_line_endings",
+          "boundary_stripped",
+          "chapter_indexed",
+          "paragraphs_split"
+        ],
+        "work_id": "pg-1661"
+      },
+      "records": 2546,
+      "status": "ok",
+      "work_id": "pg-1661"
+    }
+  ]
+}
