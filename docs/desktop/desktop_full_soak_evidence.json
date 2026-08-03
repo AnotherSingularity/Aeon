@@ -1,0 +1,83 @@
+{
+  "release_bundle": "/home/user/AeonV0.02/release-assets/aeon-desktop-p2-proxy",
+  "sample_interval_seconds": 60,
+  "samples": [
+    {
+      "cancel_count": 0,
+      "child_process_count": 0,
+      "elapsed_s": 0.0,
+      "generation_count": 0,
+      "last_action": "baseline",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 558.17,
+      "runtime_state": "READY",
+      "thread_count": 1
+    },
+    {
+      "cancel_count": 8,
+      "child_process_count": 0,
+      "elapsed_s": 61.2,
+      "generation_count": 39,
+      "last_action": "idle",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 607.35,
+      "runtime_state": "READY",
+      "thread_count": 1
+    },
+    {
+      "cancel_count": 19,
+      "child_process_count": 0,
+      "elapsed_s": 123.27,
+      "generation_count": 83,
+      "last_action": "idle",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 619.43,
+      "runtime_state": "READY",
+      "thread_count": 1
+    },
+    {
+      "cancel_count": 36,
+      "child_process_count": 0,
+      "elapsed_s": 184.33,
+      "generation_count": 137,
+      "last_action": "idle",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 644.73,
+      "runtime_state": "READY",
+      "thread_count": 1
+    },
+    {
+      "cancel_count": 54,
+      "child_process_count": 0,
+      "elapsed_s": 247.72,
+      "generation_count": 187,
+      "last_action": "idle",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 663.59,
+      "runtime_state": "READY",
+      "thread_count": 1
+    },
+    {
+      "cancel_count": 71,
+      "child_process_count": 0,
+      "elapsed_s": 308.39,
+      "generation_count": 237,
+      "last_action": "idle",
+      "last_error": null,
+      "pid": 20093,
+      "rss_mb": 664.9,
+      "runtime_state": "READY",
+      "thread_count": 1
+    }
+  ],
+  "schema_version": 1,
+  "seed": 20260803,
+  "started_at_utc": "2026-08-03T02:27:50Z",
+  "target_duration_seconds": 3600,
+  "updated_at_utc": "2026-08-03T02:32:58Z"
+}
