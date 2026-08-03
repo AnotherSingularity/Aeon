@@ -9,3 +9,12 @@ __pycache__/
 # re-running scripts/e5_certify.py or scripts/train.py.
 runs/
 tokenizer/
+
+# CORPUS-1/CORPUS-2: deterministic preprocessing output.
+# Every processed/*.jsonl is derivable from the committed source bytes
+# under research-data/AEON-LBC-1/source/ plus the fixed preprocessing
+# script + preprocessing_version. Not committed to preserve sealed-test
+# discipline on PG-1661 (Sherlock Holmes) — the test partition text
+# must not leave the local machine.
+research-data/AEON-LBC-1/processed/
+research-data/AEON-LBC-1/tokenizer/
