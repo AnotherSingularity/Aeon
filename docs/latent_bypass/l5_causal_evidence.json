@@ -1,0 +1,109 @@
+{
+  "acis_mode_during_L5": "OFF",
+  "batches_used": 24,
+  "generated_at_utc": "2026-08-03T01:06:53Z",
+  "no_persistence_check": true,
+  "p2_checkpoint": "runs/aeon_lbc1_P2/final.pt",
+  "results": {
+    "DELAY_BROADCAST": {
+      "delta_L_c_vs_none": 0.0023635029792785645,
+      "mean_loss": 5.716959496339162,
+      "per_batch_loss_max": 5.939363956451416,
+      "per_batch_loss_median": 5.717035531997681,
+      "per_batch_loss_min": 5.454133987426758,
+      "signals_broadcast_matters": false
+    },
+    "FREEZE_BROADCAST": {
+      "delta_L_c_vs_none": 0.025215884049734072,
+      "mean_loss": 5.739811877409617,
+      "per_batch_loss_max": 5.9546427726745605,
+      "per_batch_loss_median": 5.738210916519165,
+      "per_batch_loss_min": 5.483979225158691,
+      "signals_broadcast_matters": true
+    },
+    "FREEZE_RECURSION": {
+      "delta_L_c_vs_none": 0.025215884049734072,
+      "mean_loss": 5.739811877409617,
+      "per_batch_loss_max": 5.9546427726745605,
+      "per_batch_loss_median": 5.738210916519165,
+      "per_batch_loss_min": 5.483979225158691,
+      "signals_broadcast_matters": true
+    },
+    "MASK_SUBSTRATE_SOURCE": {
+      "delta_L_c_vs_none": 0.05083074172337909,
+      "mean_loss": 5.765426735083262,
+      "per_batch_loss_max": 5.9694743156433105,
+      "per_batch_loss_median": 5.77450966835022,
+      "per_batch_loss_min": 5.498750686645508,
+      "signals_broadcast_matters": true
+    },
+    "MASK_TRANSFORMER_SOURCE": {
+      "delta_L_c_vs_none": 0.012255589167277314,
+      "mean_loss": 5.726851582527161,
+      "per_batch_loss_max": 5.942043781280518,
+      "per_batch_loss_median": 5.721848487854004,
+      "per_batch_loss_min": 5.459403038024902,
+      "signals_broadcast_matters": true
+    },
+    "NONE": {
+      "delta_L_c_vs_none": 0.0,
+      "mean_loss": 5.714595993359883,
+      "per_batch_loss": [
+        5.922690391540527,
+        5.866510391235352,
+        5.635554313659668,
+        5.545196533203125,
+        5.638916015625,
+        5.722537994384766,
+        5.897122859954834,
+        5.653438091278076,
+        5.646152019500732,
+        5.731441020965576,
+        5.836645126342773,
+        5.704327583312988,
+        5.848217964172363,
+        5.450882434844971,
+        5.566310882568359,
+        5.764220237731934,
+        5.797359466552734,
+        5.934721946716309,
+        5.5977325439453125,
+        5.614093780517578,
+        5.855342388153076,
+        5.697692394256592,
+        5.490298748016357,
+        5.732898712158203
+      ]
+    },
+    "NORM_MATCHED_IRRELEVANT_STATE": {
+      "delta_L_c_vs_none": 0.7101648847262068,
+      "mean_loss": 6.42476087808609,
+      "per_batch_loss_max": 6.617515563964844,
+      "per_batch_loss_median": 6.41009259223938,
+      "per_batch_loss_min": 6.2013397216796875,
+      "signals_broadcast_matters": true
+    },
+    "SHUFFLE_BROADCAST": {
+      "delta_L_c_vs_none": 6.804863611886702e-05,
+      "mean_loss": 5.714664041996002,
+      "per_batch_loss_max": 5.934686183929443,
+      "per_batch_loss_median": 5.713594198226929,
+      "per_batch_loss_min": 5.45072603225708,
+      "signals_broadcast_matters": false
+    },
+    "ZERO_BROADCAST": {
+      "delta_L_c_vs_none": 0.6910226742426557,
+      "mean_loss": 6.405618667602539,
+      "per_batch_loss_max": 6.59814453125,
+      "per_batch_loss_median": 6.390988349914551,
+      "per_batch_loss_min": 6.1790995597839355,
+      "signals_broadcast_matters": true
+    }
+  },
+  "schema_version": 1,
+  "sealed_partition_used": "test",
+  "seed": 20260803,
+  "test_content_exposed_in_report": false,
+  "tokens_used": 49152,
+  "training_mode_refused_enforced": true
+}

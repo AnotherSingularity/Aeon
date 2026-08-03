@@ -1,0 +1,30 @@
+{
+  "boundaries_cal": 4096,
+  "boundaries_val": 3328,
+  "claim_level_supported": 1,
+  "claim_level_supported_note": "Level 1 (STRUCTURALLY_IMPLEMENTED). L3 alone cannot elevate to Level 2+; that requires L4/L5 evidence + calibration lock.",
+  "controls": {
+    "no_gradient_into_aeon": true,
+    "no_routing_effect": true,
+    "no_test_access": true,
+    "shuffled_labels_seed": 20260803
+  },
+  "effective_rank_H_calibration": 1.9089642763137817,
+  "generated_at_utc": "2026-08-03T01:05:34Z",
+  "h_rec": 128,
+  "p2_checkpoint": "runs/aeon_lbc1_P2/final.pt",
+  "schema_version": 1,
+  "z_dir": {
+    "r2_on_val_predicting_delta_norm": 0.9078865840893507,
+    "shuffled_control_r2": 0.031799005238364764,
+    "signal_above_shuffle": 0.876087578850986,
+    "v_norm": 10.613232008140926
+  },
+  "z_norm": {
+    "cal_mean": 1.1723827123641968,
+    "cal_std": 1.2285789251327515,
+    "r2_on_val_predicting_delta_norm": 0.7442907094955444,
+    "val_mean": 1.1587094068527222,
+    "val_std": 1.2406646013259888
+  }
+}

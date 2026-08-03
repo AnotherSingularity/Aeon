@@ -1,0 +1,18 @@
+{
+  "authorized_by_directive_section": 19,
+  "bounded_by": "CPU-only, 7M-param model, 1M useful training tokens, 6 whole-work Project Gutenberg corpus, single seed 20260731.",
+  "ceiling_authorized_for_this_campaign": 3,
+  "ceiling_reached_this_campaign": 3,
+  "claim_level": 3,
+  "claim_level_label": "CAUSAL_CHECKPOINT_EVIDENCE",
+  "does_not_claim": [
+    "universal superiority",
+    "frontier-scale performance",
+    "net efficiency (no cost-adjusted matched-control experiment)",
+    "quantum computation",
+    "metaphysical hidden dimension",
+    "ACIS performance benefit (workload cert says: BUCKET semantically equivalent but not default-recommended)"
+  ],
+  "schema_version": 1,
+  "scope": "Under the P2 bounded real-English checkpoint (runs/aeon_lbc1_P2/final.pt), on the sealed TEST partition (PG-1661), the shared Recursion broadcast carries semantically relevant content for next-token prediction. Broadcast content matters (ZERO_BROADCAST +0.691 nat; NORM_MATCHED +0.710 nat), broadcast batch alignment does not (SHUFFLE +0.0001 nat), substrate source carries slightly more useful signal than transformer source (MASK_SUBSTRATE +0.051 vs MASK_TRANSFORMER +0.012)."
+}

@@ -1,0 +1,119 @@
+{
+  "K_fixed_at_16": true,
+  "L3": {
+    "boundaries_calibration": 512,
+    "boundaries_validation": 416,
+    "claim_level_supported": 1,
+    "shuffled_control_r2": 0.0318,
+    "signal_above_shuffle": 0.8761,
+    "z_dir_r2_val": 0.9079
+  },
+  "L4": {
+    "partitions_covered": [
+      "calibration",
+      "validation"
+    ],
+    "per_boundary_capture_bytes_max": 16384,
+    "sealed_test_touched": false
+  },
+  "L5": {
+    "baseline_loss_none": 5.7146,
+    "batches_used": 24,
+    "claim_level_supported": 3,
+    "delta_L_c": {
+      "DELAY_BROADCAST": 0.0024,
+      "FREEZE_BROADCAST": 0.0252,
+      "FREEZE_RECURSION": 0.0252,
+      "MASK_SUBSTRATE_SOURCE": 0.0508,
+      "MASK_TRANSFORMER_SOURCE": 0.0123,
+      "NORM_MATCHED_IRRELEVANT_STATE": 0.7102,
+      "SHUFFLE_BROADCAST": 0.0001,
+      "ZERO_BROADCAST": 0.691
+    },
+    "sealed_partition_used": "test",
+    "tokens_used": 49152
+  },
+  "acis_workload_certification": {
+    "BUCKET": {
+      "default_recommended": false,
+      "overhead_median_pct": 5.66,
+      "overhead_p95_pct": 3.77,
+      "semantic_equivalent_to_OFF": true,
+      "wall_ms_median": 29536
+    },
+    "CONVEYOR": "refused (from ACIS-8)",
+    "OBSERVE": {
+      "certified": false,
+      "overhead_median_pct": 7.4,
+      "overhead_p95_pct": 4.22,
+      "semantic_equivalent_to_OFF": true,
+      "wall_ms_median": 30023
+    },
+    "OFF": {
+      "wall_ms_median": 27955
+    }
+  },
+  "architecture_preserved": true,
+  "baseline_head_at_start": "7b0c2f9",
+  "calibration_lock_digest": "sha256:fcc8578760f1cd343498aa92205f0d61b16dc7dce3fcebf99193d619cadb5f8a",
+  "campaign": "AEON-LBC-1 real-English intake + ACIS workload + L3-L5 causal",
+  "commit_ledger": {
+    "ACIS_WORKLOAD": "8a16dc8",
+    "CORPUS_1": "f661ee4",
+    "CORPUS_2": "a6b94eb",
+    "P0_P1_P2": "62c90e9",
+    "integrate_merge": "891819b",
+    "relocate": "028fef6",
+    "vendor_package": "9f5433b"
+  },
+  "exact_next_research_gate": "GPU + larger model + cross-seed replication of L5 causal signal + net-efficiency matched-control experiment (Level 4)",
+  "ip_preserved": true,
+  "known_limitations": [
+    "CPU-only, single seed, small 7M-param model",
+    "Bounded corpus (6 whole works, ~460k train tokens single epoch)",
+    "ACIS workload cert on small workload \u2014 overheads may not transfer to GPU-scale",
+    "L3 target \u0394\u2016h\u2016 is closely coupled to h; strong z_dir R\u00b2 is expected structurally",
+    "No formal confidence intervals on L5 \u0394L_c beyond effect vs null region"
+  ],
+  "no_outbound_network_in_shuttle_package": true,
+  "partition_digests": {
+    "calibration": "sha256:bf7f722d9c8778ccf9ca445457b3c5c3bc2c4fcd78994ee4a39b39cdb110c1eb",
+    "test": "sha256:a64f4cb9673f8b867cc81b041bda8198a6c403921ccf27f5546c32930e35947e",
+    "train": "sha256:5c33cbcbe0e4ca6ad84bd6d27a751f1791e504945f82eee108f27ba4d7b07c59",
+    "validation": "sha256:ed75c7a4408d7839b2400b8cae2aaee17769aea28e57965edce3b26b60255b35"
+  },
+  "return_state": "STATE_B_CAMPAIGN_COMPLETE",
+  "schema_version": 1,
+  "shuttle_default_off_throughout": true,
+  "six_v0_02_02_patches_intact": true,
+  "source_digests": {
+    "pg-11": "sha256:01b38ea4c710a84bc18d0bd41271a5a1a92b94e97b2812f4dece97d4a694725e",
+    "pg-1342": "sha256:74f2665d6e6925fc2c17dec644bec9e87df478a0f1836822125e8acbb3777806",
+    "pg-1661": "sha256:922e2a12ccb43a4c9544c260b2166c6ad2097aeb5957faeee113f173bb857cd0",
+    "pg-2701": "sha256:9a6844ac0703853720010787c7b6c70b0020f1ab1862dcd74452fa46474d1215",
+    "pg-55": "sha256:969bffab7740d4d8a0bac332d78bd0152ad4a40a2efc52f06c74a9bb6120be75",
+    "pg-84": "sha256:7810cd483cffcf2cc8a1d8f0d5807931e69d4f48cd14149b8c76f88af82fead3"
+  },
+  "tokenizer_digest": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+  "training": {
+    "P0": {
+      "loss_first": 9.7562,
+      "loss_last": 8.9757,
+      "matched_OFF_OBSERVE_BUCKET": true,
+      "useful_tokens": 16384
+    },
+    "P1": {
+      "loss_first": 9.7562,
+      "loss_last": 6.5049,
+      "matched_OFF_OBSERVE_BUCKET": true,
+      "useful_tokens": 262144
+    },
+    "P2": {
+      "checkpoint": "runs/aeon_lbc1_P2/final.pt",
+      "loss_first": 9.7562,
+      "loss_last": 5.8979,
+      "matched_OFF_OBSERVE_BUCKET": true,
+      "useful_tokens": 1048576
+    }
+  }
+}

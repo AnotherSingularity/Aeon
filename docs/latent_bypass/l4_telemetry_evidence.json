@@ -1,0 +1,30 @@
+{
+  "boundaries_cal": 4096,
+  "boundaries_val": 3328,
+  "generated_at_utc": "2026-08-03T01:05:34Z",
+  "mean_batch_loss_calibration": 6.0368242263793945,
+  "mean_batch_loss_validation": 5.775567201467661,
+  "overhead": "Boundary capture via forward-hook only. No gradient. Detached CPU copies. No training-graph participation. Sealed test never touched.",
+  "p2_checkpoint": "runs/aeon_lbc1_P2/final.pt",
+  "schema_version": 1,
+  "telemetry_calibration": {
+    "broadcast_norm_mean": 11.156352996826172,
+    "reaction_coordinate_z_dir_mean": 0.00023538799903484496,
+    "reaction_coordinate_z_norm_mean": 1.1723827123641968,
+    "recursion_delta_mean": 1.6611783504486084,
+    "recursion_delta_std": 2.2555673122406006,
+    "recursion_state_norm_mean": 11.156352996826172,
+    "substrate_source_norm_mean": 13.162074089050293,
+    "transformer_source_norm_mean": 10.771167755126953
+  },
+  "telemetry_validation": {
+    "broadcast_norm_mean": 11.152278900146484,
+    "reaction_coordinate_z_dir_mean": 0.010434179306920394,
+    "reaction_coordinate_z_norm_mean": 1.1587094068527222,
+    "recursion_delta_mean": 1.655883550643921,
+    "recursion_delta_std": 2.2475426197052,
+    "recursion_state_norm_mean": 11.152278900146484,
+    "substrate_source_norm_mean": 13.153867721557617,
+    "transformer_source_norm_mean": 10.836960792541504
+  }
+}

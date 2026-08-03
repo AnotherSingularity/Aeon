@@ -1,0 +1,57 @@
+{
+  "acis_mode_policy": "OFF during all L3/L4/L5 evaluation",
+  "barrier_registry_digest": "sha256:375ca75d57f61d61f7c9a35abffc9e8c61cda1a9b3500adbf86a40b0273b9216",
+  "calibration_partition_digest": "docs/corpus/aeon_lbc1_manifest.json:partitions.calibration.sha256",
+  "corpus_identity": {
+    "manifest": "docs/corpus/aeon_lbc1_manifest.json",
+    "sha256": "sha256:042464326bd8b99d034fb9e2898e80726ca141cf30e41b4e951efae5e6457024"
+  },
+  "created_at_utc": "2026-08-03T01:05:34Z",
+  "exact_source_commit": "8a16dc8c66d7e6eb6c6ca1a88fd8da5cc0d85d0d",
+  "experiment_version": 1,
+  "intervention_plan": {
+    "delivery_hooks": "torch.forward_hook on model.recursion (post) and forward_pre_hook on model.recursion (pre)",
+    "evaluation_only": true,
+    "modes": [
+      "NONE",
+      "ZERO_BROADCAST",
+      "SHUFFLE_BROADCAST",
+      "FREEZE_BROADCAST",
+      "DELAY_BROADCAST",
+      "FREEZE_RECURSION",
+      "MASK_TRANSFORMER_SOURCE",
+      "MASK_SUBSTRATE_SOURCE",
+      "NORM_MATCHED_IRRELEVANT_STATE"
+    ],
+    "no_persistence": true,
+    "training_mode_refused": true
+  },
+  "model_checkpoint_identity": {
+    "path": "runs/aeon_lbc1_P2/final.pt",
+    "seed": 20260731,
+    "sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "stage": "P2",
+    "useful_tokens": 1048576
+  },
+  "reaction_coordinate_definitions": {
+    "z_dir": "v^T (h_w - h_bar) with v ridge-fit on calibration to \u0394\u2016h_new-h_prev\u2016",
+    "z_norm": "\u2016h_w - h_bar\u2016_2 with h_bar = mean(h_new) on calibration"
+  },
+  "reaction_coordinate_frozen_values": {
+    "h_bar_norm": 1.1723827123641968,
+    "signal_above_shuffle": 0.876087578850986,
+    "v_norm": 10.613232008140926
+  },
+  "schema_version": 1,
+  "sealed_test_access_authorized_only_after_lock_commit": true,
+  "statistical_plan": {
+    "confidence_method": "paired-batch resampling; report mean + range",
+    "null_region": "[-0.01, +0.01] in nat units (small delta gate)",
+    "primary_test": "per-intervention paired \u0394L_c on TEST"
+  },
+  "tokenizer_identity": {
+    "path": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model",
+    "sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481"
+  },
+  "validation_partition_digest": "docs/corpus/aeon_lbc1_manifest.json:partitions.validation.sha256"
+}
