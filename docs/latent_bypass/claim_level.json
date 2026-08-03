@@ -1,18 +1,55 @@
 {
-  "authorized_by_directive_section": 19,
-  "bounded_by": "CPU-only, 7M-param model, 1M useful training tokens, 6 whole-work Project Gutenberg corpus, single seed 20260731.",
-  "ceiling_authorized_for_this_campaign": 3,
-  "ceiling_reached_this_campaign": 3,
-  "claim_level": 3,
-  "claim_level_label": "CAUSAL_CHECKPOINT_EVIDENCE",
+  "schema_version": 2,
+  "achieved_claim_level": 2,
+  "achieved_claim_level_label": "OBSERVATIONAL_EVIDENCE",
+  "level_3_status": "CANDIDATE_NOT_CLOSED",
+  "level_3_missing_gates": [
+    "paired barrier-region vs nonbarrier-region intervention stratification — L2 barrier registry was not calibrated on CALIBRATION for this campaign, so L5 was not stratified. The registry_digest is recorded in the lock; the calibration step never ran. Reconciliation §3 forbids adding barrier labels post-hoc.",
+    "paired-batch resampling confidence bound — the L3 calibration lock declares confidence_method='paired-batch resampling; report mean + range'. Only per-intervention summary statistics (min / median / max of loss) were persisted for interventions; per-batch intervention losses were not saved, so paired ΔL_c per batch is not reconstructable and the declared resampling cannot be executed from the persisted raw evidence. Reconciliation §3 forbids re-running to backfill."
+  ],
+  "level_3_gate_present": [
+    "locked null region [-0.01, +0.01] in nat units, recorded in docs/latent_bypass/L3_CALIBRATION_LOCK.json under statistical_plan.null_region."
+  ],
+  "narrowed_causal_statement": "The learned shared Recursion broadcast is causally necessary for the achieved held-out performance of the fixed 7M P2 checkpoint, and a same-norm irrelevant replacement (NORM_MATCHED_IRRELEVANT_STATE) does not preserve that performance.",
   "does_not_claim": [
+    "hidden-state bypass from this result alone",
     "universal superiority",
     "frontier-scale performance",
-    "net efficiency (no cost-adjusted matched-control experiment)",
+    "generalization beyond the 7M-parameter proxy configuration",
+    "net efficiency (no cost-adjusted matched-control experiment was executed)",
     "quantum computation",
     "metaphysical hidden dimension",
-    "ACIS performance benefit (workload cert says: BUCKET semantically equivalent but not default-recommended)"
+    "ACIS performance benefit — OBSERVE overhead target failed, BUCKET showed no demonstrated benefit, CONVEYOR remains refused"
   ],
-  "schema_version": 1,
-  "scope": "Under the P2 bounded real-English checkpoint (runs/aeon_lbc1_P2/final.pt), on the sealed TEST partition (PG-1661), the shared Recursion broadcast carries semantically relevant content for next-token prediction. Broadcast content matters (ZERO_BROADCAST +0.691 nat; NORM_MATCHED +0.710 nat), broadcast batch alignment does not (SHUFFLE +0.0001 nat), substrate source carries slightly more useful signal than transformer source (MASK_SUBSTRATE +0.051 vs MASK_TRANSFORMER +0.012)."
+  "shuffle_broadcast_status": {
+    "measured_delta_L_c": 0.0001,
+    "interpretation": "unresolved",
+    "required_controls_before_interpretation": [
+      "semantic-distance shuffle (permute across the entire test corpus rather than within a single batch)",
+      "temporal-shuffle (permute across boundaries within the same batch instead of across batch elements)",
+      "covariance-matched shuffle (draw permutations that preserve the empirical covariance of the broadcast rather than only the batchwise identity swap)",
+      "cross-seed replication (single seed cannot rule out a lucky permutation)"
+    ]
+  },
+  "tested_scale": {
+    "model_configuration": "7M-parameter proxy configuration (configs/latent_bypass/aeon_lbc1_proxy.yaml — hidden 256, 4 layers, h_rec 128)",
+    "is_the_350M_primary_model": false,
+    "explicit_note": "This checkpoint is the bounded research proxy, NOT the 350M primary model. Every quantitative conclusion here is scoped to the 7M proxy."
+  },
+  "acis_status_at_close": {
+    "default": "OFF",
+    "OBSERVE": "overhead target failed (median 7.40% > 3% target; p95 4.22% under 5% ceiling)",
+    "BUCKET": "no demonstrated benefit (median overhead 5.66%, semantic equivalence to OFF confirmed)",
+    "CONVEYOR": "refused (unchanged from ACIS-8)",
+    "unchanged_from_ACIS_8": true
+  },
+  "reached_ceiling_this_campaign": 2,
+  "ceiling_authorized_for_this_campaign": 3,
+  "authorized_by_directive_section": 19,
+  "reconciliation_source_commit": "9b9ec80",
+  "supersedes_prior_schema_version": 1,
+  "prior_reported_level_at_commit_739daf6": {
+    "claim_level": 3,
+    "why_now_downgraded": "The prior report treated aggregate ΔL_c > null-region as Level 3 evidence. The preregistered L3 requirements (§18) required (a) barrier-region stratification, (b) locked null region, and (c) a confidence bound from the declared method. Only (b) was present; (a) and (c) were missing. Post-hoc downgrade per reconciliation §4."
+  }
 }

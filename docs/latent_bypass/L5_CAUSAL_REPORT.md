@@ -1,5 +1,23 @@
 # L5 Causal Intervention Report
 
+> **⚠ Superseded by post-campaign claim reconciliation.**
+> The Level-3 headline in §6 of this report is downgraded to
+> **Level 2 OBSERVATIONAL_EVIDENCE · Level 3 status =
+> CANDIDATE_NOT_CLOSED** per
+> `docs/latent_bypass/CLAIM_RECONCILIATION.md`. The numeric ΔL_c
+> results in the tables below are unchanged (§3: do not alter
+> sealed TEST results). The narrowed, per-§5 causal statement is:
+>
+> *The learned shared Recursion broadcast is causally necessary
+> for the achieved held-out performance of the fixed 7M P2
+> checkpoint, and a same-norm irrelevant replacement does not
+> preserve that performance.*
+>
+> This is not a hidden-state-bypass claim. SHUFFLE_BROADCAST is
+> unresolved. The tested scale is the 7M proxy, not the 350M
+> primary model.
+
+
 **Fixed experimental basis:** `runs/aeon_lbc1_P2/final.pt`
 **Sealed partition opened:** TEST — PG-1661 (The Adventures of Sherlock
 Holmes), 2,546 processed records, source SHA-256:
