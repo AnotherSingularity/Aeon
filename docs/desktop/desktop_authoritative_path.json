@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "decision": "Architecture B — Native Python/Tk",
+  "decided_at_commit": "PENDING",
+  "authoritative_desktop_shell": "aeon.launcher.gui (Tkinter, launcher) + aeon.desktop.chat_ui (Tkinter, chat window)",
+  "authoritative_runtime_process": "aeon.desktop.runtime.AeonDesktopRuntime — in-process under the Tk main process, backed by a bounded background thread per generation request",
+  "authoritative_IPC_protocol": "in-process event queue (aeon.desktop.protocol.RuntimeEvent) — bounded 4096-event Queue, drained by root.after(50, ...) on the Tk main thread. No cross-process socket, no pipe, no HTTP.",
+  "development_harness": "aeon.launcher.gui (training-oriented launcher) remains available for developer diagnostics; will be reused as a supervisor pattern if the runtime is ever externalized to a subprocess.",
+  "packaged_entry_point": "Aeon.exe [--chat] — the frozen PyInstaller executable dispatches to _dispatch_chat when --chat is passed, otherwise defaults to the training launcher (aeon.launcher.gui.run_launcher).",
+  "packaged_default_arg": "Aeon.exe with no args launches the training launcher for backwards-compat; the desktop chat is Aeon.exe --chat. Installer will ship an Aeon Chat shortcut that passes --chat.",
+  "reason_for_decision": "The repository has NEVER contained an Electron shell. There is no package.json, no main.js, no preload.js, no renderer.js, no BrowserWindow, no Node dependency, no ipcRenderer. The certified Windows packaging path landed at W5-W7 targets a PyInstaller-frozen aeon.entry.py Python program launching Tk. Selecting Architecture B is not a preference — it is the only path with any implementation.",
+  "executable_evidence_supporting_decision": [
+    "find . -maxdepth 4 -name package.json -o -name main.js -o -name preload.js -o -name renderer.js under repo returns zero matches (excluding node_modules — none exist)",
+    "grep -ri 'BrowserWindow|ipcRenderer|ipcMain|electron\\.app' --include='*.py' --include='*.js' returns zero matches",
+    "packaging/windows/Aeon.spec dispatches PyInstaller against aeon/entry.py — a Python program",
+    "packaging/windows/AeonInstaller.iss ships dist/Aeon/Aeon.exe — the frozen Python entry point",
+    "aeon/entry.py's _dispatch_gui defers to aeon.launcher.gui (Tkinter); _dispatch_chat defers to aeon.desktop.chat_ui (Tkinter)"
+  ],
+  "in_process_runtime_justification": {
+    "position": "in-process for the 7M research preview is safe",
+    "reason": "the 7M model + fp32 CPU forward pass fits in ~130 MB peak RSS. Long-blocking model execution runs on a per-request background thread, keeping the Tk main thread responsive. Cancellation is a threading.Event() checked between token steps. Session isolation is per-session-id in-memory state. There is no need to introduce IPC / socket / pipe complexity for a bounded local research preview.",
+    "trade_off_acknowledged": "an in-process runtime crash takes down the shell too. That is documented in DESKTOP_RELEASE_CANDIDATE.md. For the 350M path or any larger model, a supervised subprocess design is REQUIRED and the migration will happen at that point.",
+    "supervisor_pattern_prepared": "aeon.launcher.gui already implements a supervisor pattern for the training worker (aeon.job.worker) — reattach lock, worker lifecycle, controls_gate. That pattern is the reference for the future subprocess migration."
+  },
+  "electron_path_status": "OBSOLETE. There is no Electron code in the repository at any commit reachable from the desktop branch head. Nothing to formally deprecate — nothing was ever present."
+}
