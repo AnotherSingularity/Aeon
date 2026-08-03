@@ -1,10 +1,17 @@
 {
+  "ACCOUNTING_NOTE": "overhead_median and overhead_p95 are computed as the MARGINAL median/p95 of each mode divided by the corresponding statistic of OFF, i.e. (mode_p95 - OFF_p95) / OFF_p95 for overhead_p95. This is NOT a paired-trial statistic: because trials are ordered by seed_i and the n=5 sample carries per-trial noise, the marginal p95 can differ substantially from the paired-trial p95. That is the reason overhead_p95 came out smaller than overhead_median for both OBSERVE and BUCKET on this workload: OFF's slowest trial happened to be much slower than its median, while the same is less pronounced for OBSERVE and BUCKET. The paired_ratio_* fields (added by this correction) apply the ratio index-aligned per-seed, which is the more informative per-workload overhead reading. Labels were NOT transposed; the measurement is correct; the interpretation of the marginal statistic was misleading.",
   "BUCKET": {
     "default_recommended": false,
     "gradient_matches_OFF": true,
     "logit_stacked_matches_OFF": true,
     "overhead_median": 0.05656083536641196,
     "overhead_p95": 0.03769811577366405,
+    "paired_delta_ms_max": 2654.5424461364746,
+    "paired_delta_ms_median": 1369.5735931396484,
+    "paired_delta_ms_min": 166.56899452209473,
+    "paired_ratio_max": 0.09540883237358147,
+    "paired_ratio_median": 0.04916334113066969,
+    "paired_ratio_min": 0.005671368422756497,
     "semantic_equivalent_to_OFF": true,
     "trials": [
       {
@@ -71,6 +78,7 @@
     "wall_ms_median": 29536.728382110596,
     "wall_ms_p95": 30477.35905647278
   },
+  "CONCLUSION_UNCHANGED": "OBSERVE fails the 3% median-overhead target on this workload under BOTH the marginal statistic (7.40%) and the paired-median statistic (5.95%). BUCKET shows no demonstrated benefit under either statistic. CONVEYOR remains refused. Desktop ACIS mode = OFF.",
   "OBSERVE": {
     "certified": false,
     "gradient_matches_OFF": true,
@@ -79,6 +87,12 @@
     "median_overhead_under_3pct": false,
     "overhead_median": 0.0739752983505079,
     "overhead_p95": 0.04220227856625278,
+    "paired_delta_ms_max": 2178.513288497925,
+    "paired_delta_ms_median": 1684.61012840271,
+    "paired_delta_ms_min": 995.3811168670654,
+    "paired_ratio_max": 0.07820170635343124,
+    "paired_ratio_median": 0.05954155920048167,
+    "paired_ratio_min": 0.03577571353783343,
     "trials": [
       {
         "audit_event_count_delta": 2048,
