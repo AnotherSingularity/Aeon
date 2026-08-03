@@ -33,6 +33,9 @@ from aeon.windows_paths import (
     is_frozen, installed_resource_root, user_data_root, ensure_writable_layout,
     resolve_installed, logs_dir, config_dir,
 )
+# NOTE: _dispatch_chat resolves the release bundle via _resolve_release_root
+# which imports pathlib.Path lazily. The desktop chat runtime + Tkinter chat
+# UI live under aeon.desktop.* — see DESKTOP-2..4.
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +90,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="internal: offline diagnostics on CHECKPOINT")
     modes.add_argument("--recover", metavar="RECOVERY_REQUEST",
                         help="internal: authorised recovery from RECOVERY_REQUEST")
+    # DESKTOP-4: launch the Tkinter chat window against the bundled
+    # release package. Reserved argument RELEASE_ROOT overrides the
+    # default installed location (usually _internal/release-assets/
+    # aeon-desktop-p2-proxy/) — useful for source-checkout smoke tests.
+    modes.add_argument("--chat", action="store_true",
+                        help="launch the 7M chat window against the bundled release")
+    p.add_argument("--release-root", metavar="RELEASE_ROOT", default=None,
+                     help="override the release-assets root for --chat")
     p.add_argument("--version", action="store_true", help="print version + exit")
     return p
 
@@ -216,6 +227,46 @@ def _dispatch_version() -> int:
     return EXIT_OK
 
 
+def _resolve_release_root(override: Optional[str]) -> Path:
+    """Locate the desktop release bundle. In override mode, use the
+    caller's path. In frozen mode, the bundle ships under
+    _internal/release-assets/aeon-desktop-p2-proxy/. In source mode,
+    fall back to <repo-root>/release-assets/aeon-desktop-p2-proxy/."""
+    if override:
+        return Path(override).resolve()
+    if is_frozen():
+        return installed_resource_root() / "release-assets" / "aeon-desktop-p2-proxy"
+    return Path(__file__).resolve().parent.parent / "release-assets" / "aeon-desktop-p2-proxy"
+
+
+def _dispatch_chat(release_root_override: Optional[str]) -> int:
+    """DESKTOP-4: launch the Tkinter chat window against the bundled
+    release. Heavy imports (torch, sentencepiece) deferred until we
+    actually create the runtime."""
+    try:
+        ensure_writable_layout()
+    except Exception as e:
+        _write_error_record("chat_layout_failure", EXIT_INTERNAL_ERROR, str(e))
+        print(f"aeon: writable layout unavailable ({e})", file=sys.stderr)
+        return EXIT_INTERNAL_ERROR
+    release_root = _resolve_release_root(release_root_override)
+    if not release_root.exists():
+        print(f"aeon: release bundle not found at {release_root}",
+                file=sys.stderr)
+        return EXIT_INSTALLATION_INVALID
+    try:
+        from aeon.desktop.chat_ui import run_chat_ui
+    except Exception as e:
+        _write_error_record("chat_import_failure", EXIT_INTERNAL_ERROR, str(e))
+        print(f"aeon: chat UI unavailable ({e})", file=sys.stderr)
+        return EXIT_INTERNAL_ERROR
+    try:
+        return int(run_chat_ui(release_root))
+    except Exception as e:
+        _write_error_record("chat_crashed", EXIT_INTERNAL_ERROR, repr(e))
+        return EXIT_INTERNAL_ERROR
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -239,6 +290,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _dispatch_diagnose(args.diagnose)
     if args.recover is not None:
         return _dispatch_recover(args.recover)
+    if args.chat:
+        return _dispatch_chat(args.release_root)
     return _dispatch_gui()
 
 

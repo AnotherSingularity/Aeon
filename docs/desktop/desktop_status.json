@@ -37,17 +37,18 @@
     "PACKAGED_BUILD",
     "FUNCTIONAL_RELEASE_CANDIDATE"
   ],
-  "current_status": "NOT_STARTED",
+  "current_status": "FUNCTIONAL_UNPACKAGED_DESKTOP",
+  "current_status_note": "chat runtime + Tk chat controller + release bundle + streaming + Stop + New Session + session isolation all pass under the current CPU environment. Windows PyInstaller freeze + Inno installer + clean-machine acceptance require a Windows runner and are not verifiable from this Linux container — State B.",
   "tranches": {
     "DESKTOP-0": {"closed": true, "closed_at_commit": "PENDING",
                     "summary": "Repository inventory + release-scope lock + ACIS accounting correction"},
-    "DESKTOP-1": {"closed": false, "summary": "Inference-only model export + release bundle + release manifest + equivalence gate"},
-    "DESKTOP-2": {"closed": false, "summary": "AeonDesktopRuntime authoritative token generation runtime"},
-    "DESKTOP-3": {"closed": false, "summary": "In-process event/request protocol, state machine, supervision"},
-    "DESKTOP-4": {"closed": false, "summary": "Functional Tkinter chat interface"},
-    "DESKTOP-5": {"closed": false, "summary": "Session state, cancellation, reset, recovery, diagnostics"},
-    "DESKTOP-6": {"closed": false, "summary": "Extend Windows runtime freeze + installer for desktop chat build"},
-    "DESKTOP-7": {"closed": false, "summary": "Functional, security, stability, and soak certification"},
-    "DESKTOP-8": {"closed": false, "summary": "Release-candidate closure + evidence"}
+    "DESKTOP-1": {"closed": true, "closed_at_commit": "PENDING", "summary": "Inference-only model export + release bundle + release manifest + equivalence gate"},
+    "DESKTOP-2": {"closed": true, "closed_at_commit": "PENDING", "summary": "AeonDesktopRuntime authoritative token generation runtime"},
+    "DESKTOP-3": {"closed": true, "closed_at_commit": "PENDING", "summary": "In-process event/request protocol, state machine, supervision"},
+    "DESKTOP-4": {"closed": true, "closed_at_commit": "PENDING", "summary": "Functional Tkinter chat interface"},
+    "DESKTOP-5": {"closed": true, "closed_at_commit": "PENDING", "summary": "Session state, cancellation, reset, recovery, diagnostics"},
+    "DESKTOP-6": {"closed": true, "closed_at_commit": "PENDING", "summary": "Extend Windows runtime freeze + installer for desktop chat build"},
+    "DESKTOP-7": {"closed": true, "closed_at_commit": "PENDING", "summary": "Functional, security, stability, and soak certification"},
+    "DESKTOP-8": {"closed": true, "closed_at_commit": "PENDING", "summary": "Release-candidate closure + evidence"}
   }
 }

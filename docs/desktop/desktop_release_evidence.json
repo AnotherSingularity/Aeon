@@ -1,0 +1,76 @@
+{
+  "architecture_certification": {
+    "ACIS_default_OFF": true,
+    "K_16_fixed": true,
+    "desktop_hot_path_never_imports_bypass": true,
+    "recursion_state_fp32": true,
+    "six_v0_02_02_patches_intact": true
+  },
+  "authentic_inference_path_proof": "Every generated token executes through aeon.hybrid.HybridModel via aeon.desktop.runtime.AeonDesktopRuntime. No fallback, no cloud, no mock. Live 8-token smoke: test_runtime_generates_bounded_tokens_end_to_end.",
+  "commit_ledger": {
+    "ACIS_accounting_correction": "1b39361",
+    "DESKTOP_0_inventory": "b1c76b5",
+    "DESKTOP_1_DESKTOP_2_export_and_runtime": "f0a973f",
+    "DESKTOP_3_4_5_chat_controller_cancellation": "b841b21",
+    "DESKTOP_6_7_8_packaging_soak_closure": "PENDING"
+  },
+  "compatibility_contract_for_later_350M": {
+    "model_swap_is_release_bundle_only": "To integrate a larger model (e.g. 350M), the operator ships a new release-assets/<release-id>/ bundle with an updated release_manifest.json. The desktop shell, chat runtime, IPC, and UI code do not change.",
+    "required_K": 16,
+    "required_manifest_fields": "fixed_k=16, parameter_count matches loaded state, ACIS_default=\"OFF\"",
+    "required_model_class": "aeon.hybrid.HybridModel (or subclass with same forward signature)",
+    "required_output_schema": "HybridOutput with .logits (B,T,V) and .loss (Optional[Tensor])",
+    "required_session_state_behavior": "stateless per-forward \u2014 session continuity via Policy B history replay through the same authentic forward path",
+    "required_state_dict_schema": "flat dict of {str: torch.Tensor} loadable via torch.load(weights_only=True) into HybridModel.load_state_dict(..., strict=True)",
+    "required_tokenizer_class": "aeon.tokenizer.AeonTokenizer (SentencePiece backend)"
+  },
+  "desktop_branch": "claude/aeon-desktop-7m-validation",
+  "desktop_starting_commit": "1b39361",
+  "desktop_status_ladder_position": "FUNCTIONAL_UNPACKAGED_DESKTOP",
+  "export_equivalence_result": "BYTE_IDENTICAL \u2014 every state_dict parameter torch.equal() to the source P2 checkpoint at same precision (fp32); no numeric tolerance needed. Test: test_export_matches_source_checkpoint_bytewise.",
+  "ip_preservation": {
+    "corpus_not_bundled_into_release": true,
+    "model_state_only_no_optimizer": true,
+    "sealed_test_never_touched_by_desktop": true,
+    "training_code_not_bundled_into_release": true
+  },
+  "known_limitations": [
+    "Windows PyInstaller freeze + Inno installer + clean-Windows-machine acceptance not verified from this Linux container.",
+    "Model export uses torch.save + weights_only=True load \u2014 safetensors preferred by directive is not installed in the container; the weights_only=True path is the certified fallback per \u00a78.",
+    "Chat generation on the 7M model produces plausible next-token continuations, NOT instruction-following behavior. The tokenizer was trained on book-completion text; \u00a717 documented framing constraint holds.",
+    "Cancellation granularity is per-token-boundary; a 512-boundary generation with 55 ms/token \u2192 ~55 ms worst-case Stop-latency. Acceptable for the research preview.",
+    "BUCKET ACIS mode showed no benefit under the P2 workload (see docs/acis/ACIS_WORKLOAD_CERTIFICATION.md); OFF remains desktop default."
+  ],
+  "model_export_identity": "sha256:c10350ac5569cd44e93226b40b1aa4cd0b8b2773ebe45401719946038015f1e4",
+  "network_denial_result": "PASS \u2014 static AST scan of aeon.desktop.* finds zero forbidden network tokens; release_manifest.network_policy=offline_only. Tests: test_desktop_modules_have_no_outbound_network_reference + test_bundle_manifest_declares_offline_only_policy.",
+  "recovery_result": "PASS \u2014 after a failed load (RELEASE_MANIFEST_MISSING), a fresh runtime instance loads the real bundle successfully. Test: test_recovery_after_failed_load_can_restart.",
+  "regression": {
+    "baseline_at_377914b": 627,
+    "command": "python -c \"...glob tests/test_*.py...\" \u2014 per-file authoritative runner (no pytest)",
+    "delta_from_desktop_tranches": 46,
+    "explicit_checks": 673,
+    "failing": 0,
+    "test_files": 59
+  },
+  "release_identity": {
+    "ACIS_default": "OFF",
+    "fixed_k": 16,
+    "network_policy": "offline_only",
+    "parameter_count": 7015366,
+    "release_channel": "research_preview",
+    "release_id_prefix": "aeon-desktop-p2-proxy",
+    "release_label": "Aeon Desktop \u2014 Research Preview (7M P2 Proxy)",
+    "tested_scale": "7M proxy"
+  },
+  "release_status": "STATE_B_FUNCTIONAL_UNPACKAGED_DESKTOP",
+  "schema_version": 1,
+  "session_isolation_result": "PASS \u2014 two sessions maintain separate token_history; reset A leaves B unchanged. Test: test_runtime_session_isolation_two_sessions_have_separate_histories.",
+  "shutdown_result": "PASS \u2014 shutdown during generation completes without hanging, timeout-bounded. Test: test_shutdown_during_generation_completes_without_hanging.",
+  "soak_result": "25 sequential generation requests \u2014 every trial completed; peak RSS bounded. Test: test_soak_25_sequential_generations_no_memory_growth_or_orphans.",
+  "source_checkpoint_identity": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+  "source_research_commit": "377914b",
+  "status_ladder_next_step": "PACKAGED_BUILD \u2014 run packaging/windows/build.ps1 + build_installer.ps1 on Windows self-hosted runner, verify Aeon.exe launches, verify --chat renders, uninstall.",
+  "stop_result": "PASS \u2014 cancellation between token steps, runtime returns to READY, committed text preserved, no runtime kill. Tests: test_cancellation_mid_generation_returns_to_ready_and_preserves_committed + test_cancel_before_first_token_still_returns_to_ready + test_cancel_wrong_request_id_returns_false.",
+  "tokenizer_identity": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+  "windows_runner_status": "NOT_AVAILABLE \u2014 this container is Linux-only. Windows-runner packaging + install-acceptance requires State B follow-up on a Windows self-hosted runner or the existing Tier A workflow."
+}

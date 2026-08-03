@@ -45,6 +45,13 @@ aeon_hidden = [
     'aeon.job', 'aeon.job.manager', 'aeon.job.identity',
     'aeon.job.lock', 'aeon.job.worker',
     'aeon.config', 'aeon.config.schema', 'aeon.config.preflight',
+    # DESKTOP-2..4: chat runtime + Tkinter chat UI. These are the
+    # authoritative desktop entry points added by the aeon-desktop
+    # tranche. They do NOT import training scripts and never touch
+    # aeon.job.worker or aeon.bypass.* — bypass telemetry stays a
+    # research surface, not part of the frozen desktop bundle.
+    'aeon.desktop', 'aeon.desktop.protocol',
+    'aeon.desktop.runtime', 'aeon.desktop.chat_ui',
 ]
 
 # --- PyTorch CPU: minimal hidden imports; torch's own PyInstaller hook
@@ -88,6 +95,14 @@ a = Analysis(
         # Third-party licenses (torch/sentencepiece/pyyaml/numpy - operator to
         # populate 'licenses' folder before build; see build.ps1).
         (os.path.join(project_root, 'packaging', 'windows', 'licenses'), 'licenses'),
+        # DESKTOP-1 release bundle. Regenerated pre-build by
+        # `python scripts/export_aeon_desktop_model.py`. The whole
+        # tree ships under _internal/release-assets/aeon-desktop-p2-proxy/.
+        # If the tree is absent at build time, PyInstaller warns and
+        # the frozen build won't be able to load the desktop chat
+        # runtime — the operator must run the exporter first.
+        (os.path.join(project_root, 'release-assets', 'aeon-desktop-p2-proxy'),
+         os.path.join('release-assets', 'aeon-desktop-p2-proxy')),
     ],
     hiddenimports=aeon_hidden + torch_hidden + [
         # sentencepiece + yaml are optional at GUI-launch time but required for
