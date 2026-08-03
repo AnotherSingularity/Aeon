@@ -1,0 +1,116 @@
+{
+  "K_is_16": true,
+  "K_used": 16,
+  "actual_useful_training_tokens": 1048576,
+  "batch_size": 8,
+  "budget_useful_training_tokens": 1048576,
+  "checkpoint_path": "/home/user/AeonV0.02/runs/aeon_lbc1_P2/final.pt",
+  "checkpoint_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+  "corpus": {
+    "partition_file": "research-data/AEON-LBC-1/processed/train.jsonl",
+    "partition_role": "train"
+  },
+  "declared_seed": 20260731,
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "generated_at_utc": "2026-08-03T00:37:49Z",
+  "invariants": {
+    "one_broadcast_per_boundary": true,
+    "recursion_state_fp32": true,
+    "shuttle_default_off": true,
+    "substrate_autonomous": true
+  },
+  "loss_first": 9.756220817565918,
+  "loss_last": 5.8979411125183105,
+  "loss_min": 4.800871849060059,
+  "loss_trajectory_sampled_every_log": [
+    {
+      "loss": 9.756220817565918,
+      "step": 1
+    },
+    {
+      "loss": 7.314458847045898,
+      "step": 33
+    },
+    {
+      "loss": 6.866966724395752,
+      "step": 65
+    },
+    {
+      "loss": 6.625155448913574,
+      "step": 97
+    },
+    {
+      "loss": 6.4171037673950195,
+      "step": 129
+    },
+    {
+      "loss": 6.197734832763672,
+      "step": 161
+    },
+    {
+      "loss": 5.722231388092041,
+      "step": 193
+    },
+    {
+      "loss": 5.922916889190674,
+      "step": 225
+    },
+    {
+      "loss": 5.769216060638428,
+      "step": 257
+    },
+    {
+      "loss": 6.234298229217529,
+      "step": 289
+    },
+    {
+      "loss": 5.7980170249938965,
+      "step": 321
+    },
+    {
+      "loss": 5.924135684967041,
+      "step": 353
+    },
+    {
+      "loss": 5.286378383636475,
+      "step": 385
+    },
+    {
+      "loss": 5.0952558517456055,
+      "step": 417
+    },
+    {
+      "loss": 5.509903430938721,
+      "step": 449
+    },
+    {
+      "loss": 5.739401817321777,
+      "step": 481
+    }
+  ],
+  "matched_trial": {
+    "BUCKET_logit_digest": "sha256:0ef7c7dc2691eb56ec98e8c9bc50a2aa726be909418c6dcf8c6875956a5b7a15",
+    "BUCKET_loss": 5.986086368560791,
+    "OBSERVE_logit_digest": "sha256:0ef7c7dc2691eb56ec98e8c9bc50a2aa726be909418c6dcf8c6875956a5b7a15",
+    "OBSERVE_loss": 5.986086368560791,
+    "OFF_equals_BUCKET": true,
+    "OFF_equals_BUCKET_loss": true,
+    "OFF_equals_OBSERVE": true,
+    "OFF_equals_OBSERVE_loss": true,
+    "OFF_logit_digest": "sha256:0ef7c7dc2691eb56ec98e8c9bc50a2aa726be909418c6dcf8c6875956a5b7a15",
+    "OFF_loss": 5.986086368560791
+  },
+  "n_params": 7015366,
+  "schema_version": 1,
+  "seq_len": 256,
+  "stage": "P2",
+  "steps": 512,
+  "tokenizer": {
+    "path": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model",
+    "sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "vocab_size": 16000
+  },
+  "tokens_per_second": 2059.933664038556,
+  "wall_time_seconds": 509.03386759757996
+}

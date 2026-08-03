@@ -1,0 +1,56 @@
+{
+  "K_is_16": true,
+  "K_used": 16,
+  "actual_useful_training_tokens": 16384,
+  "batch_size": 8,
+  "budget_useful_training_tokens": 16384,
+  "checkpoint_path": null,
+  "checkpoint_sha256": null,
+  "corpus": {
+    "partition_file": "research-data/AEON-LBC-1/processed/train.jsonl",
+    "partition_role": "train"
+  },
+  "declared_seed": 20260731,
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "generated_at_utc": "2026-08-03T00:22:16Z",
+  "invariants": {
+    "one_broadcast_per_boundary": true,
+    "recursion_state_fp32": true,
+    "shuttle_default_off": true,
+    "substrate_autonomous": true
+  },
+  "loss_first": 9.756220817565918,
+  "loss_last": 8.97573471069336,
+  "loss_min": 8.97573471069336,
+  "loss_trajectory_sampled_every_log": [
+    {
+      "loss": 9.756220817565918,
+      "step": 1
+    }
+  ],
+  "matched_trial": {
+    "BUCKET_logit_digest": "sha256:f85552b4f504f4126ac1be841f3d32ec5b21210f0561c04ff3b834927d0671dd",
+    "BUCKET_loss": 8.88300895690918,
+    "OBSERVE_logit_digest": "sha256:f85552b4f504f4126ac1be841f3d32ec5b21210f0561c04ff3b834927d0671dd",
+    "OBSERVE_loss": 8.88300895690918,
+    "OFF_equals_BUCKET": true,
+    "OFF_equals_BUCKET_loss": true,
+    "OFF_equals_OBSERVE": true,
+    "OFF_equals_OBSERVE_loss": true,
+    "OFF_logit_digest": "sha256:f85552b4f504f4126ac1be841f3d32ec5b21210f0561c04ff3b834927d0671dd",
+    "OFF_loss": 8.88300895690918
+  },
+  "n_params": 7015366,
+  "schema_version": 1,
+  "seq_len": 256,
+  "stage": "P0",
+  "steps": 8,
+  "tokenizer": {
+    "path": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model",
+    "sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "vocab_size": 16000
+  },
+  "tokens_per_second": 1030.006523863988,
+  "wall_time_seconds": 15.906695365905762
+}
