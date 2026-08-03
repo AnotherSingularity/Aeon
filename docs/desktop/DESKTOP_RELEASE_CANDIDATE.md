@@ -1,161 +1,135 @@
 # Desktop Release Candidate — Aeon Desktop 7M Research Preview
+### Reconciled (R0–R5) + Windows-State-B
 
-**Status:** **STATE B — Functional desktop with genuine Windows-packaging blocker.**
+**Ladder position:** **`FUNCTIONAL_LOCAL_BUILD`** (post-R0 audit)
+transitioning to **`FUNCTIONAL_UNPACKAGED_DESKTOP`** once the R5
+1-hour soak completes with passing acceptance gates.
+**`FUNCTIONAL_RELEASE_CANDIDATE`** requires WINDOWS-1..5 which
+are STATE B.
 
-The chat runtime, chat controller, release bundle, streaming, Stop /
-New Session / Clear Conversation / Diagnostics, session isolation,
-cancellation, and shutdown all work end-to-end under the current
-CPU + Linux container. Every generated token executes through the
-authentic `aeon.hybrid.HybridModel` — no fallback, no cloud, no mock.
-
-Windows PyInstaller freeze + Inno installer + clean-Windows-machine
-acceptance require a Windows runner and are not verifiable from this
-Linux container. That is the only gate that separates this build
-from FUNCTIONAL_RELEASE_CANDIDATE.
-
----
-
-## 1. What works, verified
-
-| Requirement                                    | Result | Test                                                              |
-| ---------------------------------------------- | ------ | ----------------------------------------------------------------- |
-| Inference-only export (state_dict, no optim)   | PASS   | `test_export_is_inference_only`                                   |
-| Export is byte-identical to source P2          | PASS   | `test_export_matches_source_checkpoint_bytewise`                  |
-| Release bundle has every required field        | PASS   | `test_release_manifest_binds_required_fields`                     |
-| Loads via `torch.load(weights_only=True)`      | PASS   | `test_model_export_loads_with_weights_only_true`                  |
-| Runtime state machine rejects impossible edges | PASS   | `test_state_machine_rejects_impossible_transitions`               |
-| Digest-mismatch fails closed                   | PASS   | `test_runtime_manifest_digest_mismatch_fails_closed`              |
-| Bounded settings enforced (NaN, inf, ranges)   | PASS   | `test_settings_reject_out_of_range_and_nan`                       |
-| End-to-end token streaming                     | PASS   | `test_runtime_generates_bounded_tokens_end_to_end`                |
-| Session isolation across two sessions          | PASS   | `test_runtime_session_isolation_two_sessions_have_separate_histories` |
-| K=16 + ACIS OFF certified inside runtime       | PASS   | `test_desktop_runtime_asserts_K16_and_ACIS_OFF`                   |
-| Cancellation mid-generation                    | PASS   | `test_cancellation_mid_generation_returns_to_ready_and_preserves_committed` |
-| Cancel before first token                      | PASS   | `test_cancel_before_first_token_still_returns_to_ready`           |
-| Cancel wrong request returns False             | PASS   | `test_cancel_wrong_request_id_returns_false`                      |
-| Shutdown during generation                     | PASS   | `test_shutdown_during_generation_completes_without_hanging`       |
-| Recovery after failed load                     | PASS   | `test_recovery_after_failed_load_can_restart`                     |
-| Chat UI module imports headless-safely         | PASS   | `test_chat_ui_module_imports_without_creating_window`             |
-| New Session / Clear Conversation               | PASS   | `test_chat_controller_new_session_replaces_session_id`, `test_chat_controller_clear_conversation_resets_history` |
-| 25 sequential requests + bounded RSS            | PASS   | `test_soak_25_sequential_generations_no_memory_growth_or_orphans` |
-| 5 New Session cycles isolated                  | PASS   | `test_five_new_session_cycles_isolated`                           |
-| Static network-token scan of `aeon.desktop.*`  | PASS   | `test_desktop_modules_have_no_outbound_network_reference`         |
-| Desktop hot path never imports research modules| PASS   | `test_desktop_hot_path_does_not_import_research_only_modules`     |
-| Release label does not misrepresent scale      | PASS   | `test_manifest_scale_labels_prevent_350M_misrepresentation`       |
-| PyInstaller spec includes desktop modules      | PASS   | `test_pyinstaller_spec_includes_aeon_desktop_modules`             |
-| PyInstaller spec bundles release-assets        | PASS   | `test_pyinstaller_spec_bundles_release_assets`                    |
-| `--chat` mode + `--release-root` override      | PASS   | `test_entry_dispatches_chat_mode`, `test_entry_release_root_override` |
-| Bundle excludes training artifacts             | PASS   | `test_release_bundle_excludes_forbidden_training_artifacts`       |
-
-**Regression:** 59 test files, **673 explicit checks**, 0 failing.
-Baseline at `377914b` was 627 checks; this campaign adds 46 desktop
-checks and does not remove any prior tests.
+**Reconciliation commit ledger** (added to `d91a836`):
+```
+DESKTOP-R0  — evidence audit → downgrade to FUNCTIONAL_LOCAL_BUILD
+DESKTOP-R1  — authoritative desktop path = Architecture B (Tk)
+DESKTOP-R2  — forward-logit equivalence + architectural trace (PROVEN)
+DESKTOP-R3  — in-process supervision semantics (PROVEN)
+DESKTOP-R4  — dynamic offline (PROVEN — socket + urllib patched)
+DESKTOP-R5  — static readiness + 3600 s soak (see soak evidence)
+WINDOWS-0..5 — STATE B (Windows execution required)
+```
 
 ---
 
-## 2. Genuine Windows blocker
+## 1. Verified end-to-end (reconciliation)
 
-The following steps require a Windows runner and cannot be executed
-from this Linux container:
+| Requirement                                                         | Verdict            | Test                                                                                            |
+| ------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
+| Authoritative desktop path is unambiguous                            | **YES** (Arch. B)  | `docs/desktop/DESKTOP_AUTHORITATIVE_PATH.md`                                                     |
+| Inference export produces matching **logits**                        | **PROVEN**         | `test_R2_forward_logits_are_byte_identical`                                                     |
+| Inference export produces matching **loss**                          | **PROVEN**         | `test_R2_forward_loss_matches`                                                                  |
+| Deterministic 16-token greedy generation matches                     | **PROVEN**         | `test_R2_deterministic_generation_matches`                                                      |
+| Transformer stream executes per generation                            | **PROVEN**         | `test_R2_architecture_trace_records_all_required_invariants`                                    |
+| Substrate stream executes per generation                              | **PROVEN**         | same                                                                                            |
+| Fixed K=16 boundary schedule executed                                 | **PROVEN**         | same (3 boundaries for seq_len=40)                                                              |
+| Exactly one shared broadcast per boundary                             | **PROVEN**         | same                                                                                            |
+| ACIS remains OFF throughout desktop generation                        | **PROVEN**         | `test_R2_desktop_runtime_generation_is_ACIS_OFF`                                                |
+| UI streams authentic output                                           | **PROVEN**         | `test_runtime_generates_bounded_tokens_end_to_end` + chat_ui `_drain_events`                    |
+| Stop cancels between token steps                                     | **PROVEN**         | `test_cancellation_mid_generation_returns_to_ready_and_preserves_committed`                     |
+| Sessions isolate                                                      | **PROVEN**         | `test_runtime_session_isolation_two_sessions_have_separate_histories`                           |
+| New Session / Clear / Reset                                           | **PROVEN**         | `test_chat_controller_new_session_replaces_session_id`, `..._clear_conversation_resets_history` |
+| Runtime restart from failed load                                     | **PROVEN**         | `test_recovery_after_failed_load_can_restart`                                                    |
+| Duplicate request rejected while active                              | **PROVEN**         | `test_R3_duplicate_request_rejected_while_one_active`                                            |
+| Release path traversal rejected                                       | **PROVEN**         | `test_R3_release_path_traversal_rejected`                                                        |
+| No arbitrary path / eval / exec surface                              | **PROVEN**         | `test_R3_no_arbitrary_path_argument_on_public_api`                                              |
+| Bounded event queue never blocks runtime                             | **PROVEN**         | `test_R3_bounded_queue_never_blocks_runtime_on_overflow`                                        |
+| **Dynamic** network denial (socket + urllib patched)                 | **PROVEN**         | `test_R4_desktop_pipeline_runs_without_any_outbound_network_attempt`                            |
+| No thread leak across 5 gen+cancel cycles                            | **PROVEN**         | `test_R4_no_new_thread_leaks_after_repeated_gen_cancel`                                          |
+| Continuous 1-hour soak                                                | **RUNNING** → filled in on completion in `docs/desktop/desktop_full_soak_evidence.json` |
+| Runtime CRASH recovery (kill mid-generation, shell dies)             | **DISCLOSED**      | in-process design trade-off; documented in AUTHORITATIVE_PATH §5                                 |
+| Orphan-process detection                                             | **NOT_APPLICABLE** | in-process design (no subprocess)                                                                |
 
-| Step                                                                       | Blocker                                          |
-| -------------------------------------------------------------------------- | ------------------------------------------------ |
-| `pyinstaller --clean packaging/windows/Aeon.spec`                          | PyInstaller must run on Windows for a Windows Aeon.exe |
-| `packaging/windows/build_installer.ps1` → Inno Setup                       | Inno Setup is Windows-only                       |
-| Install `AeonSetup.exe`, launch `Aeon.exe --chat`, generate, close, reopen | Requires clean Windows machine                   |
-| Uninstall + verify                                                          | Requires Windows                                 |
+## 2. State B (Windows) — remaining gates
 
-These are already the `windows-release.yml` (Tier A) + `windows-certification.yml`
-(Tier B) workflows' responsibility. The desktop-tranche changes to
-`packaging/windows/Aeon.spec` mean the next Tier A run will produce
-an installer that includes the `aeon.desktop.*` modules + the
-`release-assets/aeon-desktop-p2-proxy/` bundle.
+Not verifiable from this Linux container. Documented with exact
+next commands in `docs/desktop/DESKTOP_WINDOWS_BUILD_REPORT.md`:
 
-### Exact next actions
-1. On a Windows runner: `python scripts/export_aeon_desktop_model.py` — rebuild the release bundle deterministically.
-2. `powershell.exe -File packaging/windows/build.ps1` — produce `dist/Aeon/Aeon.exe`.
-3. `powershell.exe -File packaging/windows/build_installer.ps1` — produce `AeonSetup.exe`.
-4. Install, launch `Aeon.exe --chat`, drive the vertical slice per §35.
-5. Publish evidence to `docs/desktop/DESKTOP_ACCEPTANCE_REPORT.md`.
+| Gate                                                                  | Status  |
+| --------------------------------------------------------------------- | ------- |
+| Frozen runtime builds via `packaging/windows/build.ps1`                | NOT_RUN |
+| Frozen `Aeon.exe --chat` runs OUTSIDE the repo checkout                | NOT_RUN |
+| Inno installer builds via `packaging/windows/build_installer.ps1`      | NOT_RUN |
+| Clean-Windows-machine install + vertical slice per §35                 | NOT_RUN |
+| Ten application restart cycles                                          | NOT_RUN |
+| Injected runtime-crash trials                                          | NOT_RUN |
+| Invalid-release startup trials (digest mismatch on frozen build)       | NOT_RUN |
+| Upgrade path (old → new installer)                                     | NOT_RUN |
+| Uninstall clean removal                                                | NOT_RUN |
 
-### Minimal reproduction — proving the Windows blocker is genuine
-Attempting `pyinstaller --clean packaging/windows/Aeon.spec` from a
-Linux container refuses because the spec pins the Windows-only
-`_pyinstaller_hooks_contrib.stdhooks.hook-torch` torch bundling
-which resolves torch's `.pyd` DLLs from the Windows torch wheel.
-That is not a code defect — it is the correct spec for its target OS.
+## 3. Release identity — unchanged
 
-An **unsigned** installer is expected; §33 explicitly authorizes it
-for the research preview and does not permit forged code-signing
-claims.
+* Release label: `Aeon Desktop — Research Preview (7M P2 Proxy)`
+* Tested scale: `7M proxy` — **NOT** the 350M primary model.
+* Parameter count: 7,015,366 · Fixed K: 16 · ACIS default: **OFF**.
+* Network policy: `offline_only`.
+* Model export: `sha256:c10350ac5569cd44e93226b40b1aa4cd0b8b2773ebe45401719946038015f1e4`
+  (from an in-container export; see the byte-hash non-determinism note
+  in `docs/desktop/desktop_windows_evidence.json` — consumers verify
+  against the shipped manifest, not against a repo-pinned hash).
+* Tokenizer: `sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481`.
+* Source P2 checkpoint: `sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c`.
 
----
+## 4. Research-claim status — unchanged
 
-## 3. Release identity
+* Level 2 OBSERVATIONAL_EVIDENCE. Level 3 status = CANDIDATE_NOT_CLOSED.
+* Narrowed causal statement (from `docs/latent_bypass/claim_level.json`):
+  the learned shared Recursion broadcast is causally necessary for the
+  achieved held-out performance of the fixed 7M P2 checkpoint, and a
+  same-norm irrelevant replacement does not preserve that performance.
+* Desktop reports carry only that narrowed statement. No hidden-state
+  bypass has been proven.
 
-* **Release label:** `Aeon Desktop — Research Preview (7M P2 Proxy)`
-* **Release channel:** `research_preview`
-* **Tested scale:** `7M proxy`
-* **Parameter count:** 7,015,366
-* **Fixed K:** 16
-* **ACIS default:** `OFF`
-* **Network policy:** `offline_only`
-* **Training code included:** `false`
-* **Corpus included:** `false`
-* **Sealed test included:** `false`
-* **Optimizer state included:** `false`
-* **Model export sha256:** stamped into
-  `docs/desktop/desktop_release_evidence.json` at commit time.
+## 5. Six V0.02.02 patches + K=16 + ACIS OFF + sealed test
 
-Not the 350M primary model. Not Level 3 hidden-state proof.
+All non-negotiables preserved across the reconciliation:
 
----
+* K = 16 (config + checkpoint + runtime + manifest + R2 trace)
+* One broadcast per K-boundary (R2 trace)
+* Recursion state fp32 (R2 trace)
+* Substrate autonomous — unchanged; `aeon/substrate/` not modified
+* ACIS OFF during desktop generation — R2 wrap on `HybridModel.forward`
+  verified `shuttle=None` on every call
+* Six V0.02.02 patches — `tests/test_six_patches.py` unchanged, passes
+* Sealed TEST partition — never opened by any desktop code
 
-## 4. Non-negotiables verified
+## 6. Regression
 
-* Every generated token runs through `aeon.hybrid.HybridModel`.
-* K = 16 fixed in the config, in the checkpoint, in the runtime, in
-  the manifest. Impossible to change from any settings surface.
-* One shared broadcast per K-boundary — enforced by
-  `HybridModel.forward` shape (nothing in this campaign touched
-  `aeon.hybrid`).
-* Recursion state fp32 — proven by parameter-dtype scan in the
-  runtime test.
-* Substrate autonomous — unchanged.
-* Six V0.02.02 patches intact — `tests/test_six_patches.py` unmodified.
-* ACIS OFF during every desktop-runtime generation — enforced by
-  passing `shuttle=None` in `AeonDesktopRuntime._generate`.
-* No `aeon.bypass.*` reachable from the desktop hot path — verified
-  by static import scan.
-* No outbound network reference in `aeon.desktop.*` — verified by
-  static token scan.
+Baseline at `d91a836`: 673 checks / 0 failing.
+Reconciliation adds 8+9+7+8 = 32 checks with no test removed.
+Expected final: **705+ checks** on the reconciliation head
+(exact final total confirmed by the closing regression run and
+recorded in `docs/desktop/desktop_release_evidence.json`).
 
----
+## 7. Exact next actions
 
-## 5. What this release is NOT
+**On a Windows runner:**
+1. `git switch claude/aeon-desktop-7m-validation && git pull --ff-only`
+2. `python scripts/export_aeon_desktop_model.py` — regenerate bundle
+3. `powershell.exe -File packaging/windows/build.ps1` — frozen runtime
+4. `powershell.exe -File packaging/windows/build_installer.ps1` — installer
+5. Clean-Windows install; run vertical slice per §35.
+6. Populate `docs/desktop/DESKTOP_WINDOWS_ACCEPTANCE_REPORT.md` with
+   evidence.
+7. Set `docs/desktop/desktop_status.json.current_status =
+   FUNCTIONAL_RELEASE_CANDIDATE`.
 
-* NOT the 350M primary model.
-* NOT a Level 3 hidden-state proof.
-* NOT a general-purpose instruction-following assistant. The 7M P2
-  checkpoint was trained on six whole-work Project Gutenberg books at
-  1,048,576 useful tokens. It produces plausible-english next-token
-  continuations, not chat responses.
-* NOT signed. Windows SmartScreen warnings are expected on install.
+## 8. 350M model-swap readiness
 
----
-
-## 6. Compatibility contract for the later 350M swap
-
-Documented in `docs/desktop/desktop_release_evidence.json` under
-`compatibility_contract_for_later_350M`. Key points:
-
-* Model class: `aeon.hybrid.HybridModel` (or subclass with same forward signature).
-* Tokenizer: `aeon.tokenizer.AeonTokenizer` (SentencePiece).
-* State-dict schema: flat `{str: torch.Tensor}` loadable via
-  `torch.load(weights_only=True)` + `HybridModel.load_state_dict(strict=True)`.
-* Manifest must declare `fixed_k=16`, `parameter_count` matches,
-  `ACIS_default="OFF"`.
-* Model swap is release-bundle-only. The desktop shell, chat runtime,
-  IPC, and UI code do not change when the model changes.
-
-That is the contract the 350M path needs to honor. It does not need
-to touch any file under `aeon/desktop/`.
+* Compatibility contract locked in
+  `docs/desktop/desktop_release_evidence.json.compatibility_contract_for_later_350M`.
+* Migration is release-bundle-only when the model is a HybridModel
+  subclass with the same forward signature.
+* Migration REQUIRES the runtime move to a supervised subprocess
+  (currently in-process). The `aeon.launcher.gui` + `aeon.job.worker`
+  supervisor pattern is the reference; `AeonDesktopRuntime` can be
+  externalized without touching `aeon.desktop.chat_ui` or the event
+  schema.
