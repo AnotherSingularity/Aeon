@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "desktop_branch": "claude/aeon-desktop-7m-validation",
+  "desktop_starting_commit": "1b39361",
+  "research_branch": "claude/funny-cori-a3k5cf",
+  "research_starting_commit": "377914b",
+  "authoritative_model": {
+    "config": "configs/latent_bypass/aeon_lbc1_proxy.yaml",
+    "checkpoint_path": "runs/aeon_lbc1_P2/final.pt",
+    "checkpoint_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "K": 16,
+    "useful_tokens": 1048576,
+    "n_params": 7015366,
+    "vocab_size": 16000,
+    "seed": 20260731,
+    "stage": "P2"
+  },
+  "authoritative_tokenizer": {
+    "path": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model",
+    "sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "vocab_size": 16000,
+    "implementation": "sentencepiece_unigram_byte_fallback"
+  },
+  "claim_level_source": {
+    "achieved_claim_level": 2,
+    "level_3_status": "CANDIDATE_NOT_CLOSED",
+    "narrowed_causal_statement": "The learned shared Recursion broadcast is causally necessary for the achieved held-out performance of the fixed 7M P2 checkpoint, and a same-norm irrelevant replacement (NORM_MATCHED_IRRELEVANT_STATE) does not preserve that performance."
+  },
+  "acis_default": "OFF",
+  "tested_scale": "7M proxy",
+  "not_the_350M_primary": true,
+  "desktop_status_ladder": [
+    "NOT_STARTED",
+    "STRUCTURALLY_READY",
+    "FUNCTIONAL_LOCAL_BUILD",
+    "FUNCTIONAL_UNPACKAGED_DESKTOP",
+    "PACKAGED_BUILD",
+    "FUNCTIONAL_RELEASE_CANDIDATE"
+  ],
+  "current_status": "NOT_STARTED",
+  "tranches": {
+    "DESKTOP-0": {"closed": true, "closed_at_commit": "PENDING",
+                    "summary": "Repository inventory + release-scope lock + ACIS accounting correction"},
+    "DESKTOP-1": {"closed": false, "summary": "Inference-only model export + release bundle + release manifest + equivalence gate"},
+    "DESKTOP-2": {"closed": false, "summary": "AeonDesktopRuntime authoritative token generation runtime"},
+    "DESKTOP-3": {"closed": false, "summary": "In-process event/request protocol, state machine, supervision"},
+    "DESKTOP-4": {"closed": false, "summary": "Functional Tkinter chat interface"},
+    "DESKTOP-5": {"closed": false, "summary": "Session state, cancellation, reset, recovery, diagnostics"},
+    "DESKTOP-6": {"closed": false, "summary": "Extend Windows runtime freeze + installer for desktop chat build"},
+    "DESKTOP-7": {"closed": false, "summary": "Functional, security, stability, and soak certification"},
+    "DESKTOP-8": {"closed": false, "summary": "Release-candidate closure + evidence"}
+  }
+}
