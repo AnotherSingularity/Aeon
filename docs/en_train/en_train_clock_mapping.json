@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "purpose": "Repository-anchored inventory of Aeon's two architectural clocks. Written before the corrected mathematical spec assigns meaning to C_1 or C_2.",
+  "produced_at_head": "447f0dc",
+  "canonical_names_in_repo": {
+    "fast_clock": {
+      "primary_source": "aeon/hybrid.py",
+      "primary_lines": "11",
+      "quoted_text": "fast clock (per token, within a K-window w; conditioning state = h_{w-1})",
+      "also_referenced_at": [
+        "docs/TOPOLOGY_MAP.md:9",
+        "aeon/substrate/matrix_cell.py:6 (recurrence per token)"
+      ],
+      "no_formal_symbol_C_i_appears_in_repo_for_this_clock": true
+    },
+    "slow_clock": {
+      "primary_source": "aeon/hybrid.py",
+      "primary_lines": "14",
+      "quoted_text": "slow clock (once at end of window w)",
+      "also_referenced_at": [
+        "aeon/__init__.py:18",
+        "aeon/shuttle/__init__.py:7",
+        "aeon/shuttle/__init__.py:28",
+        "aeon/shuttle/backpressure.py:4",
+        "aeon/recursion.py:35",
+        "docs/TOPOLOGY_MAP.md:35",
+        "docs/PRESERVATION_MANIFEST.md:21"
+      ],
+      "no_formal_symbol_C_i_appears_in_repo_for_this_clock": true
+    }
+  },
+  "fast_clock": {
+    "canonical_name_in_repo": "fast clock",
+    "cadence_definition": "exactly once per input token index i, i in [start, end) inside each K-window w",
+    "state_variables_governed": {
+      "substrate_state": {
+        "container": "aeon.substrate.port.SubstratePort implementation",
+        "concrete_implementations": [
+          "aeon/substrate/matrix_cell.py::MatrixCell — per-batch matrix state S of shape (H, N, N)",
+          "aeon/substrate/vector_cell.py::VectorCell — per-batch vector state"
+        ],
+        "reset_call_site": "aeon/hybrid.py:141 — self.substrate.reset(B, device)",
+        "step_call_site": "aeon/hybrid.py:156 — r_i = self.substrate.step(x_i)",
+        "detach_at_slow_boundary_call_site": "aeon/hybrid.py:178 — self.substrate.detach_state()"
+      }
+    },
+    "update_trigger": "the inner for-loop `for i in range(start, end):` in aeon/hybrid.py:154-158; runs once per token index",
+    "relative_rate": "K ticks per one slow-clock tick",
+    "interaction_with_recursion": "the fast-clock READOUTS r_i are aggregated by `mean_i r_i` at aeon/hybrid.py:160 and then projected as `s_w = self.s_proj(mean_readout)` at 161 to become one of the slow-clock inputs",
+    "interaction_with_transformer": "the fast-clock input x_i is `emb_proj(emb_i) + cond_proj(h_{w-1})` at aeon/hybrid.py:151-155 — the transformer embedding stream contributes emb_i and the SLOW clock's held state h_{w-1} conditions each fast tick",
+    "configuration_fields": "no direct config knob — the fast clock runs once per token by definition of the token loop; the number of fast ticks per slow tick is K",
+    "implementation_files_and_lines": [
+      "aeon/hybrid.py:154-158 (fast-tick loop and substrate.step call)",
+      "aeon/substrate/matrix_cell.py::MatrixCell.step (per-token state update)",
+      "aeon/substrate/vector_cell.py::VectorCell.step",
+      "aeon/substrate/port.py::SubstratePort protocol"
+    ],
+    "tests_asserting_fast_clock_semantics": [
+      "tests/test_substrate_port.py — port contract shape / dtype tests",
+      "tests/test_recursion_topology.py::test_recursion_step_called_once_per_window (indirect — proves slow clock is NOT per-token)"
+    ]
+  },
+  "slow_clock": {
+    "canonical_name_in_repo": "slow clock",
+    "cadence_definition": "exactly once at the END of every K-window; num_windows = ceil(T / K)",
+    "state_variables_governed": {
+      "recursion_h": "aeon/recursion.py::RecursionJoiner.h_init -> (H_rec,) fp32; carried between slow ticks by aeon/hybrid.py:175 — `h, c = self.recursion.step(...)`",
+      "recursion_c": "same, second component of the joiner tick",
+      "shared_broadcast_h_cond": "aeon/hybrid.py:150 — `h_cond = h` at the START of each window w; captured before the tick and rebroadcast to every fast token within window w via `inject_cols.append(h_cond)` at 158",
+      "transformer_write_inject": "aeon/hybrid.py: the stacked inject_cols vector is applied at the transformer.inject(...) call after the loop"
+    },
+    "update_trigger": "the outer for-loop `for w in range(num_windows):` at aeon/hybrid.py:146; each iteration ends with the single call `h, c = self.recursion.step(s_w.float(), t_w.float(), h.detach(), c.detach(), e=...)` at aeon/hybrid.py:175-177",
+    "interval_K": {
+      "value": 16,
+      "declared_in": [
+        "aeon/hybrid.py:68 — `K: int = 16` (HybridModel.__init__ default)",
+        "aeon/hybrid.py:78 — `self.K = K` (bound at construction)",
+        "configs/latent_bypass/aeon_lbc1_proxy.yaml:20 — `K: 16  # IMMUTABLE — architectural invariant`",
+        "configs/aeon_v1.yaml:6 — `K: 16                      # slow-clock window size`",
+        "configs/aeon_350m.yaml:14 — `K: 16                      # slow-clock window size`",
+        "aeon/shuttle/__init__.py:29 — `FIXED_K: int = 16`"
+      ],
+      "immutable_by_certification": true,
+      "immutability_source": "docs/PRESERVATION_MANIFEST.md:21 (P-K16 row)"
+    },
+    "interaction_with_recursion_joiner": "the slow-clock tick IS the RecursionJoiner call. Inputs (s, t, h, c, optional e) map to (substrate-projection, transformer-K-th-readout, previous h, previous c, window-mean embedding). Governed by the σ<margin_h, σ<margin_c certificate.",
+    "interaction_with_substrate": "the slow-clock tick READS the substrate through `s_w = s_proj(mean_i r_i)` (aeon/hybrid.py:160-161) and, at end-of-tick, DETACHES the substrate state via `self.substrate.detach_state()` at aeon/hybrid.py:178 (truncated BPTT — design note D2)",
+    "interaction_with_transformer_stream": "the K-th (end-of-window) transformer readout is picked at `t_w = t_all[:, end - 1, :]` (aeon/hybrid.py:162); the slow-clock output `h_{w-1}` is broadcast into every fast-token position via inject_cols and written to hidden via `transformer.inject(hidden, inject_signal)` at the end of the forward",
+    "configuration_fields": [
+      "model.K in every config",
+      "model.margin_h / model.margin_c (σ-certificate constants) in every config"
+    ],
+    "implementation_files_and_lines": [
+      "aeon/hybrid.py:146-178 (outer window loop, slow-clock tick + substrate detach)",
+      "aeon/recursion.py::RecursionJoiner.__init__ (parameters + margins)",
+      "aeon/recursion.py::RecursionJoiner.init_state (h_init, c_init)",
+      "aeon/recursion.py::RecursionJoiner.step (one tick per call — line 148)",
+      "aeon/recursion.py::RecursionJoiner.audit (σ certificate readout)"
+    ],
+    "tests_asserting_slow_clock_semantics": [
+      "tests/test_recursion_topology.py::test_K_is_16_and_not_adaptive (line 48)",
+      "tests/test_recursion_topology.py::test_recursion_stays_fp32_after_cast (line 98)",
+      "tests/test_recursion_topology.py::test_certificate_holds_by_construction (line 118)",
+      "tests/test_recursion_topology.py::test_certificate_fails_closed_on_forced_violation (line 141)",
+      "tests/test_recursion_topology.py::test_single_broadcast_shared_source (line 163)",
+      "tests/test_recursion_topology.py::test_recursion_step_called_once_per_window (line 195)"
+    ]
+  },
+  "coupling_between_the_two_clocks": {
+    "fast_conditions_on_slow": "aeon/hybrid.py:150-155 — h_{w-1} conditions every fast tick within window w via cond_proj",
+    "fast_feeds_slow_via_aggregation": "aeon/hybrid.py:160-161 — mean_i r_i -> s_proj -> s_w",
+    "slow_carries_fast_boundary_detach": "aeon/hybrid.py:176 — h.detach()/c.detach() into recursion.step; and 178 — substrate.detach_state() (truncated BPTT per D2)",
+    "slow_writes_transformer_via_inject": "aeon/hybrid.py:23 (docstring) — logits = lm_head(hidden + γ · write_proj(inject_signal)); inject_signal[window w tokens] = h_{w-1}"
+  },
+  "documentation_vs_runtime_discrepancies": [
+    {
+      "discrepancy": "docs/TOPOLOGY_MAP.md line-number citations for the window loop are stale",
+      "doc_says": "the `for w in range(num_windows)` loop in hybrid.py:127-151 calls self.recursion.step(...) once per window",
+      "runtime_reads_as": "the actual loop lives at aeon/hybrid.py:146-178 in the current head; the referenced range 127-151 covers the preamble (imports, comments, embedding path) and is CORRECT in intent but WRONG in line numbers",
+      "severity": "documentation-only drift — no semantic conflict; the runtime cadence still runs the loop exactly once per K-window and the tests confirm it (`test_recursion_step_called_once_per_window`)",
+      "not_repaired_in_this_tranche": true,
+      "why_not": "the correction order explicitly says 'Do not modify C_1, C_2, their coupling, or their update semantics during the English-training tranche.' Repairing this drift is a documentation change to a canonical clock reference; deferred out of caution."
+    },
+    {
+      "discrepancy": "docs/TOPOLOGY_MAP.md cites `hybrid.py:139` for inject_cols.append(h_cond) and `hybrid.py:154` for the transformer.inject write",
+      "doc_says": "inject_signal is h_{w-1} broadcast per-token within each window (hybrid.py:139, then stacked at 153)",
+      "runtime_reads_as": "the append is at aeon/hybrid.py:158 and the inject call is later in the forward; the CONTENT description matches, only the line numbers drifted",
+      "severity": "documentation-only drift",
+      "not_repaired_in_this_tranche": true
+    }
+  ],
+  "modules_intentionally_frozen_by_existing_design": {
+    "notes": "the correction order (§10 previous EN-TRAIN spec) required identifying modules intentionally frozen by existing design. Repository search finds no explicit `requires_grad_(False)` calls in aeon/hybrid.py, aeon/recursion.py, or aeon/substrate/*. Every trainable parameter is trainable by default at construction. Only local scopes use `.detach()` for truncated BPTT (which is a per-forward autograd choice, not a permanent freeze). No exemption is claimed.",
+    "explicit_evidence": {
+      "hybrid_freeze_backbone_arg": "aeon/hybrid.py:73 — HybridModel(freeze_backbone: bool = False, ...) — DEFAULTS TO FALSE and the P2 checkpoint at runs/aeon_lbc1_P2/final.pt was trained with the default (see docs/training/p2_evidence.json)"
+    }
+  },
+  "clocks_summary": "Aeon's two architectural clocks in this repository are the FAST CLOCK (per-token substrate.step inside each K-window, aeon/hybrid.py:154-158) and the SLOW CLOCK (per-K-window recursion.step + one shared broadcast + transformer inject, aeon/hybrid.py:146-178, aeon/recursion.py:148). K = 16 fixed. No formal C_1 / C_2 symbols appear in the repository; the corrected mathematical spec at docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md is the first place those bookkeeping symbols are introduced, and it binds them to the FAST and SLOW clocks in that order, without changing any of the above semantics."
+}

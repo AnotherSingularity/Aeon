@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "purpose": "Machine-readable mapping from every mathematical symbol in EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md to the concrete repository symbol, file, and line at 447f0dc. Per the correction order §10: do not claim that a mathematical component exists if it cannot be located in the repository.",
+  "produced_at_head": "447f0dc",
+  "F": {
+    "role": "Aeon's native forward process (state transition + logits)",
+    "concrete_symbol": "aeon.hybrid.HybridModel.forward",
+    "file": "aeon/hybrid.py",
+    "line": "112-284 (definition); 141-178 (state-evolution loop)",
+    "signature": "forward(self, input_ids, attention_mask=None, labels=None, *, observer=None, intervention=None, shuttle=None) -> HybridOutput",
+    "output": "HybridOutput(loss: Optional[Tensor], logits: Tensor, gate_mean: Optional[Tensor])",
+    "note": "F is unchanged by EN-TRAIN. Every training + inference call goes through this function with shuttle=None."
+  },
+  "state_S": {
+    "role": "Aeon's native carried internal state — TUPLE of (substrate_state, recursion_h, recursion_c)",
+    "components": [
+      {
+        "name": "substrate_state",
+        "governed_by_clock": "fast (C_1)",
+        "concrete_container": "the state fields of the active substrate cell (MatrixCell.S / VectorCell.h)",
+        "file": "aeon/substrate/matrix_cell.py::MatrixCell (state field created in reset at line 94; evolved in step at 105)",
+        "reset_call_site": "aeon/hybrid.py:141",
+        "step_call_site": "aeon/hybrid.py:156",
+        "detach_call_site": "aeon/hybrid.py:178"
+      },
+      {
+        "name": "recursion_h",
+        "governed_by_clock": "slow (C_2)",
+        "concrete_container": "the local variable `h` inside HybridModel.forward — initialized by RecursionJoiner.init_state and updated by RecursionJoiner.step",
+        "file": "aeon/hybrid.py:142 (init), 175 (step return); aeon/recursion.py:141 (init_state), 148 (step)"
+      },
+      {
+        "name": "recursion_c",
+        "governed_by_clock": "slow (C_2)",
+        "concrete_container": "the local variable `c` inside HybridModel.forward",
+        "file": "aeon/hybrid.py:142 (init), 175 (step return); aeon/recursion.py:141, 148"
+      }
+    ],
+    "note": "S is not persisted between forward calls. Every forward reinitializes substrate + recursion state — see aeon/hybrid.py:141-142. This is a core Aeon property and EN-TRAIN does not change it."
+  },
+  "parameters_theta": {
+    "role": "the set of trainable Aeon parameters",
+    "concrete_symbol": "aeon.hybrid.HybridModel.parameters()",
+    "file": "aeon/hybrid.py",
+    "count_at_frozen_a0": 7015366,
+    "state_dict_key_count": 67,
+    "state_dict_snapshot_source": "docs/en_train/EN_TRAIN_ARCHITECTURE_FREEZE.json.architecture_fingerprint_A0",
+    "protected_p2_checkpoint_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "note": "θ_k denotes the parameter set at optimizer update k. θ_{k+1} ≠ θ_k after a successful training step. Δarchitecture(F_{θ_k}, F_{θ_{k+1}}) = 0 is enforced by aeon.en_train.proof.assert_architecture_invariant."
+  },
+  "logits_z": {
+    "role": "Aeon's 16000-dim output logits per position",
+    "concrete_symbol": "HybridOutput.logits",
+    "file": "aeon/hybrid.py:272 (return) — construction path at ~lines 254-272 through the lm_head and write-port inject",
+    "shape": "(B, T, V=16000)",
+    "note": "Every EN-TRAIN loss consumes these logits directly — nothing is inserted between logits and the loss (§5 of the correction order)."
+  },
+  "loss_L": {
+    "role": "the training loss L_k at optimizer update k",
+    "components": [
+      {
+        "name": "L_G (general English next-token, §5)",
+        "concrete_symbol": "aeon.en_train.losses.general_english_loss",
+        "file": "aeon/en_train/losses.py",
+        "note": "shifted cross-entropy with attention-mask; consumes HybridOutput.logits directly."
+      },
+      {
+        "name": "L_C (response-masked conversational, §6)",
+        "concrete_symbol": "aeon.en_train.losses.conversational_loss",
+        "file": "aeon/en_train/losses.py",
+        "note": "same base loss with an additional response_mask AND'd with attention_mask."
+      }
+    ]
+  },
+  "optimizer_G": {
+    "role": "the update operator θ_{k+1} = G(θ_k, ∇L_k, q_k)",
+    "concrete_symbol": "torch.optim.AdamW (existing approved optimizer)",
+    "invocation_site": "aeon.en_train.trainer.train_one_step: `optimizer.step()` after `loss.backward()`",
+    "note": "The correction order (§4) states: 'If the current repository does not contain a native learned update operator G, do not invent one. In that case, G is the existing approved optimizer and gradient-control path.' Repository search confirms no native learned update operator exists in aeon/*; scripts/train.py and aeon/job/worker.py use torch.optim.AdamW. EN-TRAIN follows the same pattern."
+  },
+  "stability_q": {
+    "role": "Aeon's existing native stability + continuity diagnostics used to gate the update",
+    "concrete_symbols": [
+      {
+        "name": "σ certificate over W_h and W_c",
+        "concrete_symbol": "aeon.recursion.RecursionJoiner.audit",
+        "file": "aeon/recursion.py:173-184",
+        "check": "sigma_max(W_h) < MARGIN_H AND sigma_max(W_c) < MARGIN_C"
+      },
+      {
+        "name": "sigma_certificate margin constants",
+        "concrete_symbol": "aeon.en_train.proof.sigma_certificate",
+        "file": "aeon/en_train/proof.py",
+        "note": "MARGIN_H, MARGIN_C are pinned at construction and must not drift by more than 5% relative (§14)."
+      },
+      {
+        "name": "finite-parameter check",
+        "concrete_symbol": "aeon.en_train.proof.check_finite_state_dict",
+        "file": "aeon/en_train/proof.py"
+      },
+      {
+        "name": "architecture fingerprint invariance",
+        "concrete_symbol": "aeon.en_train.proof.assert_architecture_invariant",
+        "file": "aeon/en_train/proof.py",
+        "check": "parameter_count unchanged AND A0 digest unchanged after k+1 update"
+      }
+    ]
+  },
+  "gradient_control": {
+    "role": "the gradient-shaping and clipping applied between ∇L and the optimizer step",
+    "concrete_symbols": [
+      {
+        "name": "global L2 gradient-norm clip",
+        "concrete_symbol": "aeon.en_train.trainer._apply_grad_clip",
+        "file": "aeon/en_train/trainer.py",
+        "clip_value": 1.0,
+        "note": "Consistent with §4's ḡ_k = g_k · min(1, c/max(||g_k||_2, ε)) with c=1.0."
+      },
+      {
+        "name": "training-only .detach at slow-clock boundary (truncated BPTT — pre-existing)",
+        "concrete_symbol": "h.detach() and c.detach() in HybridModel.forward + substrate.detach_state()",
+        "file": "aeon/hybrid.py:176, 178",
+        "note": "Not introduced by EN-TRAIN — pre-existing Aeon design (D2). Documented not changed."
+      }
+    ]
+  },
+  "clocks": {
+    "C_1_fast_clock": {
+      "role": "C_1 label bound to Aeon's per-token substrate tick",
+      "concrete_symbol": "the substrate.step call inside aeon.hybrid.HybridModel.forward",
+      "file": "aeon/hybrid.py:154-158",
+      "governs_state_variables": ["substrate_state"],
+      "cadence": "once per input token index i within each K-window",
+      "detailed_mapping": "docs/en_train/en_train_clock_mapping.json.fast_clock"
+    },
+    "C_2_slow_clock": {
+      "role": "C_2 label bound to Aeon's per-K-window recursion tick + shared broadcast + transformer inject",
+      "concrete_symbol": "the recursion.step call + broadcast + inject_signal path inside aeon.hybrid.HybridModel.forward",
+      "file": "aeon/hybrid.py:146-178",
+      "governs_state_variables": ["recursion_h", "recursion_c", "shared_broadcast_h_cond"],
+      "cadence": "once per K-window w, num_windows = ceil(T/K)",
+      "K": 16,
+      "K_immutable": true,
+      "detailed_mapping": "docs/en_train/en_train_clock_mapping.json.slow_clock"
+    }
+  },
+  "not_present_in_repo_and_not_invented": [
+    "native learned update operator G (per §4: fall back to torch.optim.AdamW)",
+    "documented online / inference-time parameter modification path (per §7: do not implement; θ remains fixed during inference)",
+    "formal C_1 / C_2 symbols outside this mapping — the repository uses 'fast clock' and 'slow clock'"
+  ]
+}
