@@ -1,0 +1,99 @@
+{
+  "checkpoint_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+  "checkpoint_used": "runs/aeon_lbc1_P2/final.pt",
+  "evidence_note": "This defect proof is BEFORE any renderer change. The desktop rendering path (aeon.desktop.runtime._generate + scripts/run_p0_pipeline_proof.py sample_token concat) currently decodes each new token in isolation via tok.decode([id]), which drops SentencePiece leading-space markers, so word boundaries disappear in the UI.",
+  "mismatch_rate": 1.0,
+  "per_prompt": [
+    {
+      "canonical_char_count": 44,
+      "canonical_full_decode_D_full": "the whale, and the whale, and the whale, and",
+      "canonical_hash": "sha256:ed1f8b1f8cf6b3b7",
+      "current_streamed_desktop_output_D_stream": "thewhale,andthewhale,andthewhale,and",
+      "generated_token_ids": [
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264
+      ],
+      "mismatch": true,
+      "prompt": "The",
+      "prompt_token_ids": [
+        317
+      ],
+      "streamed_char_count": 36,
+      "streamed_hash": "sha256:b6331db13e9a87dc"
+    },
+    {
+      "canonical_char_count": 45,
+      "canonical_full_decode_D_full": ", and the whale, and the whale, and the whale",
+      "canonical_hash": "sha256:00c77be9273a9aeb",
+      "current_streamed_desktop_output_D_stream": ",andthewhale,andthewhale,andthewhale",
+      "generated_token_ids": [
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322
+      ],
+      "mismatch": true,
+      "prompt": "Once upon a time",
+      "prompt_token_ids": [
+        5262,
+        355,
+        266,
+        361
+      ],
+      "streamed_char_count": 36,
+      "streamed_hash": "sha256:a8f7706e11f2220e"
+    },
+    {
+      "canonical_char_count": 46,
+      "canonical_full_decode_D_full": ", and the whale of the whale, and the whale of",
+      "canonical_hash": "sha256:3bde52cf5dd78669",
+      "current_streamed_desktop_output_D_stream": ",andthewhaleofthewhale,andthewhaleof",
+      "generated_token_ids": [
+        260,
+        264,
+        261,
+        322,
+        263,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        263
+      ],
+      "mismatch": true,
+      "prompt": "Hello world",
+      "prompt_token_ids": [
+        11066,
+        817,
+        458
+      ],
+      "streamed_char_count": 36,
+      "streamed_hash": "sha256:c9500352684697e7"
+    }
+  ],
+  "prompts_run": 3,
+  "purpose": "RENDERING DEFECT PROOF \u2014 establishes D_stream \u2260 D_full before the fix",
+  "schema_version": 1,
+  "seed": "deterministic_greedy",
+  "tokenizer_used": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model"
+}
