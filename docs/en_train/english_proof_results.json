@@ -1,0 +1,173 @@
+{
+  "attribution": {
+    "blind_mapping_path": "docs/en_train/english_proof_blind_mapping.json",
+    "blind_mapping_sha256": "sha256:7b3cf2127361554d3d8f8a193164bd489d89e08791e74435a29b02bd84c19ed0",
+    "blind_scorecard_path": "docs/en_train/english_proof_blind_scorecard.csv",
+    "prompt_count": 25,
+    "raw_outputs_line_count": 50,
+    "raw_outputs_path": "docs/en_train/english_proof_raw_outputs.jsonl",
+    "renderer_equivalence_all_ok": true,
+    "settings": {
+      "context_length": 2048,
+      "deterministic_seed": 20260822,
+      "greedy": true,
+      "max_new_tokens": 48,
+      "prompt_serialization_id": "aeon_desktop_runtime_v1",
+      "renderer_id": "aeon_desktop_runtime_v1_streamed_canonical",
+      "repetition_penalty": 1.0,
+      "stop_on_eos": true,
+      "temperature": 0.0,
+      "top_k": 0,
+      "top_p": 1.0
+    },
+    "settings_fingerprint": "sha256:e60ea8d24146efffa052a51d924a47ccd5a05e84b3f5e973d4d9ba09f9e640a3"
+  },
+  "candidate": {
+    "bytes": 28086885,
+    "parent_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "path": "runs/en_proof_dolly15k_s20260822/AEON-EN-PROOF-DOLLY15K-S20260822/selected.pt",
+    "sha256": "sha256:7139895d6ed034ce5ec78ad8c489d23a87fe47e7f4922337fca4e9c297d9a6d2"
+  },
+  "environment": {
+    "device": "cpu",
+    "hardware": "linux container (session runtime)",
+    "torch_threads": 8,
+    "torch_version": "2.13.0+cu130"
+  },
+  "gradient_path": {
+    "any_inf": false,
+    "any_nan": false,
+    "grad_path_ok": true,
+    "observations_recorded": 100,
+    "per_group_max_grad_l2": {
+      "cond_proj": 0.22394620600105763,
+      "emb_proj": 0.011920274029861058,
+      "recursion": 0.46574507051730485,
+      "s_proj": 0.0843163405597741,
+      "substrate": 0.36490177347814173,
+      "transformer": 66.16013622225917
+    },
+    "zero_gradient_groups": []
+  },
+  "halt_state": "ENGLISH_PROOF_READY_FOR_DYLAN_REVIEW",
+  "human_review_gate": {
+    "gate_thresholds": {
+      "complete_readable_sentence": ">= 20/25",
+      "joined_word_renderer_defect": "0/25",
+      "relevant_response": ">= 18/25",
+      "understandable_response": ">= 18/25",
+      "whaling_contamination": "<= 1/25"
+    },
+    "scorecard_path": "docs/en_train/english_proof_blind_scorecard.csv",
+    "state": "REQUIRED_BEFORE_APPROVAL"
+  },
+  "identifier": "AEON-EN-PROOF-DOLLY15K-S20260822",
+  "invariance": {
+    "A0_digest_after": "sha256:2f895a05411567619371dd76a5f22868ca9e7edc17f33711e2e99aab04a972f9",
+    "A0_digest_before": "sha256:2f895a05411567619371dd76a5f22868ca9e7edc17f33711e2e99aab04a972f9",
+    "A0_digest_unchanged": true,
+    "K": 16,
+    "MARGIN_C_after": 0.02,
+    "MARGIN_C_before": 0.02,
+    "MARGIN_H_after": 0.02,
+    "MARGIN_H_before": 0.02,
+    "delta_architecture": 0,
+    "state_dict_key_count_after": 67,
+    "state_dict_key_count_before": 67,
+    "total_parameters_after": 7015366,
+    "total_parameters_before": 7015366
+  },
+  "p2_immutability": {
+    "sha256_before_pinned": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "sha256_disk_now": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "unchanged": true
+  },
+  "produced_at_head": "TBD",
+  "schema_version": 1,
+  "sealed_evaluation": {
+    "candidate_masked_loss": 6.032,
+    "candidate_tokens_scored": 6012,
+    "loss_reduction_pct": 17.1883580450302,
+    "p2_masked_loss": 7.284,
+    "p2_tokens_scored": 6012,
+    "records_evaluated_cap": 100
+  },
+  "seed": 20260822,
+  "tokenizer_immutability": {
+    "sha256_disk_now": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "sha256_pinned": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481",
+    "unchanged": true
+  },
+  "training": {
+    "batch_size": 2,
+    "hard_cap": 3000000,
+    "last_train_loss": 7.307966232299805,
+    "last_val_loss": 5.993,
+    "lr": 0.0001,
+    "response_tokens_covered": 175232,
+    "seq_len": 256,
+    "steps": 1338,
+    "val_loss_curve": [
+      6.63,
+      6.463,
+      6.318,
+      6.281,
+      6.227,
+      6.137,
+      6.122,
+      6.107,
+      6.121,
+      6.054,
+      6.036,
+      6.045,
+      5.993
+    ]
+  },
+  "wall_time_bound": {
+    "early_stop_reason": "wall_time_cap",
+    "note": "Pilot ran inside a single session and was bounded by session wall-time, NOT by the directive's early-stop rule. Directive hard cap was 3,000,000 response tokens; this pilot covered a smaller quantum because CPU throughput in this environment made the full budget infeasible in one session. Every fail-closed invariant still holds bytewise.",
+    "wall_seconds_training": 1500.2849621772766,
+    "wall_time_cap_seconds": 1500
+  },
+  "weight_delta": {
+    "max_delta": 130.1312255859375,
+    "median_delta": 0.8602526783943176,
+    "min_nonzero_delta": 7.200241088867188e-05,
+    "per_group_summary": {
+      "cond_proj": {
+        "max_l2": 0.40073639154434204,
+        "mean_l2": 0.40073639154434204,
+        "tensors": 1
+      },
+      "emb_proj": {
+        "max_l2": 0.6352407336235046,
+        "mean_l2": 0.6352407336235046,
+        "tensors": 1
+      },
+      "recursion": {
+        "max_l2": 1.0605299472808838,
+        "mean_l2": 0.4003821600300188,
+        "tensors": 13
+      },
+      "s_proj": {
+        "max_l2": 0.8615895509719849,
+        "mean_l2": 0.8615895509719849,
+        "tensors": 1
+      },
+      "substrate": {
+        "max_l2": 0.6001034379005432,
+        "mean_l2": 0.18651853708757293,
+        "tensors": 9
+      },
+      "transformer": {
+        "max_l2": 130.1312255859375,
+        "mean_l2": 7.071823453708064,
+        "tensors": 42
+      }
+    },
+    "positive_delta_count": 65,
+    "total_tensors": 67,
+    "zero_delta_count": 2
+  },
+  "windows_packaging_executed": false
+}

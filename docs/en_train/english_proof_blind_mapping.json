@@ -1,0 +1,139 @@
+{
+  "gate_thresholds": {
+    "complete_readable_sentence": ">= 20/25",
+    "joined_word_renderer_defect": "0/25",
+    "relevant_response": ">= 18/25",
+    "understandable_response": ">= 18/25",
+    "whaling_contamination": "<= 1/25"
+  },
+  "mapping": [
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00050"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00055"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00059"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00072"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00115"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00117"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00122"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00131"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00149"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00162"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00202"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00218"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00238"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00248"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00263"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00271"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00278"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00282"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00286"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00321"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00332"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00341"
+    },
+    {
+      "A": "parent_P2",
+      "B": "candidate",
+      "prompt_id": "dolly-00346"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00410"
+    },
+    {
+      "A": "candidate",
+      "B": "parent_P2",
+      "prompt_id": "dolly-00450"
+    }
+  ],
+  "mapping_sha256": "sha256:7b3cf2127361554d3d8f8a193164bd489d89e08791e74435a29b02bd84c19ed0",
+  "notes": "The candidate is NOT approved by any automatic check. Approval requires Dylan's completed scorecard.",
+  "randomization_seed": 20260823
+}

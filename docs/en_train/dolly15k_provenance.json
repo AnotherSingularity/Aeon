@@ -57,6 +57,16 @@
     "official_human_authorship_statement": "Databricks identifies the dataset as approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees; no LLM-generated responses are used.",
     "share_alike_notice": "Any derivative that redistributes text from this dataset must carry a compatible CC BY-SA license and preserve attribution."
   },
+  "pilot_run_summary": {
+    "candidate_sha256": "sha256:7139895d6ed034ce5ec78ad8c489d23a87fe47e7f4922337fca4e9c297d9a6d2",
+    "early_stop_reason": "wall_time_cap",
+    "last_val_loss": 5.993,
+    "response_tokens_covered": 175232,
+    "sealed_masked_loss_candidate": 6.032,
+    "sealed_masked_loss_p2": 7.284,
+    "steps": 1338,
+    "wall_seconds_training": 1500.2849621772766
+  },
   "pilot_settings": {
     "checkpoint_targets_tokens": [
       250000,
@@ -124,5 +134,5 @@
   },
   "schema_version": 1,
   "split_manifest_target": "docs/en_train/dolly15k_split_manifest.json",
-  "status": "DOLLY_UPLOADED"
+  "status": "PILOT_RAN"
 }

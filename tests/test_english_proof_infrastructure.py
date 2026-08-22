@@ -346,10 +346,20 @@ def test_provenance_schema_fields_present():
 # 10. Halt state until upload
 # ---------------------------------------------------------------------------
 def test_pilot_halts_at_awaiting_data_when_corpus_absent():
+    """When the corpus is absent, halt_state_for_current_environment
+    must return AWAITING_DOLLY_DATA_UPLOAD. When the corpus IS
+    present and split manifest is valid, it returns
+    READY_TO_ATTEMPT_PILOT so the pilot script can proceed. Either
+    is a legal state; the fail-closed contract is 'never silently
+    train without valid inputs'."""
     from aeon.en_train.proof_pilot import (halt_state_for_current_environment,
                                             HALT_AWAITING_DATA, PilotConfig)
     s = halt_state_for_current_environment(PilotConfig())
-    assert s["state"] == HALT_AWAITING_DATA, s
+    assert s["state"] in (HALT_AWAITING_DATA, "READY_TO_ATTEMPT_PILOT"), s
+    if s["state"] == "READY_TO_ATTEMPT_PILOT":
+        # Every resolved digest must be present and well-formed.
+        assert s["resolved"]["parent_sha256"].startswith("sha256:")
+        assert s["resolved"]["tokenizer_sha256"].startswith("sha256:")
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,126 @@
+prompt_id,prompt_category,prompt_text,response_A,response_B,complete_grammatical_sentence_A,complete_grammatical_sentence_B,relevant_A,relevant_B,understandable_A,understandable_B,whaling_contamination_A,whaling_contamination_B,preferred_response,notes
+dolly-00050,brainstorming,"user: Think of some family rules to promote a healthy family relationship
+
+assistant: ","- Pua, - Pua, and the - Pua, - Sua, - Sua, - Sua, - Sua, - Su","“I’s be a whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale,",,,,,,,,,,
+dolly-00055,closed_qa,"user: Given this paragraph, what is the top speed of a Kia Stinger?
+
+Kia claims that the Stinger accelerates from zero to 100 km/h (62 mph) in 7.7, 6 and 4.9 seconds for the 2.2-liter diesel, 2.0-liter petrol and 3.3-liter petrol respectively. Schreyer reportedly drove a pre-production Stinger GT at a top speed of 269 km/h (167 mph) on the Autobahn.
+
+During a test by Car and Driver, an all-wheel-drive U.S. spec GT 3.3T with Michelin Pilot Sport 4 tires achieved 0–60 mph (0–97 km/h) in 4.6 seconds on the track, reached 0.91 g on the skidpad and was able to stop from 70 mph (113 km/h) in 164 feet (50 m). According to this publication, the U.S. model's top speed is governed at 167 mph (269 km/h) per Kia specs. In tests conducted by Motor Trend, the four-cylinder U.S. spec Stinger 2.0 RWD on Bridgestone Potenza tires reached 60 mph (97 km/h) in 6.6 seconds, completed the 1⁄4-mile (0.4 km) run in 15 seconds and stopped from 60 mph (97 km/h) in 126 feet (38 m). The average lateral acceleration recorded in track testing was 0.85 g.
+
+assistant: ",,"- Puua, - Puua, - Puua, - Puua, and - Puua, and - Puua, and - P",,,,,,,,,,
+dolly-00059,summarization,"user: Without quoting directly from the text give me a summary of the history of the Key Lime Pie.
+
+Key lime pie is probably derived from the ""Magic Lemon Cream Pie"" published in a promotional brochure by Borden, a producer of condensed milk, in 1931. The recipe is attributed to Borden's fictional spokesperson, Jane Ellison, and includes condensed milk, lemon juice and rind, and egg yolks. It is covered with meringue, baked, and served cold. According to the pastry chef Stella Parks, users of the recipe altered it with local ingredients; she describes it as ""a stunning reminder of how deeply America's traditions are shaped by advertising"".
+
+A ""Tropical Lime Chiffon Pie"", using condensed milk and egg yolks, is documented in a 1933 Miami newspaper article. An ""icebox lime pie"", was mentioned as a specialty of the Florida Keys in 1935.[full citation needed] and a recipe under the name ""Key Lime Pie"" was published in 1940.[full citation needed]
+
+No earlier solid sources are known, despite appeals to the public. A 1927 Key West Women's Club cookbook does not mention the recipe. A 1926 restaurant menu includes ""lime pie"", but it is unclear what it was. Various accounts claim that it was known earlier, but none were recorded before 1933. A widely-reported story claims that William Curry's cook Aunt Sally invented it in the late 19th century. But there is no evidence for this, and the oldest version of this story dates to only 1895, in promotional materials for a Bed and Breakfast in Curry's former house.
+
+It was in the 1950s that Key lime pie was promoted as Florida's ""most famous treat"" and in 1987 as ""the greatest of all regional American desserts.""
+
+assistant: ",,"""s, "", "", and the "", and the "", and the "", and the "", and the "", and the "", and the "", and the ",,,,,,,,,,
+dolly-00072,summarization,"user: Who are the Smiths?
+
+The Smiths were an English rock band formed in Manchester in 1982. They comprised the singer Morrissey, the guitarist Johnny Marr, the bassist Andy Rourke and the drummer Mike Joyce. Morrissey and Marr formed the band's songwriting partnership. They are regarded as one of the most important acts to emerge from the 1980s British independent music.
+
+assistant: ",,"""s, "", "", and the "", and the "", and the "", and the "", and the "", and the "", and the "", and the ",,,,,,,,,,
+dolly-00115,brainstorming,"user: What are 5 potential uses for an empty La Croix can?
+
+assistant: ",,"- Puaa, - Sua, - Sua, - Sua, - Sua, - Sua, - Saa, - Saa",,,,,,,,,,
+dolly-00117,open_qa,"user: Why are so many US Hollywood films made in the state of Georgia?
+
+assistant: ","“I’s be a whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale,","- Puaia is a - Puaa, - Pua, - Sua, - Sua, - Sua, - Sua, -",,,,,,,,,,
+dolly-00122,open_qa,"user: What is an apple?
+
+assistant: ","2019999, - - - - - - - - - - - - - - - - - - - -",,,,,,,,,,,
+dolly-00131,classification,"user: Separate the following suburbs into those that border, and do not border, the Brisbane River: Indooroopilly, Bulimba, St Lucia, Newstead, Wilston, West End, Toowong, Bowen Hills and, Wooloongabba.
+
+assistant: ","-sa, - Pua, Sua, Sua, Sua, Sua, Sua, Sua, Sua, Sua, Sua, S",,,,,,,,,,,
+dolly-00149,brainstorming,"user: Give me a list of ways that a runner can advance a base in baseball without there being a hit.
+
+assistant: ",,"- Pua, - Pua, and the - Sua, - Sua, - Sua, - Sua, - Sua, - Su",,,,,,,,,,
+dolly-00162,brainstorming,"user: Which community of users on Twitter has the most 8-dollar-a-month verification?
+
+assistant: ",,- Puaa - Sua - Sua - - - - - - - - - - - - - - - -,,,,,,,,,,
+dolly-00202,information_extraction,"user: What's the relation between the Kushan Empire and the Sassanid Empire in Iran?
+
+The Kushan Empire  was a syncretic empire, formed by the Yuezhi, in the Bactrian territories in the early 1st century. It spread to encompass much of modern-day territory of Uzbekistan, Afghanistan, Pakistan and Northern India. The Sasanian or Sassanid Empire officially known as Eranshahr  was the last Iranian empire before the early Muslim conquests of the 7th–8th centuries AD. Named after the House of Sasan, it endured for over four centuries, from 224 to 651 AD, making it the longest-lived Persian imperial dynasty.[
+
+assistant: ","-sa, -sa, and the - Puua, and the - Puua, and the - Puua, and the - Puua, and the",,,,,,,,,,,
+dolly-00218,open_qa,"user: Whats the difference between a bass guitar and a regular guitar?
+
+assistant: ",- Puaa is a - Puaaa - Suaa - Suaa - Suaa - - - - - - - ,,,,,,,,,,,
+dolly-00238,open_qa,"user: Should I have Kids?
+
+assistant: ","20199, - - - - - - - - - - - - - - - - - - - - -","“I’s be a whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the and the",,,,,,,,,,
+dolly-00248,open_qa,"user: What was Angie Thomas's first published novel?
+
+assistant: ",,201999999999999999999999999999999999999999999999,,,,,,,,,,
+dolly-00263,creative_writing,"user: Imagine a world where life expectancy is fixed and the same for everyone at birth, yet people can engage in life expectancy ""donation"" – meaning that someone can extend your life three years longer at the expense of theirs. Talk about a likely scenario in this world that involves manipulated, coerced donation.
+
+assistant: ",,"-sa, the - Pua, and the - Puaa, and the - Pua, and the - Pua, and the - Pua, and the ",,,,,,,,,,
+dolly-00271,information_extraction,"user: What is Linux?
+
+Linux (/ˈliːnʊks/ (listen) LEE-nuuks or /ˈlɪnʊks/ LIN-uuks) is a family of open-source Unix-like operating systems based on the Linux kernel, an operating system kernel first released on September 17, 1991, by Linus Torvalds. Linux is typically packaged as a Linux distribution, which includes the kernel and supporting system software and libraries, many of which are provided by the GNU Project. Many Linux distributions use the word ""Linux"" in their name, but the Free Software Foundation uses the name ""GNU/Linux"" to emphasize the importance of GNU software, causing some controversy.
+
+assistant: ","-sa, - Puua, and the - Puua, and the - Puua, and the - Puua, and the - Puua,",,,,,,,,,,,
+dolly-00278,general_qa,"user: How can I get better performance when querying a delta table?
+
+assistant: ",,"- Suaa is a good- Puaa, and the - Puaaa is a good- Puaa, and the - Suaaaa, - Sa",,,,,,,,,,
+dolly-00282,summarization,"user: What is FIFA?
+
+The recognised international governing body of football (and associated games, such as futsal and beach soccer) is FIFA. The FIFA headquarters are located in Zürich, Switzerland. Six regional confederations are associated with FIFA; these are:
+
+Asia: Asian Football Confederation (AFC)
+Africa: Confederation of African Football (CAF)
+Europe: Union of European Football Associations (UEFA)
+North/Central America & Caribbean: Confederation of North, Central American and Caribbean Association Football (CONCACAF)
+Oceania: Oceania Football Confederation (OFC)
+South America: Confederación Sudamericana de Fútbol (South American Football Confederation; CONMEBOL)
+National associations (or national federations) oversee football within individual countries. These are generally synonymous with sovereign states (for example, the Cameroonian Football Federation in Cameroon), but also include a smaller number of associations responsible for sub-national entities or autonomous regions (for example, the Scottish Football Association in Scotland). 211 national associations are affiliated both with FIFA and with their respective continental confederations.
+
+While FIFA is responsible for arranging competitions and most rules related to international competition, the actual Laws of the Game are set by the IFAB, where each of the UK Associations has one vote, while FIFA collectively has four votes.
+
+assistant: ",,"- Piaia, Sia, Sia, Sia, Sia, Sia, Sia, Sia, Sia, Sia, Sia,",,,,,,,,,,
+dolly-00286,closed_qa,"user: Given this paragraph, how many public high schools are in Arlington, Virginia?
+
+Arlington Public Schools operates the county's public K-12 education system of 22 elementary schools; 6 middle schools (Dorothy Hamm Middle School, Gunston Middle School, Kenmore Middle School, Swanson Middle School, Thomas Jefferson Middle School, and Williamsburg Middle School); and 3 public high schools (Wakefield High School, Washington-Liberty High School, and Yorktown High School). H-B Woodlawn and Arlington Tech are alternative public schools. Arlington County spends about half of its local revenues on education. For the FY2013 budget, 83 percent of funding was from local revenues, and 12 percent from the state. Per pupil expenditures are expected to average $18,700, well above its neighbors, Fairfax County ($13,600) and Montgomery County ($14,900).
+
+assistant: ",,"- Puuua, - Puuua, and the - Puuua, and the - Puua, and the - Puua, and the -",,,,,,,,,,
+dolly-00321,information_extraction,"user: When was the 8088 processor released?
+
+The 8086 (also called iAPX 86) is a 16-bit microprocessor chip designed by Intel between early 1976 and June 8, 1978, when it was released. The Intel 8088, released July 1, 1979, is a slightly modified chip with an external 8-bit data bus (allowing the use of cheaper and fewer supporting ICs),[note 1] and is notable as the processor used in the original IBM PC design.
+
+assistant: ",,""" "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ",,,,,,,,,,
+dolly-00332,information_extraction,"user: Which team was relegated from the league at the conclusion of the 1991 Season?
+
+Waterside Karori were relegated at the end of the 1990 season, to be replaced by the winner of a play-off series between teams from the northern, central, and southern leagues (Mount Albert-Ponsonby, Nelson United, and Burndale United respectively). Nelson United won the series to gain promotion, but there is some controversy about their participation in the play-offs as they had only finished second in the central regional league, which was won by Petone.
+
+Gisborne City were relegated at the end of the 1991 season
+
+assistant: ","and the whale of the whale, and the whale of the whale, and the whale of the whale, and the whale of the whale, and the whale of the whale, and the whale of the whale, and the whale of the whale","""s, "", and the "", and the "", and the "", and the "", and the "", and the "", and the "", and the "", and",,,,,,,,,,
+dolly-00341,brainstorming,"user: What are the top reasons to become a vegan?
+
+assistant: ",,"- Puaa is a good- Puaaaa, and the - Puaaaaaaa, - Saaaa, - Saaaa, ",,,,,,,,,,
+dolly-00346,information_extraction,"user: What fruits and vegetables are grown in lower-lying areas of Kenya?
+
+Tea, coffee, sisal, pyrethrum, corn, and wheat are grown in the fertile highlands, one of the most successful agricultural production regions in Africa. Livestock predominates in the semi-arid savanna to the north and east. Coconuts, pineapples, cashew nuts, cotton, sugarcane, sisal, and corn are grown in the lower-lying areas. Kenya has not attained the level of investment and efficiency in agriculture that can guarantee food security, and coupled with resulting poverty (53% of the population lives below the poverty line), a significant portion of the population regularly starves and is heavily dependent on food aid. Poor roads, an inadequate railway network, under-used water transport, and expensive air transport have isolated mostly arid and semi-arid areas, and farmers in other regions often leave food to rot in the fields because they cannot access markets. This was last seen in August and September 2011, prompting the Kenyans for Kenya initiative by the Red Cross.
+
+assistant: ",,"-sa, the -sa, and the -sa, and the -sa, and the -sa, and the -sa, and the -sa, and the",,,,,,,,,,
+dolly-00410,information_extraction,"user: What the the effects of houseplants?
+
+Houseplants do not have an appreciable effect on the concentration of volatile organic compounds (VOCs) in normal home environments: it would require between 10 and 1000 houseplants per square meter to achieve the same level of VOC removal as occurs from passive exchange between indoor and outdoor air. 
+
+The idea that houseplants have an appreciable effect on indoor air quality is largely based on the Clean Air Study conducted by NASA in the 1980s. The study tested plants in sealed chambers and with highly elevated levels of volatile organic compounds (specifically benzene, trichloroethylene and formaldehyde). It concluded that to the extent that houseplants improve air quality, the mechanism of action is microorganisms within the potting soil, rather than the plants themselves.
+
+Houseplants do have a statistically significant effect on the concentrations of both carbon monoxide and carbon dioxide in normal indoor environments, reducing carbon dioxide levels by 10-25% and carbon monoxide levels by up to 90%.  The effect has been investigated by NASA for use in spacecraft.
+
+Plants also appear to increase the number and diversity of bacteria in homes, while reducing fungal diversity. They tend to increase humidity, reduce temperature swings, and reduce noise.
+
+There are also many claimed psychological and physiological benefits to having houseplants. A critical review of the experimental literature concluded ""The reviewed studies suggest that indoor plants can provide psychological benefits such as stress-reduction and increased pain tolerance. However, they also showed substantial heterogeneity in methods and results. We therefore have strong reservations about general claims that indoor plants cause beneficial psychological changes. It appears that benefits are contingent on features of the context in which the indoor plants are encountered and on characteristics of the people encountering them.""
+
+assistant: ","-ss, the -s, and the -s, and the -sa, and the -sa, and the -s, and the -s, and the -s,",,,,,,,,,,,
+dolly-00450,open_qa,"user: What are index funds?
+
+assistant: ","20999, - Paa, - Paa, - Paa, - - - - - - - - - - - -","“I’s be a whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale, and the whale,",,,,,,,,,,

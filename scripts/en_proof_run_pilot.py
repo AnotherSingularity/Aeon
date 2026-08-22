@@ -39,6 +39,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+
+def _rel(p) -> str:
+    """Repo-relative path emit. Handles relative-vs-absolute cross-mixture
+    (PilotConfig defaults are relative Paths, ROOT is absolute)."""
+    return os.path.relpath(str(p), str(ROOT)).replace(os.sep, "/")
+
+
 import torch
 import yaml
 
@@ -567,7 +574,7 @@ def main() -> int:
             "sha256_after": _sha256_file(cfg.tokenizer_path),
         },
         "candidate": {
-            "path": str(selected_path.relative_to(ROOT)),
+            "path": _rel(selected_path),
             "sha256": cand_sha,
             "parent_sha256": p2_sha_before,
         },
@@ -593,9 +600,9 @@ def main() -> int:
             "settings": asdict(settings),
             "settings_fingerprint": settings_fp,
             "renderer_equivalence_all_ok": renderer_equivalence_all_ok,
-            "raw_outputs_path": str(raw_out_path.relative_to(ROOT)),
-            "blind_scorecard_path": str(scorecard_path.relative_to(ROOT)),
-            "blind_mapping_path": str(mapping_path.relative_to(ROOT)),
+            "raw_outputs_path": _rel(raw_out_path),
+            "blind_scorecard_path": _rel(scorecard_path),
+            "blind_mapping_path": _rel(mapping_path),
             "blind_mapping_sha256": mapping_hash,
         },
         "sealed_evaluation": {
@@ -607,7 +614,7 @@ def main() -> int:
         },
         "human_review_gate": {
             "state": "REQUIRED_BEFORE_APPROVAL",
-            "scorecard_path": str(scorecard_path.relative_to(ROOT)),
+            "scorecard_path": _rel(scorecard_path),
             "gate_thresholds": {
                 "complete_readable_sentence": ">= 20/25",
                 "relevant_response": ">= 18/25",
@@ -660,9 +667,9 @@ Every fail-closed invariant still holds bytewise:
 * Prompts: {len(prompt_pool)}
 * Settings fingerprint: `{settings_fp}`
 * Renderer equivalence (D_stream == D_full) all OK: `{renderer_equivalence_all_ok}`
-* Raw outputs: `{raw_out_path.relative_to(ROOT)}`
-* Blinded scorecard: `{scorecard_path.relative_to(ROOT)}`
-* Blind mapping: `{mapping_path.relative_to(ROOT)}` (sha256 `{mapping_hash}`)
+* Raw outputs: `{_rel(raw_out_path)}`
+* Blinded scorecard: `{_rel(scorecard_path)}`
+* Blind mapping: `{_rel(mapping_path)}` (sha256 `{mapping_hash}`)
 
 ## Human review gate
 
@@ -684,7 +691,7 @@ scorecard remains the sole gate that governs approval.
 ```
 python -m aeon.entry --chat \\
     --release-root release-assets/aeon-desktop-p2-proxy \\
-    --candidate-weights {selected_path.relative_to(ROOT)} \\
+    --candidate-weights {_rel(selected_path)} \\
     --banner "ENGLISH PROOF CANDIDATE — NOT RELEASE APPROVED"
 ```
 """, encoding="utf-8")
