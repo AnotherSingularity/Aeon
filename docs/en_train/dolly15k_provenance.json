@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "purpose": "Provenance and immutability record for the ENGLISH-PROOF-0 authorized dataset acquisition. Fields with value null indicate the artifact has NOT been retrieved yet in this session; the operator MUST populate them when the corpus is uploaded to research-data/incoming/EN-DOLLY-15K/sources/, at which point the pilot's data.py refuses to load the corpus unless every required field is present.",
+  "produced_at_head": "728ef80",
+  "authorization": {
+    "authorized_dataset": "databricks/databricks-dolly-15k",
+    "authorization_source": "ENGLISH-PROOF-0 directive Section 1",
+    "authority_at": "2026-08-22",
+    "scope": "exactly this dataset for this isolated proof pilot only",
+    "no_substitution_permitted": true,
+    "no_llm_generated_data_permitted": true,
+    "no_teacher_model_permitted": true,
+    "no_llm_as_grammar_corrector_permitted": true,
+    "no_retrieval_generated_answers_permitted": true,
+    "no_response_rewriting_permitted": true,
+    "no_post_generation_repair_permitted": true,
+    "no_lora_or_adapters_permitted": true,
+    "no_new_architectural_modules_permitted": true,
+    "no_fallback_language_model_permitted": true,
+    "no_api_inference_permitted": true,
+    "no_online_parameter_updates_permitted": true
+  },
+  "acquisition": {
+    "canonical_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k",
+    "citation_url": "https://www.databricks.com/blog/2023/04/12/dolly-first-open-commercially-viable-instruction-tuned-llm",
+    "resolved_revision": null,
+    "retrieval_timestamp_utc": null,
+    "byte_size": null,
+    "sha256": null,
+    "on_disk_path": null,
+    "retrieval_method": null,
+    "operator_notes": null
+  },
+  "license_and_attribution": {
+    "license_short_name": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "attribution_requirement_text": "Databricks, Inc. — databricks/databricks-dolly-15k. Approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees. Distributed under CC BY-SA 3.0.",
+    "official_human_authorship_statement": "Databricks identifies the dataset as approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees; no LLM-generated responses are used.",
+    "share_alike_notice": "Any derivative that redistributes text from this dataset must carry a compatible CC BY-SA license and preserve attribution."
+  },
+  "record_counts": {
+    "raw_record_count": null,
+    "category_counts": null,
+    "fields_and_null_rates": null,
+    "computed_at": null
+  },
+  "schema": {
+    "expected_fields": ["instruction", "context", "response", "category"],
+    "instruction_field_role": "human-authored user turn",
+    "context_field_role": "optional human-authored context or excerpt",
+    "response_field_role": "human-authored assistant turn (SUPERVISED region)",
+    "category_field_role": "task category label (not a training signal)"
+  },
+  "handling_rules": {
+    "mechanical_normalization_permitted": [
+      "Unicode normalization",
+      "line-ending normalization",
+      "removal of exact duplicate transport bytes",
+      "schema normalization without rewriting text"
+    ],
+    "mechanical_normalization_forbidden": [
+      "silent cleaning of human responses",
+      "LLM-based rewriting",
+      "grammar repair",
+      "reordering",
+      "translation",
+      "summarisation",
+      "response replacement"
+    ],
+    "exclusions_must_be_recorded_by": [
+      "record_id",
+      "exclusion_reason",
+      "deterministic_rule_that_triggered"
+    ]
+  },
+  "split_manifest_target": "docs/en_train/dolly15k_split_manifest.json",
+  "pilot_settings": {
+    "seed": 20260822,
+    "hard_max_response_training_tokens": 3000000,
+    "checkpoint_targets_tokens": [250000, 500000, 1000000, 2000000, 3000000],
+    "identifier": "AEON-EN-PROOF-DOLLY15K-S20260822",
+    "parent_checkpoint": "runs/aeon_lbc1_P2/final.pt",
+    "parent_sha256_pinned": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+    "target_split_percentages": {"train": 90, "validation": 5, "sealed_test": 5}
+  },
+  "status": "AWAITING_DOLLY_DATA_UPLOAD"
+}
