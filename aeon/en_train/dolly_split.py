@@ -101,7 +101,15 @@ def cluster_near_duplicates(records: Sequence[DollyRecord],
                             ) -> Dict[str, str]:
     """Return record_id -> cluster_id. Two records with 5-gram
     Jaccard >= threshold on their combined text share a cluster.
-    Deterministic union-find; ordered by record_id."""
+    Deterministic union-find; iteration ordered by record_id.
+
+    Implementation uses an exact candidate-pair pruning strategy:
+    two records with any non-zero Jaccard share at least one 5-gram,
+    so we build a shingle -> record inverted index and only compare
+    pairs that co-occur under at least one shingle. This is exact
+    (never misses a >=threshold pair) and reduces the naive O(N^2)
+    cost to O(N * avg_neighbours) for typical text corpora.
+    """
     order = sorted(records, key=lambda r: r.record_id)
     grams = [_ngrams(r.combined()) for r in order]
     parent: Dict[str, str] = {r.record_id: r.record_id for r in order}
@@ -116,16 +124,30 @@ def cluster_near_duplicates(records: Sequence[DollyRecord],
         ra, rb = find(a), find(b)
         if ra == rb:
             return
-        # lexicographic root for determinism
         if ra < rb:
             parent[rb] = ra
         else:
             parent[ra] = rb
 
+    # Shingle -> list of record indices. Deterministic since `order`
+    # is sorted by record_id.
+    index: Dict[str, List[int]] = {}
+    for i, gs in enumerate(grams):
+        for g in gs:
+            index.setdefault(g, []).append(i)
+
+    # For each record i, gather candidate partners j > i via any
+    # shared shingle, then check exact Jaccard once per pair.
     for i in range(len(order)):
-        for j in range(i + 1, len(order)):
+        candidates: Set[int] = set()
+        for g in grams[i]:
+            for j in index.get(g, ()):
+                if j > i:
+                    candidates.add(j)
+        for j in candidates:
             if _jaccard(grams[i], grams[j]) >= threshold:
                 union(order[i].record_id, order[j].record_id)
+
     return {rid: find(rid) for rid in parent}
 
 

@@ -328,7 +328,11 @@ def test_provenance_schema_fields_present():
               "license_and_attribution", "record_counts", "schema",
               "handling_rules", "pilot_settings", "status"):
         assert k in d, f"provenance missing {k}"
-    assert d["status"] == "AWAITING_DOLLY_DATA_UPLOAD"
+    assert d["status"] in (
+        "AWAITING_DOLLY_DATA_UPLOAD",
+        "DOLLY_UPLOADED",
+        "PILOT_RAN",
+    ), f"unexpected provenance status: {d['status']}"
     # Authorized dataset id is exactly as directed
     assert d["authorization"]["authorized_dataset"] == "databricks/databricks-dolly-15k"
     # License is CC BY-SA 3.0

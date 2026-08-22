@@ -1,62 +1,38 @@
 {
-  "schema_version": 1,
-  "purpose": "Provenance and immutability record for the ENGLISH-PROOF-0 authorized dataset acquisition. Fields with value null indicate the artifact has NOT been retrieved yet in this session; the operator MUST populate them when the corpus is uploaded to research-data/incoming/EN-DOLLY-15K/sources/, at which point the pilot's data.py refuses to load the corpus unless every required field is present.",
-  "produced_at_head": "728ef80",
-  "authorization": {
-    "authorized_dataset": "databricks/databricks-dolly-15k",
-    "authorization_source": "ENGLISH-PROOF-0 directive Section 1",
-    "authority_at": "2026-08-22",
-    "scope": "exactly this dataset for this isolated proof pilot only",
-    "no_substitution_permitted": true,
-    "no_llm_generated_data_permitted": true,
-    "no_teacher_model_permitted": true,
-    "no_llm_as_grammar_corrector_permitted": true,
-    "no_retrieval_generated_answers_permitted": true,
-    "no_response_rewriting_permitted": true,
-    "no_post_generation_repair_permitted": true,
-    "no_lora_or_adapters_permitted": true,
-    "no_new_architectural_modules_permitted": true,
-    "no_fallback_language_model_permitted": true,
-    "no_api_inference_permitted": true,
-    "no_online_parameter_updates_permitted": true
-  },
   "acquisition": {
+    "byte_size": 13085339,
     "canonical_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k",
     "citation_url": "https://www.databricks.com/blog/2023/04/12/dolly-first-open-commercially-viable-instruction-tuned-llm",
-    "resolved_revision": null,
-    "retrieval_timestamp_utc": null,
-    "byte_size": null,
-    "sha256": null,
-    "on_disk_path": null,
-    "retrieval_method": null,
-    "operator_notes": null
+    "on_disk_path": "research-data/incoming/EN-DOLLY-15K/sources/databricks-dolly-15k.jsonl",
+    "operator_notes": "Dylan uploaded via ENGLISH-PROOF-0 resume message. Byte size and SHA-256 match declared invariants.",
+    "resolved_revision": "d72c16e4644a463b9c678c71d9440befd4594556",
+    "retrieval_method": "operator_upload_via_session",
+    "retrieval_timestamp_utc": "2026-08-22T19:00:00Z",
+    "sha256": "sha256:2df9083338b4abd6bceb5635764dab5d833b393b55759dffb0959b6fcbf794ec"
   },
-  "license_and_attribution": {
-    "license_short_name": "CC BY-SA 3.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-    "attribution_requirement_text": "Databricks, Inc. — databricks/databricks-dolly-15k. Approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees. Distributed under CC BY-SA 3.0.",
-    "official_human_authorship_statement": "Databricks identifies the dataset as approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees; no LLM-generated responses are used.",
-    "share_alike_notice": "Any derivative that redistributes text from this dataset must carry a compatible CC BY-SA license and preserve attribution."
-  },
-  "record_counts": {
-    "raw_record_count": null,
-    "category_counts": null,
-    "fields_and_null_rates": null,
-    "computed_at": null
-  },
-  "schema": {
-    "expected_fields": ["instruction", "context", "response", "category"],
-    "instruction_field_role": "human-authored user turn",
-    "context_field_role": "optional human-authored context or excerpt",
-    "response_field_role": "human-authored assistant turn (SUPERVISED region)",
-    "category_field_role": "task category label (not a training signal)"
+  "authorization": {
+    "authority_at": "2026-08-22",
+    "authorization_source": "ENGLISH-PROOF-0 directive Section 1",
+    "authorized_dataset": "databricks/databricks-dolly-15k",
+    "no_api_inference_permitted": true,
+    "no_fallback_language_model_permitted": true,
+    "no_llm_as_grammar_corrector_permitted": true,
+    "no_llm_generated_data_permitted": true,
+    "no_lora_or_adapters_permitted": true,
+    "no_new_architectural_modules_permitted": true,
+    "no_online_parameter_updates_permitted": true,
+    "no_post_generation_repair_permitted": true,
+    "no_response_rewriting_permitted": true,
+    "no_retrieval_generated_answers_permitted": true,
+    "no_substitution_permitted": true,
+    "no_teacher_model_permitted": true,
+    "scope": "exactly this dataset for this isolated proof pilot only"
   },
   "handling_rules": {
-    "mechanical_normalization_permitted": [
-      "Unicode normalization",
-      "line-ending normalization",
-      "removal of exact duplicate transport bytes",
-      "schema normalization without rewriting text"
+    "exclusions_must_be_recorded_by": [
+      "record_id",
+      "exclusion_reason",
+      "deterministic_rule_that_triggered"
     ],
     "mechanical_normalization_forbidden": [
       "silent cleaning of human responses",
@@ -67,21 +43,86 @@
       "summarisation",
       "response replacement"
     ],
-    "exclusions_must_be_recorded_by": [
-      "record_id",
-      "exclusion_reason",
-      "deterministic_rule_that_triggered"
+    "mechanical_normalization_permitted": [
+      "Unicode normalization",
+      "line-ending normalization",
+      "removal of exact duplicate transport bytes",
+      "schema normalization without rewriting text"
     ]
   },
-  "split_manifest_target": "docs/en_train/dolly15k_split_manifest.json",
+  "license_and_attribution": {
+    "attribution_requirement_text": "Databricks, Inc. \u2014 databricks/databricks-dolly-15k. Approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees. Distributed under CC BY-SA 3.0.",
+    "license_short_name": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "official_human_authorship_statement": "Databricks identifies the dataset as approximately 15,000 human-generated instruction/response records written by more than 5,000 Databricks employees; no LLM-generated responses are used.",
+    "share_alike_notice": "Any derivative that redistributes text from this dataset must carry a compatible CC BY-SA license and preserve attribution."
+  },
   "pilot_settings": {
-    "seed": 20260822,
+    "checkpoint_targets_tokens": [
+      250000,
+      500000,
+      1000000,
+      2000000,
+      3000000
+    ],
     "hard_max_response_training_tokens": 3000000,
-    "checkpoint_targets_tokens": [250000, 500000, 1000000, 2000000, 3000000],
     "identifier": "AEON-EN-PROOF-DOLLY15K-S20260822",
     "parent_checkpoint": "runs/aeon_lbc1_P2/final.pt",
     "parent_sha256_pinned": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
-    "target_split_percentages": {"train": 90, "validation": 5, "sealed_test": 5}
+    "seed": 20260822,
+    "target_split_percentages": {
+      "sealed_test": 5,
+      "train": 90,
+      "validation": 5
+    }
   },
-  "status": "AWAITING_DOLLY_DATA_UPLOAD"
+  "produced_at_head": "728ef80",
+  "purpose": "Provenance and immutability record for the ENGLISH-PROOF-0 authorized dataset acquisition. Fields with value null indicate the artifact has NOT been retrieved yet in this session; the operator MUST populate them when the corpus is uploaded to research-data/incoming/EN-DOLLY-15K/sources/, at which point the pilot's data.py refuses to load the corpus unless every required field is present.",
+  "record_counts": {
+    "category_counts": {
+      "brainstorming": 1766,
+      "classification": 2136,
+      "closed_qa": 1773,
+      "creative_writing": 709,
+      "general_qa": 2191,
+      "information_extraction": 1506,
+      "open_qa": 3742,
+      "summarization": 1188
+    },
+    "computed_at": 1787425329.9978566,
+    "fields_and_null_rates": {
+      "category": {
+        "empty_or_null": 0,
+        "non_empty": 15011
+      },
+      "context": {
+        "empty_or_null": 10544,
+        "non_empty": 4467
+      },
+      "instruction": {
+        "empty_or_null": 0,
+        "non_empty": 15011
+      },
+      "response": {
+        "empty_or_null": 0,
+        "non_empty": 15011
+      }
+    },
+    "raw_record_count": 15011
+  },
+  "schema": {
+    "category_field_role": "task category label (not a training signal)",
+    "context_field_role": "optional human-authored context or excerpt",
+    "expected_fields": [
+      "instruction",
+      "context",
+      "response",
+      "category"
+    ],
+    "instruction_field_role": "human-authored user turn",
+    "response_field_role": "human-authored assistant turn (SUPERVISED region)"
+  },
+  "schema_version": 1,
+  "split_manifest_target": "docs/en_train/dolly15k_split_manifest.json",
+  "status": "DOLLY_UPLOADED"
 }
