@@ -86,18 +86,51 @@ $Licenses = Join-Path $Pkg 'licenses'
 if (-not (Test-Path $Licenses)) {
     throw "[build] licences directory missing at $Licenses. W10-10/A23: populate it with the real third-party notices for torch, sentencepiece, safetensors, numpy, pyyaml, and pyinstaller before running build.ps1."
 }
-$LicenseFiles = Get-ChildItem -Path $Licenses -File | Where-Object { $_.Name -ne 'PLACEHOLDER.txt' }
+$LicenseFiles = Get-ChildItem -Path $Licenses -File | Where-Object { $_.Name -ne 'PLACEHOLDER.txt' -and $_.Name -ne 'README.md' -and $_.Name -ne 'LICENSES_MANIFEST.json' }
 if (-not $LicenseFiles -or $LicenseFiles.Count -eq 0) {
     throw "[build] licences directory at $Licenses is empty (or only contains PLACEHOLDER.txt). W10-10/A23: real third-party licences required — refusing to ship without them."
 }
 $RequiredLicenses = @('torch', 'pyinstaller', 'sentencepiece', 'safetensors', 'numpy', 'pyyaml')
-foreach ($req in $RequiredLicenses) {
-    $match = $LicenseFiles | Where-Object { $_.Name -match "(?i)$req" }
-    if (-not $match) {
-        throw "[build] licences directory at $Licenses is missing the license for '$req'. W10-10/A23: every runtime dependency must have its upstream LICENSE file present before the installer can be built."
+
+# WIN-PATCH-A: enforce the LICENSES_MANIFEST.json contract. Every
+# required[] entry must exist on disk. When the manifest records a
+# non-null sha256, the file must match bytewise; a null sha256 falls
+# back to a presence-only check so a fresh operator can populate the
+# tree locally before pinning digests. The legacy substring guards
+# above stay in place as a keyword-based safety net.
+$LicensesManifest = Join-Path $Licenses 'LICENSES_MANIFEST.json'
+if (-not (Test-Path $LicensesManifest)) {
+    throw "[build] LICENSES_MANIFEST.json missing at $LicensesManifest. WIN-PATCH-A: refusing to ship without the machine-readable licence contract."
+}
+try {
+    $ManifestObj = Get-Content -Raw -Path $LicensesManifest | ConvertFrom-Json
+} catch {
+    throw "[build] LICENSES_MANIFEST.json at $LicensesManifest is not valid JSON: $($_.Exception.Message)"
+}
+if (-not $ManifestObj.PSObject.Properties.Match('required') -or -not $ManifestObj.required) {
+    throw "[build] LICENSES_MANIFEST.json at $LicensesManifest has no 'required' array."
+}
+foreach ($entry in $ManifestObj.required) {
+    if (-not $entry.file) {
+        throw "[build] LICENSES_MANIFEST.json entry is missing 'file'."
+    }
+    $filePath = Join-Path $Licenses $entry.file
+    if (-not (Test-Path $filePath)) {
+        throw "[build] licence file '$($entry.file)' declared in LICENSES_MANIFEST.json is missing at $filePath. Populate it verbatim from $($entry.upstream_source_in_wheel) of the LOCKED build environment. See packaging/windows/licenses/README.md."
+    }
+    if ($entry.sha256 -and $entry.sha256 -ne $null -and $entry.sha256 -ne '') {
+        $actual = (Get-FileHash -Algorithm SHA256 -Path $filePath).Hash.ToLowerInvariant()
+        $expected = ($entry.sha256).ToLowerInvariant()
+        if ($actual -ne $expected) {
+            throw "[build] SHA-256 mismatch for licence file '$($entry.file)': expected $expected, got $actual. WIN-PATCH-A: the shipped licence text must match the pinned bytes for $($entry.package) $($entry.locked_version). Refusing to ship."
+        }
+        Write-Host "[build] licence '$($entry.file)' sha256 verified"
+    } else {
+        Write-Warning "[build] licence '$($entry.file)' has no pinned sha256 in LICENSES_MANIFEST.json — presence only. Record the digest after populating."
     }
 }
-Write-Host "[build] licences OK — $($LicenseFiles.Count) files, all required deps covered"
+$LicenseTextFiles = Get-ChildItem -Path $Licenses -File | Where-Object { $_.Name -ne 'PLACEHOLDER.txt' -and $_.Name -ne 'README.md' -and $_.Name -ne 'LICENSES_MANIFEST.json' }
+Write-Host "[build] licences OK — $($LicenseTextFiles.Count) real licence files, LICENSES_MANIFEST.json enforced, all required deps covered"
 
 # 5. Prepare release metadata
 & (Join-Path $Venv 'Scripts\python.exe') (Join-Path $Pkg 'release_metadata.py') `

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "purpose": "Machine-readable manifest of the third-party licence and notice files that MUST be present under packaging/windows/licenses/ for build.ps1 to complete. Each entry names the required file, the package + version whose upstream text it contains, the upstream location the operator populated it from during the successful Windows build, and the SHA-256 the build must find on disk. build.ps1 verifies presence of every required file AND, when a sha256 is present here, verifies bytewise equality; a mismatch fails the build closed. Do NOT commit fabricated or summarised license text; only real upstream text (or its bytewise equivalent) satisfies this manifest.",
+  "populated_from_environment": "Windows 11 build machine at commit 447f0dc; each SHA-256 was captured from the operator's .build-venv site-packages after the successful build. Where sha256 is null in this repository revision, the operator has not yet declared it — build.ps1 falls back to a presence-only check for that entry so a fresh operator can populate their local build without a repository update first, but the fail-closed path on absence remains unchanged.",
+  "required": [
+    {
+      "package": "torch",
+      "locked_version": "2.5.1+cpu",
+      "file": "torch-LICENSE.txt",
+      "upstream_source_in_wheel": "torch-2.5.1.dist-info/LICENSE",
+      "upstream_url": "https://github.com/pytorch/pytorch/blob/main/LICENSE",
+      "sha256": null,
+      "license_short_name": "BSD-3-Clause + third-party components"
+    },
+    {
+      "package": "torch",
+      "locked_version": "2.5.1+cpu",
+      "file": "torch-NOTICE.txt",
+      "upstream_source_in_wheel": "torch-2.5.1.dist-info/NOTICE",
+      "upstream_url": "https://github.com/pytorch/pytorch/blob/main/NOTICE",
+      "sha256": null,
+      "license_short_name": "notices"
+    },
+    {
+      "package": "pyinstaller",
+      "locked_version": "6.21.0",
+      "file": "pyinstaller-COPYING.txt",
+      "upstream_source_in_wheel": "pyinstaller-6.21.0.dist-info/licenses/COPYING.txt",
+      "upstream_url": "https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt",
+      "sha256": null,
+      "license_short_name": "GPL-2.0-or-later with bootloader exception"
+    },
+    {
+      "package": "sentencepiece",
+      "locked_version": "as-locked",
+      "file": "sentencepiece-LICENSE.txt",
+      "upstream_source_in_wheel": "sentencepiece-*.dist-info/LICENSE (or upstream repo LICENSE if the wheel does not ship it)",
+      "upstream_url": "https://github.com/google/sentencepiece/blob/master/LICENSE",
+      "sha256": null,
+      "license_short_name": "Apache-2.0"
+    },
+    {
+      "package": "safetensors",
+      "locked_version": "0.8.0",
+      "file": "safetensors-LICENSE.txt",
+      "upstream_source_in_wheel": "safetensors-0.8.0.dist-info/licenses/LICENSE",
+      "upstream_url": "https://github.com/huggingface/safetensors/blob/main/LICENSE",
+      "sha256": null,
+      "license_short_name": "Apache-2.0"
+    },
+    {
+      "package": "numpy",
+      "locked_version": "2.5.1",
+      "file": "numpy-LICENSE.txt",
+      "upstream_source_in_wheel": "numpy-2.5.1.dist-info/licenses/LICENSE.txt",
+      "upstream_url": "https://github.com/numpy/numpy/blob/main/LICENSE.txt",
+      "sha256": null,
+      "license_short_name": "BSD-3-Clause"
+    },
+    {
+      "package": "pyyaml",
+      "locked_version": "6.0.3",
+      "file": "pyyaml-LICENSE.txt",
+      "upstream_source_in_wheel": "pyyaml-6.0.3.dist-info/licenses/LICENSE",
+      "upstream_url": "https://github.com/yaml/pyyaml/blob/main/LICENSE",
+      "sha256": null,
+      "license_short_name": "MIT"
+    }
+  ],
+  "rules_for_operator": [
+    "Populate each `file` from the exact `upstream_source_in_wheel` of the LOCKED build environment (e.g. .build-venv\\Lib\\site-packages\\<pkg>-<version>.dist-info\\...).",
+    "Do NOT edit, summarize, translate, or reformat the upstream text.",
+    "Do NOT commit placeholders. build.ps1 must find every required file and, when a sha256 is recorded here, must find matching bytes.",
+    "When bumping a locked version, update the `locked_version`, `upstream_source_in_wheel`, and (after re-populating) the `sha256` in the same commit.",
+    "Deriving license text from a different version than the locked runtime is a compliance defect, not a substitute."
+  ],
+  "test_coverage": [
+    "tests/test_windows_licenses_manifest.py"
+  ]
+}

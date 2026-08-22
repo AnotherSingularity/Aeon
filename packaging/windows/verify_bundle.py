@@ -70,12 +70,45 @@ def main():
         if cfg_path.exists():
             rc, _, _ = _run([str(exe), "--validate-config", str(cfg_path)], expect=None)
 
-    # 4. Tiny worker forward pass — construct a minimal job and drive one step.
-    #    Uses AEON_DATA_DIR temp to keep the smoke isolated.
+    # 4. Isolated packaging smoke test of a TEMPORARY TINY model.
+    #    This is NOT English training, does NOT modify the protected P2
+    #    checkpoint, and does NOT use production corpus data. It exists
+    #    to prove the frozen bundle can construct AeonTokenizer, load a
+    #    corpus, and drive one worker step end-to-end. AEON_DATA_DIR is
+    #    a TemporaryDirectory so nothing is left on disk after the test.
+    #
+    #    WIN-PATCH-A/Failure B: the previous smoke job passed
+    #        "tokenizer_path": None, "corpus_path": None
+    #    which the data-source enforcement correctly rejects with
+    #    tokenizer_absent. The corrected smoke test uses the tokenizer
+    #    bundled inside the frozen distribution and a tiny throw-away
+    #    corpus written under the same TemporaryDirectory. The tokenizer
+    #    file MUST exist inside the bundle; that is a bundle-integrity
+    #    invariant.
+    bundled_tokenizer = bundle / "_internal" / "release-assets" / \
+        "aeon-desktop-p2-proxy" / "tokenizer" / "aeon-lbc1.model"
+    if not bundled_tokenizer.exists():
+        FAIL.append({"stage": "worker/tokenizer", "detail":
+                     f"bundled tokenizer missing at {bundled_tokenizer}. "
+                     "The frozen distribution must contain the AEON-LBC-1 "
+                     "tokenizer for the packaging smoke test to run."})
+
     with tempfile.TemporaryDirectory() as d:
         env = os.environ.copy()
         env["AEON_DATA_DIR"] = d
-        # Build a tiny synthetic config on disk (matches configs/aeon_smoke_e5)
+        # Tiny throw-away smoke corpus (packaging integration test only —
+        # NOT a training corpus, NOT authored English content).
+        corpus_path = Path(d) / "smoke_corpus.txt"
+        corpus_path.write_text(
+            "packaging smoke test corpus.\n"
+            "this file is temporary and is deleted at the end of the test.\n"
+            "it exists only to prove the frozen bundle can complete one worker step.\n",
+            encoding="utf-8")
+
+        # Tiny synthetic model config. vocab_size MUST equal the bundled
+        # tokenizer's actual vocabulary (16000 for AEON-LBC-1); otherwise
+        # the frozen bundle refuses the smoke job at the tokenizer/vocab
+        # gate. This is a packaging-layer check, not a training config.
         tiny_cfg = Path(d) / "tiny.yaml"
         tiny_cfg.write_text("""
 model:
@@ -87,7 +120,7 @@ model:
   use_embedding_input: true
   dtype: float32
   transformer:
-    vocab_size: 64
+    vocab_size: 16000
     hidden_size: 32
     intermediate_size: 64
     num_hidden_layers: 2
@@ -124,7 +157,12 @@ train:
         job_dir = Path(d) / "job1"; job_dir.mkdir()
         job = {
             "job_id": "smoke", "job_dir": str(job_dir), "config_path": str(tiny_cfg),
-            "tokenizer_path": None, "corpus_path": None,
+            # WIN-PATCH-A/Failure B: real tokenizer + real (temporary,
+            # throw-away) corpus path so the data-source gate accepts
+            # the smoke job. Absence of either is the correct failure
+            # mode outside this test — do not weaken DataSourceError.
+            "tokenizer_path": str(bundled_tokenizer),
+            "corpus_path": str(corpus_path),
             "checkpoint_dir": str(Path(d) / "ck"),
             "metrics_dir": str(Path(d) / "m"),
             "audit_dir": str(Path(d) / "a"),

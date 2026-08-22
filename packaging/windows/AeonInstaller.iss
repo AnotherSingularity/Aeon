@@ -67,6 +67,16 @@ Name: "postinstall_configure"; Description: "&Open the Aeon configuration wizard
 ; Ship the entire PyInstaller onedir output. Do NOT ship user data, corpus,
 ; checkpoints, keys, .git, or test artefacts.
 Source: "dist\Aeon\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; WIN-PATCH-A/Failure E: embed verification-only copies of the runtime
+; manifest and its SHA-256 sidecar inside Setup.exe itself. Without this,
+; PrepareToInstall would look up {src}\dist\Aeon\... — that only resolves
+; while Setup.exe sits inside the repository build tree, and fails once
+; AeonSetup.exe is copied out for distribution. The dontcopy flag stores
+; the file inside Setup.exe's compressed payload only (never installs it
+; to disk); ExtractTemporaryFile('AEON_RUNTIME_MANIFEST.*') pulls it into
+; {tmp} at install time.
+Source: "dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json";   DestName: "AEON_RUNTIME_MANIFEST.json";   Flags: dontcopy
+Source: "dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.sha256"; DestName: "AEON_RUNTIME_MANIFEST.sha256"; Flags: dontcopy
 
 [Icons]
 Name: "{userprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -138,11 +148,19 @@ end;
 // digest transitively verifies the whole payload against the build tree.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  ManifestPath, SidecarPath, ExpectedSha, ActualSha: string;
+  ManifestPath, SidecarPath, ExpectedSha, ActualSha, SidecarText: string;
+  ExpectedShaAnsi: AnsiString;
+  SpaceIdx: Integer;
 begin
   NeedsRestart := False;
-  ManifestPath := ExpandConstant('{src}\dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.json');
-  SidecarPath := ExpandConstant('{src}\dist\Aeon\_internal\packaging\windows\RUNTIME_MANIFEST.sha256');
+  // WIN-PATCH-A/Failure E: extract the embedded manifest + sidecar into
+  // {tmp} instead of reading from {src}\dist\Aeon\... — the source-tree
+  // path only works while Setup.exe is inside the repository build
+  // layout and breaks once AeonSetup.exe is distributed on its own.
+  ExtractTemporaryFile('AEON_RUNTIME_MANIFEST.json');
+  ExtractTemporaryFile('AEON_RUNTIME_MANIFEST.sha256');
+  ManifestPath := ExpandConstant('{tmp}\AEON_RUNTIME_MANIFEST.json');
+  SidecarPath := ExpandConstant('{tmp}\AEON_RUNTIME_MANIFEST.sha256');
   if not FileExists(ManifestPath) then
   begin
     Result := 'Installer payload is missing RUNTIME_MANIFEST.json. ' +
@@ -155,12 +173,31 @@ begin
               'Re-run packaging\windows\generate_runtime_manifest.py before packaging.';
     exit;
   end;
-  if not LoadStringFromFile(SidecarPath, ExpectedSha) then
+  // WIN-PATCH-A/Failure D: Inno Setup 6.7.3 rejects a Unicode string
+  // as the LoadStringFromFile output buffer; the correct pattern uses
+  // an AnsiString buffer and an explicit conversion afterwards.
+  if not LoadStringFromFile(SidecarPath, ExpectedShaAnsi) then
   begin
     Result := 'Cannot read RUNTIME_MANIFEST.sha256 sidecar. Refusing install.';
     exit;
   end;
-  ExpectedSha := Trim(Lowercase(ExpectedSha));
+  SidecarText := Trim(Lowercase(String(ExpectedShaAnsi)));
+  // generate_runtime_manifest.py writes only the 64-hex-char digest
+  // with no filename or trailing space, but tolerate a two-space
+  // "digest  filename" line just in case a future update pins the
+  // sidecar to `sha256sum` output — parse the first whitespace-free
+  // token as the expected digest.
+  SpaceIdx := Pos(' ', SidecarText);
+  if SpaceIdx > 0 then
+    ExpectedSha := Copy(SidecarText, 1, SpaceIdx - 1)
+  else
+    ExpectedSha := SidecarText;
+  if Length(ExpectedSha) <> 64 then
+  begin
+    Result := 'RUNTIME_MANIFEST.sha256 does not parse as a 64-hex-char digest. Refusing install.' + #13#10 +
+              'raw sidecar text: "' + SidecarText + '"';
+    exit;
+  end;
   ActualSha := Lowercase(GetSHA256OfFile(ManifestPath));
   if ExpectedSha <> ActualSha then
   begin
@@ -183,6 +220,7 @@ end;
 function IsAnActiveJob(): Boolean;
 var
   UserDataPath, JobsPath, StatusPath, Status: string;
+  StatusAnsi: AnsiString;
   FindRec: TFindRec;
 begin
   Result := False;
@@ -199,8 +237,14 @@ begin
           StatusPath := JobsPath + '\' + FindRec.Name + '\status.json';
           if FileExists(StatusPath) then
           begin
-            if LoadStringFromFile(StatusPath, Status) then
+            // WIN-PATCH-A/Failure D: Inno Setup 6.7.3 rejects a Unicode
+            // string as the LoadStringFromFile destination; use an
+            // AnsiString buffer and convert. Active-state protections
+            // (RUNNING / STARTING / STOP_REQUESTED / CHECKPOINTING)
+            // are preserved.
+            if LoadStringFromFile(StatusPath, StatusAnsi) then
             begin
+              Status := String(StatusAnsi);
               if (Pos('CHECKPOINTING', Status) > 0)
                  or (Pos('RUNNING', Status) > 0)
                  or (Pos('STARTING', Status) > 0)
