@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "purpose": "Machine-readable mapping between the Closure Mathematics of Adaptive Dynamical Intelligence research reference and Aeon's implemented repository. Every extracted concept is classified with its implementation status, allowed use, prohibited interpretation, evidence file:line, test coverage, and claim boundary. The PDF is a research reference authored by Horizon Intelligence, Inc.; it is NOT automatically authoritative over the repository. The repository at 447f0dc (dual-clock evidence at 7b460e5, corrected spec at bc371e3, immutability test at dc0b439) is the authority on Aeon's implemented architecture.",
+  "produced_at_head": "447f0dc",
+  "reference": {
+    "filename": "1fc74382-Closure_Mathematics_of_Adaptive_Dynamical_Intelligence.pdf",
+    "sha256": "sha256:0a5e6308ee5f1ac985690612eb32b7b0361ddc7267b299e7e1a1c7f55e7a4cee",
+    "sha256_verified_at_head": "447f0dc",
+    "title": "Closure: Mathematics of Adaptive Dynamical Intelligence",
+    "subtitle": "From linear operators to coupled recursion, reflexive dynamics, invariance, and operational closure",
+    "author": "Horizon Intelligence, Inc.",
+    "date_stated_in_document": "Research Edition - August 2026",
+    "date_creation_metadata": "2026-08-22T04:23:28Z",
+    "page_count": 64,
+    "size_bytes": 1139717,
+    "role": "research_reference",
+    "authority": "non-canonical relative to runtime implementation",
+    "canonical_claim_boundary_quotes": [
+      "Chapters 0 through 7 rely primarily on standard mathematics from linear algebra, dynamical systems, control, and adaptive systems.",
+      "Chapters 8 and 9 define autonomy and agency operationally; these definitions are useful but not unique across science.",
+      "The AEON translation is a proposed research program, not evidence that the architecture already possesses autonomy, agency, consciousness, or understanding."
+    ]
+  },
+  "classification_taxonomy": [
+    "implemented",
+    "implemented_with_documentation_drift",
+    "offline_training_only",
+    "evaluation_only",
+    "proposed_future_research",
+    "prohibited_in_current_tranche"
+  ],
+  "three_indices": {
+    "i": {
+      "meaning": "token position inside a K-window w",
+      "not_a_clock": true,
+      "note": "bookkeeping index over the FAST CLOCK's per-token cadence"
+    },
+    "w": {
+      "meaning": "slow-clock window index; W = ceil(T/K)",
+      "not_a_clock": true,
+      "note": "bookkeeping index over the SLOW CLOCK's window cadence"
+    },
+    "k": {
+      "meaning": "authorized offline optimizer-update step",
+      "not_a_clock": true,
+      "must_not_map_to": [
+        "fast clock",
+        "slow clock"
+      ],
+      "note": "index over approved offline optimizer updates; applied outside the forward path; never appears during inference"
+    }
+  },
+  "aeon_native_clocks_from_repository": {
+    "fast_clock": {
+      "canonical_name_in_source": "fast clock",
+      "cadence": "one substrate.step per input token inside each K-window",
+      "primary_source": "aeon/hybrid.py:154-158",
+      "state_containers": [
+        "aeon/substrate/matrix_cell.py::MatrixCell (state field S, HxNxN)",
+        "aeon/substrate/vector_cell.py::VectorCell"
+      ]
+    },
+    "slow_clock": {
+      "canonical_name_in_source": "slow clock",
+      "cadence": "one recursion.step per K-window; K = 16 immutable",
+      "primary_source": "aeon/hybrid.py:146-178",
+      "state_variables": ["recursion_h", "recursion_c", "shared_broadcast_h_cond"],
+      "certification": [
+        "docs/PRESERVATION_MANIFEST.md:21 (P-K16 row)",
+        "sigma_max(W_h) < MARGIN_H, sigma_max(W_c) < MARGIN_C",
+        "tests/test_recursion_topology.py"
+      ]
+    }
+  },
+  "dual_clock_collision_prohibition": {
+    "prohibited_mapping": "Aeon slow clock = parameter update theta_{tau+1} = G(theta_tau, S_tau)",
+    "why_prohibited": "The PDF Chapter 10 generic model theta_{tau+1} = G(theta_tau, S_tau) is a general adaptive-system model. Aeon's implemented slow clock is a RecursionJoiner state tick, NOT a parameter update. Binding the PDF's slow theta-update to Aeon's implemented slow RecursionJoiner clock would mean claiming Aeon performs online parameter updates during inference, which the repository does not implement and which the correction order explicitly forbids for this tranche.",
+    "witnessed_absent_by_test": "tests/test_desktop_inference_immutability.py",
+    "spec_binding": "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md Section 3 and the new closure section"
+  },
+  "descriptive_joint_state_only": {
+    "meaning": "The PDF's Chapter 7 augmented state z = (h, m, theta, c, phase, summary) is written for the repository as a DESCRIPTIVE joint-state view. It does not introduce runtime variables or update rules.",
+    "descriptive_mapping": {
+      "expression": "z_{k,w,i} = (substrate_state_{w,i}, h_w, c_w, theta_k, phase_i, window_summary_w, existing_stability_diagnostics)",
+      "components_bound_to_repo": {
+        "substrate_state_{w,i}": "state field of MatrixCell/VectorCell after fast tick i in window w (aeon/hybrid.py:156)",
+        "h_w, c_w": "RecursionJoiner state after slow tick w (aeon/hybrid.py:175-177)",
+        "theta_k": "HybridModel.parameters() at optimizer step k; only changes during authorized offline training (aeon/en_train/trainer.py:148)",
+        "phase_i": "the intra-window index i itself (bookkeeping)",
+        "window_summary_w": "s_w = s_proj(mean_i r_{w,i}) (aeon/hybrid.py:160-161)",
+        "existing_stability_diagnostics": "aeon.en_train.proof.sigma_certificate + assert_native_stability_gate + check_finite_state_dict + assert_architecture_invariant"
+      }
+    },
+    "classification": "descriptive_joint_state_only",
+    "MUST_NOT_claim": [
+      "operational closure of Aeon in the PDF's Chapter 7-8 sense",
+      "autonomy in the PDF's Chapter 8 sense",
+      "agency in the PDF's Chapter 9 sense",
+      "internally generated valuation",
+      "consciousness",
+      "general intelligence"
+    ]
+  },
+  "three_rates_distinction": {
+    "note": "PDF Section 10.5 explicitly states 'three rates, not necessarily three clocks' and that the third rate 'need not be implemented as an independent clock' and 'event-triggered regulation often matches the mathematics better than arbitrary periodic checking'.",
+    "rates": [
+      {
+        "id": "rate_1_fast_state_evolution",
+        "aeon_binding": "FAST CLOCK — per-token substrate.step (aeon/hybrid.py:154-158)",
+        "classification": "implemented",
+        "is_a_clock": true
+      },
+      {
+        "id": "rate_2_slow_recursion_evolution",
+        "aeon_binding": "SLOW CLOCK — per-K-window RecursionJoiner.step (aeon/hybrid.py:175-177)",
+        "classification": "implemented",
+        "is_a_clock": true
+      },
+      {
+        "id": "rate_3_operator_learning_and_or_viability_evaluation",
+        "aeon_binding_offline_learning": "authorized offline optimizer step k (aeon/en_train/trainer.py:148); runs only during training, never during inference",
+        "aeon_binding_viability_evaluation": "aeon.en_train.proof.assert_architecture_invariant + assert_native_stability_gate + sigma_certificate; called at learning-curve gates (aeon/en_train/trainer.py:381-397)",
+        "classification": "offline_training_only OR evaluation_only",
+        "is_a_clock": false,
+        "must_not_add": "any periodic architectural clock for this rate; event-triggered or gate-triggered checks only"
+      }
+    ]
+  },
+  "pdf_concepts": [
+    {
+      "concept": "State sufficiency — histories mapped to the same hidden state must be equivalent for future tasks",
+      "pdf_location": "Chapter 0.2, p.8",
+      "expression": "x_{t+1} = F(x_t, u_t); z_t = (x_t, x_{t-1}, ..., x_{t-k}) restores deterministic sufficiency when a finite history is enough",
+      "repository_counterpart": "Aeon's forward reinitializes substrate + recursion state every call (aeon/hybrid.py:141-142). State sufficiency across calls is provided by deterministic session-history replay in aeon/desktop/runtime.py (Policy B).",
+      "implementation_status": "implemented",
+      "allowed_use": "existing repository pattern; no change",
+      "prohibited_interpretation": "None here"
+    },
+    {
+      "concept": "Recursion is not automatically learning",
+      "pdf_location": "Chapter 5.2, p.23",
+      "expression": "A network that freezes parameters after training is dynamically recursive during inference but not parameter-reflexive.",
+      "repository_counterpart": "Aeon inference: parameters frozen; recursion + substrate state evolve per session but theta remains fixed (witnessed by tests/test_desktop_inference_immutability.py).",
+      "implementation_status": "implemented",
+      "allowed_use": "spec Section 3.7 and Closure Integration Section 4 use this quote to distinguish recurrent-state evolution from parameter learning",
+      "prohibited_interpretation": "Do NOT read Aeon's recursion.step as parameter learning; it is state evolution only."
+    },
+    {
+      "concept": "Learning is retained capability change",
+      "pdf_location": "Chapter 5.2 table",
+      "expression": "'Experience produces a retained change that improves a specified capability or objective.'",
+      "repository_counterpart": "Aeon EN-TRAIN offline update theta_{k+1} = G_existing(theta_k, g_bar_k, q_k) at aeon/en_train/trainer.py:148; retention witnessed by candidate checkpoint (aeon/en_train/trainer.py:185-229) and weight-delta report (aeon/en_train/trainer.py:421-435).",
+      "implementation_status": "offline_training_only",
+      "allowed_use": "EN-TRAIN learning is offline, gated, and stored in a candidate checkpoint distinct from P2",
+      "prohibited_interpretation": "Never during inference"
+    },
+    {
+      "concept": "Reflexivity — system's operation changes future operating rule",
+      "pdf_location": "Chapter 5.1-5.2, p.23",
+      "expression": "h_{t+1} = F_{theta_t}(h_t, x_t); theta_{t+1} = G(theta_t, h_t, x_t, o_t)",
+      "repository_counterpart": "NOT IMPLEMENTED in the runtime. During inference, theta is fixed. During authorized offline training, theta_{k+1} != theta_k but k is not a clock and does not run inside the forward path.",
+      "implementation_status": "proposed_future_research",
+      "allowed_use": "may be described as a proposed research program in docs; may NOT be implemented in this tranche",
+      "prohibited_interpretation": "The PDF's slow theta-update MUST NOT be bound to Aeon's slow RecursionJoiner clock"
+    },
+    {
+      "concept": "Fast weights, slow weights, hypernetworks, neuromodulatory states, online system identification",
+      "pdf_location": "Chapter 5.3",
+      "expression": "N/A",
+      "repository_counterpart": "None of these mechanisms exist in aeon/*",
+      "implementation_status": "prohibited_in_current_tranche",
+      "allowed_use": "may be described in research notes as future candidates (PDF Chapter 13.3 lists ordered-by-verification-difficulty candidates)",
+      "prohibited_interpretation": "Do not implement in the current EN-TRAIN tranche"
+    },
+    {
+      "concept": "Boundedness, stability, invariance, robustness are DIFFERENT",
+      "pdf_location": "Chapter 6.3, p.27",
+      "expression": "'Boundedness / Stability / Invariance / Robustness must be measured separately.'",
+      "repository_counterpart": "Aeon separates these: finite-parameter check (aeon/en_train/proof.py:219-226), sigma-certificate (aeon/en_train/proof.py:229-237), architecture invariant (aeon/en_train/proof.py:65-80), and native stability gate (aeon/en_train/proof.py:240-261).",
+      "implementation_status": "implemented",
+      "allowed_use": "existing repository pattern; the spec now cites this PDF principle as motivation for the separation",
+      "prohibited_interpretation": "Do NOT collapse them into a single scalar 'stability' number"
+    },
+    {
+      "concept": "Parameter updates may require projection into an admissible set",
+      "pdf_location": "Chapter 6.5, p.28; Chapter 13.1",
+      "expression": "theta_{t+1} = Proj_Theta(theta_t - eta grad L_t)",
+      "repository_counterpart": "Partial. Aeon uses parameterization-by-construction for the sigma certificate (W_h = sigmoid(s_h)*MARGIN_H*Cayley(A_h)*diag(tanh(d_h)) at aeon/recursion.py:22-23) rather than explicit projection. Gradient clipping bounds ||g||_2 (aeon/en_train/trainer.py:117-127) but is not a projection onto an admissible set.",
+      "implementation_status": "implemented_with_documentation_drift",
+      "drift_note": "The repository parameterization-by-construction achieves the PDF's admissibility goal without an explicit projection step. The spec now records this equivalence explicitly.",
+      "allowed_use": "existing repository mechanism; the spec adds a cross-reference to PDF 6.5",
+      "prohibited_interpretation": "Do NOT add a runtime projection step; existing parameterization is sufficient"
+    },
+    {
+      "concept": "A penalty does not guarantee a hard constraint",
+      "pdf_location": "Chapter 6.5 + Exercise 6.5, p.29",
+      "expression": "N/A",
+      "repository_counterpart": "The sigma certificate is a hard construction-time bound, not a soft penalty (aeon/recursion.py:22-23). No penalty term is used for stability; the certificate is a hard structural guarantee. This is the correct PDF-6.5 pattern.",
+      "implementation_status": "implemented",
+      "allowed_use": "existing pattern",
+      "prohibited_interpretation": "Do NOT weaken the sigma certificate into a penalty"
+    },
+    {
+      "concept": "Closure = complete declared joint-state description, NOT isolation",
+      "pdf_location": "Chapter 7.1, p.30",
+      "expression": "z_t = (h_t, m_t, theta_t, c_t); z_{t+1} = Psi(z_t, x_t)",
+      "repository_counterpart": "Aeon does not implement operational closure. This tranche writes a DESCRIPTIVE joint-state view only (see descriptive_joint_state_only above).",
+      "implementation_status": "descriptive_joint_state_only",
+      "allowed_use": "used in the spec as documentation of what Aeon's endogenous state currently consists of",
+      "prohibited_interpretation": "Do NOT claim Aeon has operational closure, autonomy, agency, consciousness, or general intelligence"
+    },
+    {
+      "concept": "No hidden oracle may perform correction",
+      "pdf_location": "Chapter 7.2 condition 5, p.30",
+      "expression": "N/A",
+      "repository_counterpart": "Aeon's runtime is offline_only and has no external correction path (aeon/desktop/runtime.py). Tests: tests/test_desktop_6_7_8.py::test_desktop_modules_have_no_outbound_network_reference; tests/test_desktop_6_7_8.py::test_bundle_manifest_declares_offline_only_policy.",
+      "implementation_status": "implemented",
+      "allowed_use": "existing pattern"
+    },
+    {
+      "concept": "External inputs are allowed but must not supply the system's organization",
+      "pdf_location": "Chapter 7.5, p.31",
+      "expression": "N/A",
+      "repository_counterpart": "User prompts are inputs but do not modify Aeon's organization (parameters). Witnessed by tests/test_desktop_inference_immutability.py.",
+      "implementation_status": "implemented"
+    },
+    {
+      "concept": "Apparent seams may indicate missing state",
+      "pdf_location": "Chapter 7.3, p.30",
+      "expression": "N/A",
+      "repository_counterpart": "Documentation observation only. No implementation change.",
+      "implementation_status": "evaluation_only",
+      "allowed_use": "spec commentary"
+    },
+    {
+      "concept": "Multiscale dual-clock formulation h_{t+1} = F_{theta_tau}(h_t, x_t); theta_{tau+1} = G(theta_tau, S_tau)",
+      "pdf_location": "Chapter 10.1, p.40",
+      "expression": "as above",
+      "repository_counterpart": "Aeon has an implemented dual clock (fast=substrate, slow=RecursionJoiner state tick), but Aeon's slow clock is a STATE tick, NOT a parameter update. Binding the PDF's slow theta-update to Aeon's slow clock is prohibited (see dual_clock_collision_prohibition).",
+      "implementation_status": "implemented_with_documentation_drift",
+      "drift_note": "The PDF's dual-clock 'shape' matches Aeon's implemented dual-clock topology at the abstract level, but the slow-clock's semantic content is different (state vs parameters).",
+      "allowed_use": "spec cites the PDF as showing that Aeon's implemented pattern is a special case of the multiscale form; the theta-update is only applied outside the forward path at optimizer step k",
+      "prohibited_interpretation": "Aeon slow clock is NEVER a parameter-update clock"
+    },
+    {
+      "concept": "Three rates, not necessarily three clocks; event-triggered viability checks",
+      "pdf_location": "Chapter 10.5, p.41",
+      "expression": "N/A",
+      "repository_counterpart": "Aeon has fast + slow clocks (implemented). The third rate (offline learning + viability evaluation) is realized as: (a) authorized offline optimizer step k (aeon/en_train/trainer.py:148), and (b) evaluation-only viability gates called at learning-curve checkpoints (aeon/en_train/trainer.py:381-397).",
+      "implementation_status": "implemented (offline learning) + evaluation_only (viability monitoring)",
+      "allowed_use": "spec formally binds this three-rate view to the repository",
+      "prohibited_interpretation": "Do NOT add a periodic architectural clock for rate 3"
+    },
+    {
+      "concept": "Aliasing between clocks; summary S_tau design",
+      "pdf_location": "Chapter 10.3, p.40",
+      "expression": "S_tau summarizes fast activity",
+      "repository_counterpart": "Aeon's window summary is s_w = s_proj(mean_i r_{w,i}) at aeon/hybrid.py:160-161. Mean-only aggregation is exactly the pattern PDF 10.3 warns can hide oscillation. This is a POTENTIAL research finding: PDF 10.3 recommends moments, quantiles, spectral energy, gradient stats, constraint violations, task-relevant memory probes.",
+      "implementation_status": "implemented (mean-only) with a documented future-research consideration",
+      "allowed_use": "spec records the PDF observation as a future research consideration; NOT implemented in this tranche",
+      "prohibited_interpretation": "Do NOT change the aggregation path in this tranche"
+    },
+    {
+      "concept": "Long-horizon sensitivity governed by Jacobian products; block Jacobian for augmented state",
+      "pdf_location": "Chapter 11.3-11.4, p.43-44",
+      "expression": "partial z_T / partial z_t = product_{k=t}^{T-1} J_Psi(z_k); G_T = sigma_max(J_{T-1}...J_0)",
+      "repository_counterpart": "Aeon does not currently implement a block-Jacobian audit. The sigma-certificate at aeon/recursion.py bounds per-step W_h/W_c norms only. Finite-horizon gain G_T is not measured.",
+      "implementation_status": "proposed_future_research",
+      "allowed_use": "spec records this as future evaluation-only research; no runtime change",
+      "prohibited_interpretation": "Do NOT introduce a runtime block-Jacobian check in this tranche"
+    },
+    {
+      "concept": "Local stability is not a global guarantee; product-of-stable-matrices can be unstable",
+      "pdf_location": "Chapter 11.1 and Chapter 5.4, p.43 and p.24",
+      "expression": "N/A",
+      "repository_counterpart": "Aeon's sigma certificate is a per-step bound. Cross-window switching is prevented by the fixed W_h, W_c during inference (theta immutable). The PDF concern applies to reflexive systems that Aeon is NOT.",
+      "implementation_status": "evaluation_only",
+      "allowed_use": "spec cites this as the reason no adaptive operator is introduced in this tranche"
+    },
+    {
+      "concept": "If an adaptive operator is ever introduced, the block Jacobian must include cross-coupling terms",
+      "pdf_location": "Chapter 5.4, p.24; Chapter 11",
+      "expression": "J_Psi = [[dF/dh, dF/dtheta]; [dG/dh, dG/dtheta]]",
+      "repository_counterpart": "N/A — no adaptive operator implemented",
+      "implementation_status": "proposed_future_research",
+      "allowed_use": "recorded as a prerequisite for any future reflexive extension"
+    },
+    {
+      "concept": "Parameter-matched and compute-matched controls",
+      "pdf_location": "Chapter 14.2, p.50",
+      "expression": "N/A",
+      "repository_counterpart": "Aeon's EN-TRAIN infrastructure includes attribution testing (aeon/en_train/attribution.py) and controls-aware experimental design. The PDF's specific control set is broader than the current attribution test; adopted as an experimental-design principle in the spec.",
+      "implementation_status": "evaluation_only",
+      "allowed_use": "spec cites PDF 14.2 as a required part of any English-training claim beyond feasibility"
+    },
+    {
+      "concept": "Observation-shuffled and frozen-update controls",
+      "pdf_location": "Chapter 14.2, p.50",
+      "expression": "N/A",
+      "repository_counterpart": "Not implemented; recorded for future reflexivity research if any is authorized",
+      "implementation_status": "proposed_future_research"
+    },
+    {
+      "concept": "Corpus provenance and claim discipline",
+      "pdf_location": "Chapter 14.3, p.50-51",
+      "expression": "N/A",
+      "repository_counterpart": "Already covered by docs/en_train/EN_TRAIN_CORPUS_INTAKE_CONTRACT.md (per-book <=0.5%, per-author <=2%, license/provenance/SHA-256 requirements) and STAGE_1/STAGE_2 mixture rules in aeon/en_train/__init__.py.",
+      "implementation_status": "implemented",
+      "allowed_use": "existing pattern; spec adds cross-reference to PDF 14.3 as external motivation"
+    },
+    {
+      "concept": "Separate architecture benefit from added parameters and added operations",
+      "pdf_location": "Chapter 14.2 + 14.3",
+      "expression": "N/A",
+      "repository_counterpart": "aeon.en_train.attribution.attribution_control_test (aeon/en_train/attribution.py) — P2 -> candidate -> P2 restored round-trip.",
+      "implementation_status": "implemented",
+      "allowed_use": "existing pattern"
+    },
+    {
+      "concept": "Autonomy / Agency operational definitions (Chapters 8-9)",
+      "pdf_location": "Chapters 8 and 9",
+      "expression": "viability set K; endogenous valuation",
+      "repository_counterpart": "None. Aeon does NOT implement autonomy or agency in the PDF's sense.",
+      "implementation_status": "prohibited_in_current_tranche",
+      "allowed_use": "spec explicitly disclaims these",
+      "prohibited_interpretation": "Do NOT claim Aeon has autonomy, agency, valuation, consciousness, or general intelligence"
+    },
+    {
+      "concept": "Internally generated valuation",
+      "pdf_location": "Chapter 9.3, p.36",
+      "expression": "endogenous valuation",
+      "repository_counterpart": "None. Aeon's loss is externally chosen (aeon/en_train/losses.py).",
+      "implementation_status": "prohibited_in_current_tranche"
+    },
+    {
+      "concept": "PDF Chapter 13.6 architectural non-claims",
+      "pdf_location": "Chapter 13.6, p.48",
+      "expression": "N/A",
+      "repository_counterpart": "Adopted verbatim: consciousness, general intelligence, self-awareness in the ordinary human sense, semantic understanding across unrestricted domains, autonomy outside declared viability criteria, safety under untested conditions must NOT be inferred from the joint-state description.",
+      "implementation_status": "prohibited_in_current_tranche"
+    }
+  ],
+  "consequences_for_current_tranche": {
+    "must_not_implement": [
+      "online theta updates",
+      "fast weights",
+      "hypernetworks",
+      "low-rank online operator changes",
+      "adaptive operator banks",
+      "neuromodulatory parameter changes",
+      "unrestricted self-modification",
+      "projected online reflexivity",
+      "internally generated valuation",
+      "autonomy",
+      "agency"
+    ],
+    "must_not_modify": [
+      "K",
+      "fast-clock cadence",
+      "slow-clock cadence",
+      "substrate state semantics",
+      "RecursionJoiner equations",
+      "h/c state dimensions",
+      "detach boundaries",
+      "conditioning path",
+      "aggregation path",
+      "injection path",
+      "MARGIN_H",
+      "MARGIN_C",
+      "clock coupling",
+      "protected P2 checkpoint",
+      "tokenizer",
+      "renderer (already fixed in EN-TRAIN-1)"
+    ],
+    "must_be_written_only_as_documentation": [
+      "descriptive joint-state z_{k,w,i}",
+      "three-rate view",
+      "future research candidates",
+      "block-Jacobian consideration",
+      "aggregation-summary consideration"
+    ]
+  },
+  "provenance": {
+    "authoritative_repository_evidence": [
+      "docs/en_train/EN_TRAIN_ARCHITECTURE_FREEZE.json",
+      "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md",
+      "docs/en_train/en_train_equation_bindings.json",
+      "docs/en_train/en_train_repository_symbol_mapping.json",
+      "docs/en_train/EN_TRAIN_CLOCK_MAPPING.md",
+      "docs/en_train/en_train_clock_mapping.json",
+      "docs/PRESERVATION_MANIFEST.md"
+    ],
+    "authoritative_tests": [
+      "tests/test_recursion_topology.py",
+      "tests/test_substrate_port.py",
+      "tests/test_desktop_inference_immutability.py",
+      "tests/test_protected_checkpoint.py",
+      "tests/test_continuity.py"
+    ]
+  }
+}
