@@ -2,6 +2,12 @@
   "schema_version": 1,
   "purpose": "Machine-readable mapping from every mathematical symbol in EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md to the concrete repository symbol, file, and line at 447f0dc. Per the correction order §10: do not claim that a mathematical component exists if it cannot be located in the repository.",
   "produced_at_head": "447f0dc",
+  "companion_documents": [
+    "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md",
+    "docs/en_train/en_train_equation_bindings.json",
+    "docs/en_train/EN_TRAIN_CLOCK_MAPPING.md",
+    "docs/en_train/en_train_clock_mapping.json"
+  ],
   "F": {
     "role": "Aeon's native forward process (state transition + logits)",
     "concrete_symbol": "aeon.hybrid.HybridModel.forward",

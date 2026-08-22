@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "purpose": "Machine-readable bindings from every equation in EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md to its concrete repository source at 447f0dc. Every equation is stated in the form the repository executes; no equation has been generalized, simplified, or improved.",
+  "produced_at_head": "447f0dc",
+  "companion_documents": [
+    "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md",
+    "docs/en_train/EN_TRAIN_CLOCK_MAPPING.md",
+    "docs/en_train/en_train_clock_mapping.json",
+    "docs/en_train/en_train_repository_symbol_mapping.json"
+  ],
+  "indices": {
+    "i": {
+      "meaning": "token position inside a K-window w, i in [start, end), start = w*K, end = min((w+1)*K, T)",
+      "is_a_clock": false,
+      "note": "bookkeeping index over the FAST CLOCK's per-token cadence"
+    },
+    "w": {
+      "meaning": "slow-clock window index, w in [0, W), W = ceil(T / K)",
+      "is_a_clock": false,
+      "note": "bookkeeping index over the SLOW CLOCK's window cadence"
+    },
+    "k": {
+      "meaning": "authorized offline optimizer-update step",
+      "is_a_clock": false,
+      "note": "counts approved offline parameter updates during EN-TRAIN training; applied outside the forward path; never appears in Aeon's inference"
+    }
+  },
+  "native_forward_process": {
+    "abstract_form": "(S_{n+1}, z_n) = F_{theta_k}(S_n; FAST_CLOCK, SLOW_CLOCK)",
+    "F": {
+      "concrete_symbol": "aeon.hybrid.HybridModel.forward",
+      "file": "aeon/hybrid.py",
+      "lines": "112-284"
+    },
+    "S": {
+      "components": ["substrate_state", "recursion_h", "recursion_c"],
+      "note": "not persisted across forward calls; each call reinitializes at aeon/hybrid.py:141-142"
+    },
+    "z": {
+      "concrete_symbol": "HybridOutput.logits",
+      "shape": "(B, T, V=16000)",
+      "return_site": "aeon/hybrid.py:272"
+    },
+    "FAST_CLOCK_binding": "canonical fast clock (per-token substrate.step), see en_train_clock_mapping.json.fast_clock",
+    "SLOW_CLOCK_binding": "canonical slow clock (per-K-window recursion.step + broadcast + transformer.inject), see en_train_clock_mapping.json.slow_clock"
+  },
+  "equations": [
+    {
+      "id": "FAST_CLOCK_input",
+      "equation_ascii": "x_{w,i} = emb_proj(emb_{w,i}) + cond_proj(h_{w-1})",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "151-155",
+        "quoted_code": [
+          "cond_in = self.cond_proj(h_cond.to(compute_dtype))",
+          "x_i = emb_in[:, i, :] + cond_in"
+        ]
+      },
+      "governed_by_clock": "fast",
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "FAST_CLOCK_substrate_step",
+      "equation_ascii": "r_{w,i}, substrate_{w,i} = SubstrateStep(x_{w,i}, substrate_{w,i-1})",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "156",
+        "quoted_code": ["r_i = self.substrate.step(x_i)"]
+      },
+      "implementations": [
+        "aeon/substrate/matrix_cell.py::MatrixCell.step",
+        "aeon/substrate/vector_cell.py::VectorCell.step"
+      ],
+      "governed_by_clock": "fast",
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "WINDOW_AGGREGATION",
+      "equation_ascii": "s_w = s_proj( mean_{i in [start_w, end_w)} r_{w,i} )",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "160-161",
+        "quoted_code": [
+          "mean_readout = torch.stack(window_readouts, dim=0).mean(dim=0)",
+          "s_w = self.s_proj(mean_readout)"
+        ]
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "TRANSFORMER_READ_AT_K",
+      "equation_ascii": "t_w = t_all[:, end_w - 1, :]",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "162",
+        "quoted_code": ["t_w = t_all[:, end - 1, :]"]
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "OPTIONAL_EMB_MEAN",
+      "equation_ascii": "e_w = mean_{i in [start_w, end_w)} emb_{w,i}    if recursion.use_embedding_input else None",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "164",
+        "quoted_code": [
+          "e_w = emb[:, start:end, :].mean(dim=1) if self.recursion.use_embedding_input else None"
+        ]
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "SLOW_CLOCK_recursion_step",
+      "equation_ascii": "(h_w, c_w) = RecursionStep(s_w, t_w, stopgrad(h_{w-1}), stopgrad(c_{w-1}), e_w)",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "175-177",
+        "quoted_code": [
+          "h, c = self.recursion.step(s_w.float(), t_w.float(), h.detach(), c.detach(), e=e_w.float() if e_w is not None else None)"
+        ]
+      },
+      "expanded_form_source": {
+        "file": "aeon/recursion.py",
+        "lines": "148-169"
+      },
+      "governed_by_clock": "slow",
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "RECURSION_c_update",
+      "equation_ascii": "c_w = (1 - lambda) * c_{w-1} + lambda * tanh( h_{w-1} @ W_c^T )",
+      "repository_source": {
+        "file": "aeon/recursion.py",
+        "lines": "148-169",
+        "quoted_code_note": "the c update inside RecursionJoiner.step"
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "RECURSION_h_update",
+      "equation_ascii": "h_w = tanh( W_s @ s_w + W_t @ t_w + optional(W_e @ e_w) + h_{w-1} @ W_h^T + c_w )",
+      "repository_source": {
+        "file": "aeon/recursion.py",
+        "lines": "148-169",
+        "quoted_code_note": "the h update inside RecursionJoiner.step"
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "SLOW_CLOCK_broadcast_and_inject",
+      "equation_ascii": "h_cond_w = h_{w-1};  inject_signal[:, i, :] = h_cond_w  for i in [start_w, end_w);  injected = transformer.inject(hidden, inject_signal);  logits = transformer.logits(injected) = lm_head(hidden + gamma * write_proj(inject_signal))",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "150,158,254-256",
+        "quoted_code": [
+          "h_cond = h                                               # held state for this window (D1)",
+          "inject_cols.append(h_cond)                           # broadcast (B,H_rec) per token (D1)",
+          "inject_signal = torch.stack(inject_cols, dim=1).to(compute_dtype)",
+          "injected = self.transformer.inject(hidden, inject_signal)",
+          "logits = self.transformer.logits(injected)"
+        ]
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "SUBSTRATE_boundary_detach",
+      "equation_ascii": "substrate_{w, end_w} <- detach( substrate_{w, end_w} )",
+      "repository_source": {
+        "file": "aeon/hybrid.py",
+        "lines": "178",
+        "quoted_code": ["self.substrate.detach_state()"]
+      },
+      "design_note": "D2 — truncated BPTT at the slow-clock boundary (pre-existing)",
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "SIGMA_certificate",
+      "equation_ascii": "sigma_max(W_h) < MARGIN_H  AND  sigma_max(W_c) < MARGIN_C",
+      "repository_source": {
+        "file": "aeon/recursion.py",
+        "lines": "22-23, 100-101, 173-184",
+        "quoted_code_note": "MARGIN_H / MARGIN_C bind the W_h / W_c parameterization; audit() reports the current margins"
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "CLOCK_RATIO",
+      "equation_ascii": "K = 16;  W = ceil(T / K)",
+      "repository_source": {
+        "files": [
+          "aeon/hybrid.py:68 (K default)",
+          "aeon/hybrid.py:78 (self.K = K)",
+          "aeon/hybrid.py:145 (num_windows = math.ceil(T / self.K))"
+        ],
+        "immutability_source": "docs/PRESERVATION_MANIFEST.md:21 (P-K16 row)"
+      },
+      "modified_by_EN_TRAIN": false
+    },
+    {
+      "id": "OFFLINE_LOSS_L_G",
+      "equation_ascii": "L_k(theta_k) = - ( sum_{(b,t) in M_k} log softmax(z_{b,t}(theta_k))[y_{b,t+1}] ) / |M_k|   with M_k[b,t] = attention_mask[b, t+1]",
+      "repository_source": {
+        "file": "aeon/en_train/losses.py",
+        "lines": "21-58",
+        "concrete_symbols": [
+          "aeon.en_train.losses.masked_next_token_loss",
+          "aeon.en_train.losses.general_english_loss"
+        ]
+      },
+      "runs_only_during": "authorized_offline_training"
+    },
+    {
+      "id": "OFFLINE_LOSS_L_C",
+      "equation_ascii": "same as L_G but with M_k[b,t] = attention_mask[b, t+1] * response_mask[b, t+1]",
+      "repository_source": {
+        "file": "aeon/en_train/losses.py",
+        "lines": "64-80",
+        "concrete_symbol": "aeon.en_train.losses.conversational_loss"
+      },
+      "runs_only_during": "authorized_offline_training"
+    },
+    {
+      "id": "OFFLINE_GRADIENT",
+      "equation_ascii": "g_k = grad_{theta_k} L_k(theta_k)",
+      "repository_source": {
+        "file": "aeon/en_train/trainer.py",
+        "lines": "146",
+        "quoted_code": ["loss.backward()"]
+      },
+      "runs_only_during": "authorized_offline_training"
+    },
+    {
+      "id": "GRADIENT_CONTROL",
+      "equation_ascii": "g_bar_k = g_k * min( 1, c / max( ||g_k||_2, eps ) )   with c = 1.0",
+      "repository_source": {
+        "file": "aeon/en_train/trainer.py",
+        "lines": "117-127",
+        "concrete_symbol": "aeon.en_train.trainer._apply_grad_clip"
+      },
+      "runs_only_during": "authorized_offline_training"
+    },
+    {
+      "id": "OFFLINE_UPDATE",
+      "equation_ascii": "theta_{k+1} = G_existing( theta_k, g_bar_k, q_k )",
+      "repository_source": {
+        "file": "aeon/en_train/trainer.py",
+        "lines": "148",
+        "quoted_code": ["optimizer.step()"]
+      },
+      "operator": "torch.optim.AdamW",
+      "rationale_for_fallback": "correction order Section 4: 'If the current repository does not contain a native learned update operator G, do not invent one. In that case, G is the existing approved optimizer and gradient-control path.' Repository search confirms none exists in aeon/*.",
+      "runs_only_during": "authorized_offline_training"
+    },
+    {
+      "id": "UPDATE_INVARIANT_weights_change",
+      "equation_ascii": "theta_{k+1} != theta_k",
+      "witnessed_by": {
+        "file": "aeon/en_train/proof.py",
+        "lines": "168-206",
+        "concrete_symbols": [
+          "aeon.en_train.proof.snapshot_state_dict",
+          "aeon.en_train.proof.compute_weight_delta"
+        ]
+      },
+      "reported_by": {
+        "file": "aeon/en_train/trainer.py",
+        "lines": "421-435"
+      }
+    },
+    {
+      "id": "UPDATE_INVARIANT_architecture_frozen",
+      "equation_ascii": "architecture( F_{theta_{k+1}} ) = architecture( F_{theta_k} )",
+      "enforced_by": {
+        "file": "aeon/en_train/proof.py",
+        "lines": "65-80",
+        "concrete_symbol": "aeon.en_train.proof.assert_architecture_invariant"
+      },
+      "compared_against": [
+        "PROTECTED_A0_DIGEST (docs/en_train/EN_TRAIN_ARCHITECTURE_FREEZE.json.architecture_fingerprint_A0)",
+        "PROTECTED_TOTAL_PARAMETERS"
+      ]
+    },
+    {
+      "id": "INFERENCE_theta_IMMUTABLE",
+      "equation_ascii": "for every inference call c, theta_after(c) = theta_before(c)",
+      "witnessed_by": {
+        "file": "tests/test_desktop_inference_immutability.py",
+        "test_symbols": [
+          "test_inference_does_not_modify_any_parameter_tensor",
+          "test_inference_hash_stable_across_multiprompt_session",
+          "test_inference_runtime_has_no_optimizer_or_backward_call_sites",
+          "test_session_clear_resets_only_documented_session_state"
+        ]
+      },
+      "protects_against": "any accidental introduction of inference-time parameter modification",
+      "runs_only_during": "test_suite"
+    }
+  ],
+  "not_modified_by_EN_TRAIN": [
+    "K",
+    "fast-clock cadence",
+    "slow-clock cadence",
+    "substrate state",
+    "RecursionJoiner equations",
+    "h/c state dimensions",
+    "detach boundaries",
+    "conditioning path (h_cond -> cond_proj)",
+    "aggregation path (mean_i r -> s_proj)",
+    "injection path (transformer.inject)",
+    "MARGIN_H",
+    "MARGIN_C",
+    "clock coupling",
+    "protected P2 checkpoint",
+    "tokenizer",
+    "renderer (already fixed in EN-TRAIN-1)"
+  ],
+  "not_introduced_by_EN_TRAIN": [
+    "new learned update operator G (fallback to torch.optim.AdamW per correction order Section 4)",
+    "inference-time parameter modification path (forbidden by correction order Section 7; witnessed absent by tests/test_desktop_inference_immutability.py)",
+    "formal C_1 / C_2 symbols outside the mapping documents (canonical names in code remain 'fast clock' and 'slow clock')"
+  ]
+}
