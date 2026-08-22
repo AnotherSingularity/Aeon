@@ -474,6 +474,32 @@ class AeonDesktopRuntime:
                 rng.manual_seed(0xA0EA)
 
             generated_ids: List[int] = []
+            # Renderer correction (EN-TRAIN §21 / spec §21).
+            # Previously, TEXT_DELTA payloads were computed by
+            # per-token decode `tok.decode(generated_ids[-1:])`, which
+            # drops the SentencePiece leading-space marker so word
+            # boundaries disappear in the UI. The corrected renderer
+            # decodes the CUMULATIVE token sequence and emits the
+            # tail-only delta, so concatenating every emitted delta
+            # exactly reproduces the canonical one-shot decode:
+            #   D_stream(y) = D_full(y).
+            #
+            # Byte-fallback safety: multi-byte UTF-8 characters can be
+            # split across tokens by the byte-fallback path. SentencePiece
+            # returns U+FFFD (REPLACEMENT CHARACTER) for an incomplete
+            # UTF-8 tail. We must not commit that mojibake — it would
+            # be silently replaced by the real character on the next
+            # token, and a length-based delta would miss the swap.
+            # Fix: strip trailing U+FFFD from the cumulative decode
+            # before computing the delta. Any incomplete tail is HELD
+            # BACK until it completes into a real code point. At EOS,
+            # the final full_text uses the same canonical one-shot
+            # decode as the loss / evaluation path.
+            # No change to model weights, token selection, logits,
+            # generation order, tokenizer files, model configuration,
+            # or the A0 architecture fingerprint. See
+            # docs/en_train/RENDERER_FIX_PROOF.md.
+            emitted_text = ""        # what D_stream has emitted so far
             t_first = None
             t0 = time.time()
             for step in range(opts.max_new_tokens):
@@ -496,8 +522,25 @@ class AeonDesktopRuntime:
                 generated_ids.append(next_tok)
                 if t_first is None:
                     t_first = time.time() - t0
-                # incremental decode
-                text_delta = tok.decode(generated_ids[-1:])
+                # Canonical-decode-and-delta renderer (§21). Decode
+                # the entire generated sequence and emit only the
+                # newly-appended tail. Strip trailing U+FFFD to hold
+                # back incomplete UTF-8 tails until the multi-byte
+                # sequence completes. On EOS / natural end, the
+                # completion event carries the full canonical decode
+                # so any remaining U+FFFD is visible to the caller
+                # (matching what a one-shot decode would produce).
+                canonical_so_far = tok.decode(generated_ids)
+                committable = canonical_so_far.rstrip("�")
+                if committable.startswith(emitted_text):
+                    text_delta = committable[len(emitted_text):]
+                    emitted_text = committable
+                else:
+                    # Prior emission is no longer a prefix — replacement
+                    # of a mojibake by a valid character mid-string.
+                    # Emit nothing this step; the committable tail will
+                    # be reconciled on the next step or at completion.
+                    text_delta = ""
                 self._emit(EventKind.TOKEN_GENERATED,
                              session_id=session_id, request_id=request_id,
                              payload={"token_id": next_tok,
@@ -510,6 +553,19 @@ class AeonDesktopRuntime:
                     break
             wall_s = time.time() - t0
             tps = len(generated_ids) / wall_s if wall_s > 0 else 0
+            # Final flush of the delta stream. If a byte-fallback
+            # multi-byte tail was still incomplete on the last step
+            # (or if the U+FFFD-hold logic held back a legitimate
+            # closing character), emit the missing suffix now so
+            # that the concatenation of every TEXT_DELTA equals
+            # tok.decode(generated_ids) exactly.
+            _final_full = tok.decode(generated_ids)
+            if _final_full != emitted_text:
+                _tail = _final_full[len(emitted_text):] if _final_full.startswith(emitted_text) else _final_full
+                self._emit(EventKind.TEXT_DELTA,
+                             session_id=session_id, request_id=request_id,
+                             payload={"delta": _tail, "flush": True})
+                emitted_text = _final_full
             # Commit to session
             with self._sessions_lock:
                 sess.token_history.extend(prompt_ids)

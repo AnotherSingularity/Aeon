@@ -1,0 +1,89 @@
+{
+  "checkpoint_sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c",
+  "checkpoint_used": "runs/aeon_lbc1_P2/final.pt",
+  "mismatch_rate": 0.0,
+  "per_prompt": [
+    {
+      "canonical_full_decode_D_full": "the whale, and the whale, and the whale, and",
+      "generated_token_ids": [
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264
+      ],
+      "match": true,
+      "prompt": "The",
+      "prompt_token_ids": [
+        317
+      ],
+      "streamed_output_D_stream_after_fix": "the whale, and the whale, and the whale, and",
+      "token_ids_unchanged_from_before": true
+    },
+    {
+      "canonical_full_decode_D_full": ", and the whale, and the whale, and the whale",
+      "generated_token_ids": [
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322
+      ],
+      "match": true,
+      "prompt": "Once upon a time",
+      "prompt_token_ids": [
+        5262,
+        355,
+        266,
+        361
+      ],
+      "streamed_output_D_stream_after_fix": ", and the whale, and the whale, and the whale",
+      "token_ids_unchanged_from_before": true
+    },
+    {
+      "canonical_full_decode_D_full": ", and the whale of the whale, and the whale of",
+      "generated_token_ids": [
+        260,
+        264,
+        261,
+        322,
+        263,
+        261,
+        322,
+        260,
+        264,
+        261,
+        322,
+        263
+      ],
+      "match": true,
+      "prompt": "Hello world",
+      "prompt_token_ids": [
+        11066,
+        817,
+        458
+      ],
+      "streamed_output_D_stream_after_fix": ", and the whale of the whale, and the whale of",
+      "token_ids_unchanged_from_before": true
+    }
+  ],
+  "purpose": "RENDERING FIX PROOF \u2014 AFTER-state; must match D_full for every prompt",
+  "schema_version": 1,
+  "seed": "deterministic_greedy",
+  "token_id_drift_rate": 0.0,
+  "tokenizer_used": "research-data/AEON-LBC-1/tokenizer/aeon-lbc1.model"
+}
