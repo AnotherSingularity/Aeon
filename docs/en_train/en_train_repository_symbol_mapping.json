@@ -6,8 +6,24 @@
     "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md",
     "docs/en_train/en_train_equation_bindings.json",
     "docs/en_train/EN_TRAIN_CLOCK_MAPPING.md",
-    "docs/en_train/en_train_clock_mapping.json"
+    "docs/en_train/en_train_clock_mapping.json",
+    "docs/en_train/CLOSURE_REFERENCE_INTEGRATION.md",
+    "docs/en_train/closure_reference_mapping.json"
   ],
+  "closure_reference": {
+    "role": "research_reference",
+    "authority": "non-canonical relative to runtime implementation",
+    "sha256": "sha256:0a5e6308ee5f1ac985690612eb32b7b0361ddc7267b299e7e1a1c7f55e7a4cee",
+    "prohibited_mapping": {
+      "statement": "Aeon slow clock (per-K-window RecursionJoiner state tick) MUST NOT be mapped to the PDF's parameter update theta_{tau+1} = G(theta_tau, S_tau).",
+      "why": "Aeon's slow clock evolves state (h_w, c_w); it does not update parameters. Online parameter modification during inference is not implemented in the repository and is prohibited in the current tranche."
+    },
+    "index_binding": {
+      "i": "fast token position inside a K-window (bookkeeping over FAST CLOCK cadence)",
+      "w": "slow-clock window index (bookkeeping over SLOW CLOCK cadence)",
+      "k": "authorized offline optimizer-update step (bookkeeping over training; NOT a clock)"
+    }
+  },
   "F": {
     "role": "Aeon's native forward process (state transition + logits)",
     "concrete_symbol": "aeon.hybrid.HybridModel.forward",

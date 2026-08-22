@@ -336,7 +336,121 @@ bindings.
 
 ---
 
-## 7. Documentation-vs-runtime discrepancies (unrepaired, reported)
+## 7. Closure Reference Integration
+
+Provenance: `docs/en_train/CLOSURE_REFERENCE_INTEGRATION.md` +
+`docs/en_train/closure_reference_mapping.json`. The Horizon Intelligence
+reference workbook *Closure: Mathematics of Adaptive Dynamical
+Intelligence* (SHA-256
+`sha256:0a5e6308…5e7a4cee`, 64 pp., Research Edition August 2026) is
+integrated as a research reference — `role: research_reference`,
+`authority: non-canonical relative to runtime implementation`.
+
+### 7.1 Three-index correction (adopted verbatim from Section 1)
+
+Indices `i`, `w`, `k` are bookkeeping only. `k` is not a clock.
+
+### 7.2 Prohibited PDF-to-repository mapping
+
+The PDF Chapter 10 generic model
+
+```
+h_{t+1}  = F_{θ_τ}(h_t, x_t)
+θ_{τ+1}  = G(θ_τ, S_τ)
+```
+
+is a general adaptive-system model. **Aeon's implemented slow clock is
+a RecursionJoiner state tick, not a parameter update.** The mapping
+
+> Aeon slow clock ≡ parameter update `θ_{τ+1}`
+
+is **prohibited**. Binding the PDF's slow θ-update to Aeon's slow
+RecursionJoiner clock would falsely claim Aeon performs online
+parameter updates during inference; the repository does not implement
+that and the correction order forbids it in this tranche. Witnessed
+absent by `tests/test_desktop_inference_immutability.py`.
+
+### 7.3 Descriptive joint-state view
+
+The PDF Chapter 7 augmented state is written for the repository as a
+non-executable descriptive mapping:
+
+```
+z_{k,w,i} = ( substrate_state_{w,i},
+              h_w, c_w,
+              θ_k,
+              phase_i,
+              window_summary_w,
+              existing stability diagnostics )
+```
+
+Classification: `descriptive_joint_state_only`. This mapping introduces
+no runtime variable, no update rule, and no operational-closure claim.
+It MUST NOT be read as evidence of operational closure, autonomy,
+agency, consciousness, or general intelligence.
+
+### 7.4 Three rates, not three clocks
+
+Per PDF Chapter 10.5 (*"three rates, not necessarily three clocks"*):
+
+1. **Fast state evolution** — FAST CLOCK, `aeon/hybrid.py:154-158`.
+2. **Slow RecursionJoiner evolution** — SLOW CLOCK,
+   `aeon/hybrid.py:175-177`.
+3. **Offline operator learning and/or viability evaluation** —
+   offline: `optimizer.step()` at `aeon/en_train/trainer.py:148`;
+   viability: `assert_architecture_invariant`,
+   `assert_native_stability_gate`, `sigma_certificate` at
+   `aeon/en_train/proof.py`. Both are event/gate-triggered, not
+   periodic. **No third architectural clock is added.**
+
+### 7.5 Adopted PDF mathematics (motivation only)
+
+* **Ch 5** — recursion ≠ learning; frozen deployment is not
+  parameter-reflexive. Motivates the spec's separation of state
+  evolution from parameter learning.
+* **Ch 6** — boundedness, stability, invariance, robustness are
+  distinct; hard structural constraints beat soft penalties. Aeon
+  already treats these separately.
+* **Ch 7** — closure = complete declared joint-state description,
+  not isolation; no hidden oracle; external inputs allowed but must
+  not supply the system's organization.
+* **Ch 11** — long-horizon sensitivity governed by Jacobian
+  products; **if** an adaptive operator is ever introduced, its
+  block Jacobian must include cross-coupling terms. Recorded as a
+  prerequisite for any future reflexive extension.
+* **Ch 14** — parameter-matched and compute-matched controls;
+  observation-shuffled and frozen-update controls (for future
+  reflexivity research only); corpus provenance and claim discipline;
+  separate architecture benefit from added parameters and added
+  operations. Adopted as experimental discipline for EN-TRAIN.
+
+### 7.6 Mathematics kept as `proposed_future_research` or `prohibited_in_current_tranche`
+
+Explicitly not implemented in this tranche:
+
+online θ updates · fast weights · hypernetworks · low-rank online
+operator changes · adaptive operator banks · neuromodulatory parameter
+changes · unrestricted self-modification · projected online
+reflexivity · internally generated valuation · autonomy · agency.
+
+Full list and per-item repository classification in
+`closure_reference_mapping.json`.
+
+### 7.7 Non-claims (adopted verbatim from PDF Chapter 13.6)
+
+The following MUST NOT be inferred from the descriptive joint-state
+view or from any other equation in this spec:
+
+* consciousness;
+* general intelligence;
+* self-awareness in the ordinary human sense;
+* semantic understanding across unrestricted domains;
+* autonomy outside declared viability criteria;
+* safety under untested conditions.
+
+---
+
+## 8. Documentation-vs-runtime discrepancies (unrepaired, reported)
 
 Two stale line-number citations in `docs/TOPOLOGY_MAP.md` were
 reported at `EN-TRAIN-3`:
