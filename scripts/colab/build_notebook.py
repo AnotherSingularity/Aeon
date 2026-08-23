@@ -206,10 +206,28 @@ CELLS = [
         "subprocess.check_call(cmd)\n"
     ),
 
-    md("## 11 · Stage 2 evaluation — fresh_eval only",
+    md("## 10b · Stage 2 checkpoint-selection signal (stage2_val — never a promotion gate)",
+       "Locked at manifest time (`stage2_val_lock_sha256` re-verified before scoring). "
+       "Use this loss between Stage-2 checkpoints to pick a stopping point. "
+       "It is NOT a promotion signal; that is `fresh_eval`'s single-use role."),
+    code(
+        "%cd /content/aeon_bundle\n"
+        "import glob\n"
+        "cks = sorted(glob.glob(f'{STAGE2_CK_DIR}/checkpoint_*.pt'))\n"
+        "assert cks, 'No stage2 checkpoints — run cell 10 first.'\n"
+        "latest = cks[-1]\n"
+        "import subprocess\n"
+        "subprocess.check_call(['python', 'scripts/colab/evaluate_and_generate.py',\n"
+        "    '--root', '.', '--mode', 'stage2_val',\n"
+        "    '--checkpoint', latest,\n"
+        "    '--out', f'{STAGE2_CK_DIR}/eval_stage2_val_latest.json'])\n"
+        "print(open(f'{STAGE2_CK_DIR}/eval_stage2_val_latest.json').read())\n"
+    ),
+
+    md("## 11 · Stage 2 evaluation — fresh_eval only (single-use promotion gate)",
        "The evaluator verifies `fresh_eval_lock_sha256` before scoring; any drift aborts.",
        "",
-       "This value is one input to Dylan's approval decision — not a substitute for it."),
+       "This value is one input to Dylan's approval decision — not a substitute for it. Do not use it to pick between checkpoints; that is `stage2_val`'s role above."),
     code(
         "%cd /content/aeon_bundle\n"
         "import glob\n"

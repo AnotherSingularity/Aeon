@@ -124,21 +124,39 @@ def _stream_wikitext_tokens(tok, path: Path) -> Iterator[int]:
 # ---------------------------------------------------------------------------
 # Stage-2 data (Dolly): iterate untouched-train records excluding fresh_eval
 # ---------------------------------------------------------------------------
-def _load_dolly_stage2_pool(root: Path):
-    """Return (list_of_records, tok). Excludes:
-        * fresh_eval record ids
-        * every retired id from ENGLISH-PROOF-0
-        * every id the pilot iterated during training
+def _load_dolly_stage2_exclusion_set(root: Path) -> set:
+    """The set of Dolly record_ids that MUST NOT enter any Stage-2
+    training batch. Belt+braces: EXPLICITLY includes:
+      * fresh_eval  (single-use promotion gate for this campaign)
+      * stage2_validation  (checkpoint-selection signal, never train)
+      * pilot_consumed train (ENGLISH-PROOF-0 iterated these — retired)
+      * retired val partition (ENGLISH-PROOF-0 checkpoint selection)
+      * retired sealed_test partition (ENGLISH-PROOF-0 promotion signal)
+    Anything in this set entering training is a leak; the caller's
+    contract is 'training batches contain no member of this set'.
     """
-    from aeon.en_train.dolly_split import DollyRecord
     split = json.loads((root / "docs/en_train/dolly15k_split_manifest.json"
                         ).read_text(encoding="utf-8"))
     fresh = json.loads((root / "docs/en_train/dolly15k_fresh_eval_manifest.json"
                         ).read_text(encoding="utf-8"))
-    excluded = set(fresh["fresh_eval"]["record_ids"]) \
-             | set(fresh["consumed_train_ids_by_pilot"])
-    # Also exclude old sealed_test and old val (they may be reused as
-    # SUPERVISED SIGNAL — instruction tuning training pool is train only)
+    excluded = set()
+    excluded |= set(fresh["fresh_eval"]["record_ids"])
+    excluded |= set(fresh["consumed_train_ids_by_pilot"])
+    excluded |= set(fresh.get("stage2_validation", {}).get("record_ids", []))
+    excluded |= set(split["val_ids"])
+    excluded |= set(split["sealed_test_ids"])
+    return excluded
+
+
+def _load_dolly_stage2_pool(root: Path):
+    """Return list of DollyRecord for Stage-2 training. Guaranteed
+    disjoint from every set in _load_dolly_stage2_exclusion_set(root).
+    A final in-function assertion fails loudly if any excluded id
+    slips through."""
+    from aeon.en_train.dolly_split import DollyRecord
+    split = json.loads((root / "docs/en_train/dolly15k_split_manifest.json"
+                        ).read_text(encoding="utf-8"))
+    excluded = _load_dolly_stage2_exclusion_set(root)
     train_ids = [rid for rid in split["train_ids"] if rid not in excluded]
 
     src = root / "research-data/incoming/EN-DOLLY-15K/sources/databricks-dolly-15k.jsonl"
@@ -155,9 +173,53 @@ def _load_dolly_stage2_pool(root: Path):
         pool.append(DollyRecord(record_id=rid,
                                  instruction=r.get("instruction", "") or "",
                                  context=r.get("context", "") or "",
-                                 response=r.get("response", "") or ""[:0],
+                                 response=r.get("response", "") or "",
                                  category=r.get("category", "") or ""))
+    # Final leak check: no pool record's id can be in the exclusion set.
+    leaked = [p.record_id for p in pool if p.record_id in excluded]
+    assert not leaked, f"Stage-2 training pool leaked excluded ids: {leaked[:5]}"
     return pool
+
+
+def _load_dolly_stage2_validation(root: Path):
+    """Return list of DollyRecord for the in-loop Stage-2 validation
+    signal (checkpoint-selection). Locked at manifest time; the
+    stage2_val_lock_sha256 is re-verified before returning."""
+    import hashlib
+    from aeon.en_train.dolly_split import DollyRecord
+    fresh = json.loads((root / "docs/en_train/dolly15k_fresh_eval_manifest.json"
+                        ).read_text(encoding="utf-8"))
+    if "stage2_validation" not in fresh:
+        return []
+    ids = sorted(fresh["stage2_validation"]["record_ids"])
+    canon = "\n".join(ids).encode("utf-8")
+    got = "sha256:" + hashlib.sha256(canon).hexdigest()
+    want = fresh["stage2_validation"]["stage2_val_lock_sha256"]
+    if got != want:
+        raise RuntimeError(
+            f"stage2_val_lock drift: want={want} got={got}")
+
+    # Also assert disjointness at load time.
+    fresh_eval_ids = set(fresh["fresh_eval"]["record_ids"])
+    pilot_consumed = set(fresh["consumed_train_ids_by_pilot"])
+    for rid in ids:
+        assert rid not in fresh_eval_ids, \
+            f"stage2_val id {rid} overlaps fresh_eval (data corruption)"
+        assert rid not in pilot_consumed, \
+            f"stage2_val id {rid} overlaps pilot_consumed"
+
+    src = root / "research-data/incoming/EN-DOLLY-15K/sources/databricks-dolly-15k.jsonl"
+    raw = {}
+    for i, ln in enumerate(open(src)):
+        if ln.strip():
+            r = json.loads(ln)
+            raw[f"dolly-{i:05d}"] = r
+    return [DollyRecord(record_id=rid,
+                         instruction=raw[rid].get("instruction", "") or "",
+                         context=raw[rid].get("context", "") or "",
+                         response=raw[rid].get("response", "") or "",
+                         category=raw[rid].get("category", "") or "")
+             for rid in ids if rid in raw]
 
 
 # ---------------------------------------------------------------------------

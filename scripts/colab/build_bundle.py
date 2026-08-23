@@ -74,6 +74,7 @@ INCLUDE = [
     "docs/en_train/dolly15k_provenance.json",
     "docs/en_train/dolly15k_split_manifest.json",
     "docs/en_train/dolly15k_fresh_eval_manifest.json",
+    "docs/en_train/stage2_isolation_report.json",
 
     # 7. Architecture-invariance manifests
     "docs/en_train/EN_TRAIN_ARCHITECTURE_FREEZE.json",

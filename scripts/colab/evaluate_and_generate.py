@@ -6,9 +6,14 @@ Modes:
   --mode stage1_test     perplexity on WikiText-103 wiki.test.raw (LOCK USE:
                           only for final Stage-1 promotion, never as
                           checkpoint-selection signal)
+  --mode stage2_val      response-masked loss on the locked stage2_val
+                          partition (checkpoint-selection signal only —
+                          NEVER used for promotion). Verifies
+                          stage2_val_lock_sha256 before scoring.
   --mode stage2_fresh    response-masked loss on dolly15k_fresh_eval
-                          (verifies the fresh_eval_lock_sha256 before
-                          scoring; refuses on drift)
+                          (single-use campaign promotion gate; verifies
+                          the fresh_eval_lock_sha256 before scoring;
+                          refuses on drift)
   --mode generate        produce raw unedited generations from a prompt list
                           under the frozen AttributionSettings contract
 
@@ -172,12 +177,75 @@ def _stream_and_full(tok, ids):
     return "".join(deltas), D_full
 
 
+def _stage2_val_eval(model, tok, root: Path, device,
+                      seq_len: int = 256, batch_size: int = 4):
+    """Response-masked loss on the locked stage2_val partition.
+    Verifies the stage2_val_lock_sha256 before scoring."""
+    import torch
+    from aeon.en_train.losses import conversational_loss, build_response_mask
+    from aeon.en_train.proof_pilot import render_dolly_record_for_training
+
+    fresh = json.loads((root / "docs/en_train/dolly15k_fresh_eval_manifest.json"
+                        ).read_text(encoding="utf-8"))
+    if "stage2_validation" not in fresh:
+        raise RuntimeError("stage2_validation partition missing from manifest")
+    ids = sorted(fresh["stage2_validation"]["record_ids"])
+    live = _sha256_bytes("\n".join(ids).encode("utf-8"))
+    if live != fresh["stage2_validation"]["stage2_val_lock_sha256"]:
+        raise RuntimeError(
+            f"stage2_val_lock drift: recorded="
+            f"{fresh['stage2_validation']['stage2_val_lock_sha256']} "
+            f"recomputed={live}")
+
+    # And it must not overlap fresh_eval (belt+braces at eval time).
+    if set(ids) & set(fresh["fresh_eval"]["record_ids"]):
+        raise RuntimeError("stage2_val overlaps fresh_eval — refusing to score")
+
+    raw = {}
+    src = root / "research-data/incoming/EN-DOLLY-15K/sources/databricks-dolly-15k.jsonl"
+    for i, ln in enumerate(open(src)):
+        if ln.strip():
+            r = json.loads(ln)
+            raw[f"dolly-{i:05d}"] = r
+
+    model.eval()
+    total_loss, total_tok = 0.0, 0
+    with torch.inference_mode():
+        for i in range(0, len(ids), batch_size):
+            batch = ids[i:i + batch_size]
+            ids_batch, mask_batch = [], []
+            for rid in batch:
+                r = raw[rid]
+                text, spans = render_dolly_record_for_training(
+                    instruction=r.get("instruction", ""),
+                    context=r.get("context", ""),
+                    response=r.get("response", ""))
+                sids, rmask = build_response_mask(tok, text, spans)
+                sids = sids[:seq_len]; rmask = rmask[:seq_len]
+                pad = seq_len - len(sids)
+                sids += [0] * pad; rmask += [0] * pad
+                ids_batch.append(sids); mask_batch.append(rmask)
+            input_ids = torch.tensor(ids_batch, dtype=torch.long, device=device)
+            resp_mask = torch.tensor(mask_batch, dtype=torch.long, device=device)
+            attn = (input_ids != 0).long()
+            if resp_mask.sum().item() == 0:
+                continue
+            loss, vt = conversational_loss(model, input_ids=input_ids,
+                                             response_mask=resp_mask,
+                                             attention_mask=attn)
+            total_loss += float(loss.item()) * vt
+            total_tok += int(vt)
+    if total_tok == 0:
+        return float("nan"), 0
+    return total_loss / total_tok, total_tok
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".")
     ap.add_argument("--mode", required=True,
                     choices=["stage1_valid", "stage1_test",
-                             "stage2_fresh", "generate"])
+                             "stage2_val", "stage2_fresh", "generate"])
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--wikitext-root",
                     default="/content/wikitext-103-raw/wikitext-103-raw")
@@ -212,6 +280,12 @@ def main() -> int:
                   "note": ("stage1_test is for final Stage-1 promotion "
                             "ONLY; never use for checkpoint selection.")
                           if args.mode == "stage1_test" else None}
+    elif args.mode == "stage2_val":
+        loss, tok_count = _stage2_val_eval(model, tok, root, device)
+        result = {"mode": "stage2_val", "response_masked_loss": loss,
+                  "tokens_scored": tok_count, "checkpoint": args.checkpoint,
+                  "note": ("checkpoint-selection signal only — NEVER a "
+                            "promotion gate; that is fresh_eval's role.")}
     elif args.mode == "stage2_fresh":
         loss, tok_count = _stage2_fresh_eval(model, tok, root, device)
         result = {"mode": "stage2_fresh", "response_masked_loss": loss,
