@@ -1,0 +1,237 @@
+{
+  "bundle_name": "Aeon_English_Fluency_Colab_Bundle",
+  "explicit_exclusions": {
+    "credentials_tokens_secrets": true,
+    "git_metadata": true,
+    "installer_files": true,
+    "micro_pilot_candidate": true,
+    "unrelated_corpora": true,
+    "windows_build_outputs": true
+  },
+  "file_count": 44,
+  "files": [
+    {
+      "bytes": 12872,
+      "path": "Aeon_English_Fluency_Colab.ipynb",
+      "sha256": "sha256:57c1b7d38985932336c284af08fd678bdeb195cd4c82efc23bbfef1a56c80bf7"
+    },
+    {
+      "bytes": 1144,
+      "path": "aeon/__init__.py",
+      "sha256": "sha256:899e6add28496075302d1f73d1fb22e7d199174beaaad6be5f71cbbd4a511f7c"
+    },
+    {
+      "bytes": 9815,
+      "path": "aeon/desktop/protocol.py",
+      "sha256": "sha256:e91c57593974b3108482f6df738b2fadd58a9dd95d92320644b54ac577de0b6d"
+    },
+    {
+      "bytes": 2982,
+      "path": "aeon/en_train/__init__.py",
+      "sha256": "sha256:d2214ecb05defa6bd8df905ec1ae7b22a4780f0edb0ba997aeb441d8d03e0f6b"
+    },
+    {
+      "bytes": 2925,
+      "path": "aeon/en_train/attribution.py",
+      "sha256": "sha256:7f4f5682f286b939c52e3d73b7ea0699df6aa3489a610993ee72fd65f59f97a0"
+    },
+    {
+      "bytes": 13668,
+      "path": "aeon/en_train/data.py",
+      "sha256": "sha256:85fe2e44f247d5d8cdf6351d525388890a1a416e7bdbb9bb1e64819e8590901d"
+    },
+    {
+      "bytes": 13019,
+      "path": "aeon/en_train/dolly_split.py",
+      "sha256": "sha256:ac1de1dd15a7f73f2b2cdb6825f6fcdb392211667a7dcbf7a475073523ae0814"
+    },
+    {
+      "bytes": 15568,
+      "path": "aeon/en_train/eval.py",
+      "sha256": "sha256:651dbb26b9aa8575e8441042f997526c55a37de094fa221bf4839cfd4cc5fa13"
+    },
+    {
+      "bytes": 8745,
+      "path": "aeon/en_train/losses.py",
+      "sha256": "sha256:ade90cf40df57dcc83c9eabe048c45269ec2b3c82c6d79b53ba6c95dda06018d"
+    },
+    {
+      "bytes": 10835,
+      "path": "aeon/en_train/proof.py",
+      "sha256": "sha256:fb447b7e2b13e73dc1827f083de3a85888c15d1916ff7896ee4bfb2e403e7bcc"
+    },
+    {
+      "bytes": 6658,
+      "path": "aeon/en_train/proof_harness.py",
+      "sha256": "sha256:c68fd60be6af8e765e4233fb600788496cd06271172b705a0cadac70092a02da"
+    },
+    {
+      "bytes": 10875,
+      "path": "aeon/en_train/proof_pilot.py",
+      "sha256": "sha256:f7ddf6ee4a798e469389bed4c2404f5b4fc9add271e9f05161dbef956b05043d"
+    },
+    {
+      "bytes": 18329,
+      "path": "aeon/en_train/trainer.py",
+      "sha256": "sha256:88442b00a49cda20085081d15dc4c79cc7740e5fc35df970b59bce2ed599f032"
+    },
+    {
+      "bytes": 14001,
+      "path": "aeon/hybrid.py",
+      "sha256": "sha256:7a6c405b3f8294f3dfd05be41bb94f7ef42e67cc9c971b10cef1834f67690643"
+    },
+    {
+      "bytes": 8388,
+      "path": "aeon/recursion.py",
+      "sha256": "sha256:ed23ef39959c986ca084ffbf754a1c08b2fdf2f0287cfe2d7579628ea136fd54"
+    },
+    {
+      "bytes": 2251,
+      "path": "aeon/substrate/__init__.py",
+      "sha256": "sha256:474c54b082a2e100d2307118ee2ef65974c9cff2661650928f39306d91628c98"
+    },
+    {
+      "bytes": 7923,
+      "path": "aeon/substrate/matrix_cell.py",
+      "sha256": "sha256:f891cefedf9f2eb1ff10e27645bcc142965823152f7da5842a116ebffe20cec2"
+    },
+    {
+      "bytes": 6648,
+      "path": "aeon/substrate/port.py",
+      "sha256": "sha256:1597cf466307133ddb8021e249f47b7477c25af974deb112c2efac26d4515814"
+    },
+    {
+      "bytes": 5750,
+      "path": "aeon/substrate/vector_cell.py",
+      "sha256": "sha256:35229be1e0f239128aab9624c3ad22d4cdc7d32a1ec04bae678b9366f6808860"
+    },
+    {
+      "bytes": 2468,
+      "path": "aeon/tokenizer.py",
+      "sha256": "sha256:dab0af2f917d96b79504c6847d3afa8a3ef752bc618188f34773f175dabf9c85"
+    },
+    {
+      "bytes": 11611,
+      "path": "aeon/transformer.py",
+      "sha256": "sha256:179cf63018ccd67cd4fcbd3ce44fa048b5c49202da065b1c1a20ed1b558a1a10"
+    },
+    {
+      "bytes": 1236,
+      "path": "configs/aeon_v1.yaml",
+      "sha256": "sha256:408983ed397e7552e78530b2b7e3148f978e7b71a165c4d4dd8892a5fae25828"
+    },
+    {
+      "bytes": 2455,
+      "path": "configs/latent_bypass/aeon_lbc1_proxy.yaml",
+      "sha256": "sha256:e953ea310365456730413dec80584381773b9e85031a90a26d8f4940f07f0727"
+    },
+    {
+      "bytes": 7214,
+      "path": "docs/en_train/ENGLISH_PROOF_PROTOCOL.md",
+      "sha256": "sha256:fbb792ab484e4a094865b6f8b14f048f5027b9d58ced8b4483611a59453cb8bf"
+    },
+    {
+      "bytes": 15109,
+      "path": "docs/en_train/EN_TRAIN_ARCHITECTURE_FREEZE.json",
+      "sha256": "sha256:26825c8a2026adcd602f3c6bb2a06cf21e8bbd921e89d054211ddd837b0136b0"
+    },
+    {
+      "bytes": 17349,
+      "path": "docs/en_train/EN_TRAIN_CORRECTED_MATHEMATICAL_SPEC.md",
+      "sha256": "sha256:8419b9a60e68e298d323a8dee54e61de0aa2a11ef955583f0e1b021aa8b594f5"
+    },
+    {
+      "bytes": 63993,
+      "path": "docs/en_train/dolly15k_fresh_eval_manifest.json",
+      "sha256": "sha256:ee170836c9147b529b9b7d878a9ddd531fb6c6f659c555d57833debb02a7a859"
+    },
+    {
+      "bytes": 5588,
+      "path": "docs/en_train/dolly15k_provenance.json",
+      "sha256": "sha256:095bc3cec44e1dc6f9c707a873aee10ab35680286a9668ff43e17ee54c0a08d5"
+    },
+    {
+      "bytes": 1003898,
+      "path": "docs/en_train/dolly15k_split_manifest.json",
+      "sha256": "sha256:d7ead4d37e66848a007c832f0f95e95a47aa682d477b780dc0bad06e22009bea"
+    },
+    {
+      "bytes": 10922,
+      "path": "docs/en_train/en_train_clock_mapping.json",
+      "sha256": "sha256:9db89acc62e7fc688aed8ff97b7a05905af0064589203eca40a6f22b67fd6083"
+    },
+    {
+      "bytes": 9583,
+      "path": "docs/en_train/en_train_repository_symbol_mapping.json",
+      "sha256": "sha256:b89ea259f09566a33888d6734bac1542a7ec7539732b6c82fc8e08f8c6084b7a"
+    },
+    {
+      "bytes": 2455,
+      "path": "release-assets/aeon-desktop-p2-proxy/config/aeon_lbc1_proxy.yaml",
+      "sha256": "sha256:e953ea310365456730413dec80584381773b9e85031a90a26d8f4940f07f0727"
+    },
+    {
+      "bytes": 583,
+      "path": "release-assets/aeon-desktop-p2-proxy/manifests/architecture_manifest.json",
+      "sha256": "sha256:a337fdbd43bd7beb38854343bc8da7c7f68bfdb4c6ec11e59c1b6ca0bea5d19d"
+    },
+    {
+      "bytes": 1916,
+      "path": "release-assets/aeon-desktop-p2-proxy/manifests/release_manifest.json",
+      "sha256": "sha256:8f09b63f03a5fcc764a7edccb376a83859de5de9e2b36eb51ab4aad2be1deaf7"
+    },
+    {
+      "bytes": 528129,
+      "path": "release-assets/aeon-desktop-p2-proxy/tokenizer/aeon-lbc1.model",
+      "sha256": "sha256:064ab6a98ee4b8177249f14dc09e60ccaa9986b66cb84a4072c68dc4de533481"
+    },
+    {
+      "bytes": 13085339,
+      "path": "research-data/incoming/EN-DOLLY-15K/sources/databricks-dolly-15k.jsonl",
+      "sha256": "sha256:2df9083338b4abd6bceb5635764dab5d833b393b55759dffb0959b6fcbf794ec"
+    },
+    {
+      "bytes": 28082957,
+      "path": "runs/aeon_lbc1_P2/final.pt",
+      "sha256": "sha256:962fcd5e65a88e3b6d061e73968bea7eb3581c4d8a15b49be82427004db9fc3c"
+    },
+    {
+      "bytes": 1960,
+      "path": "scripts/colab/README.md",
+      "sha256": "sha256:215946403c8c29cdb5bebd0919d6cccb3280fd01bf62de9f09166511f61d27a4"
+    },
+    {
+      "bytes": 3484,
+      "path": "scripts/colab/benchmark.py",
+      "sha256": "sha256:32fae4d358b74211a4770c39290826b899e4801d74985f0ebfb8f3eb93e9c109"
+    },
+    {
+      "bytes": 3204,
+      "path": "scripts/colab/download_wikitext103.py",
+      "sha256": "sha256:d566fb9b9eee10344682d6a108b9ea20436956f656912c58c2d4d58d7369e01e"
+    },
+    {
+      "bytes": 1510,
+      "path": "scripts/colab/env_check.py",
+      "sha256": "sha256:95f04b00e6a40012a2ecd311b9cf608f198021e22662cdd7514987aa3676f26b"
+    },
+    {
+      "bytes": 11246,
+      "path": "scripts/colab/evaluate_and_generate.py",
+      "sha256": "sha256:882a279406dcb5714fff57382f495e5217acda489e2d7d8a744919a70bdee614"
+    },
+    {
+      "bytes": 22637,
+      "path": "scripts/colab/train_stage.py",
+      "sha256": "sha256:437c66c4d02bce2d5c1806fe3b79b9e07bc37ea21a8688390607c07baaf076a8"
+    },
+    {
+      "bytes": 1870,
+      "path": "scripts/colab/verify_bundle.py",
+      "sha256": "sha256:b2e02d6dfaf580f722498cffd287c1b63c14abed821488a6020463852bd7d24d"
+    }
+  ],
+  "produced_at_head": "TBD",
+  "schema_version": 1,
+  "total_bytes": 43071112
+}

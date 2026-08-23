@@ -32,3 +32,7 @@ research-data/incoming/EN-DOLLY-15K/
 # scripts/export_aeon_desktop_model.py from the committed checkpoint
 # + tokenizer + config. Not committed.
 release-assets/
+
+# EN-COLAB: bundle zip is built on demand, not tracked; SHA-256 pinned in SHA256_MANIFEST.json
+Aeon_English_Fluency_Colab_Bundle.zip
+Aeon_English_Fluency_Colab_Bundle.zip.sha256
