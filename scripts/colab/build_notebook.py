@@ -50,22 +50,47 @@ CELLS = [
         "**Dry-run.** Set `DRY_RUN = True` in cell 7 to verify the pipeline end-to-end (short benchmark + 5 training steps + one checkpoint + eval sample + generations) without a long training run.",
     ),
 
-    md("## 1 · Mount Google Drive"),
+    md("## 1 · Mount Google Drive",
+       "This cell mounts Drive at `/content/drive` and fails loudly if the "
+       "mount does not succeed. Every subsequent path is derived from the "
+       "REAL mount point returned here — no `/content/drive/...` path is "
+       "created on disk before this cell succeeds."),
     code(
+        "import os\n"
         "from google.colab import drive\n"
         "drive.mount('/content/drive')\n"
+        "\n"
+        "# Fail loudly if the mount did not produce a real MyDrive tree.\n"
+        "DRIVE_ROOT = '/content/drive'\n"
+        "assert os.path.isdir(DRIVE_ROOT), (\n"
+        "    f'Drive mount did not create {DRIVE_ROOT!r}. Re-run this cell.')\n"
+        "MYDRIVE = os.path.join(DRIVE_ROOT, 'MyDrive')\n"
+        "assert os.path.isdir(MYDRIVE), (\n"
+        "    f'Drive mount succeeded but MyDrive is missing at {MYDRIVE!r}. '\n"
+        "    'This usually means you cancelled the auth prompt or picked the '\n"
+        "    'wrong Google account. Re-run this cell.')\n"
+        "print('Drive mount OK ->', MYDRIVE)\n"
     ),
 
     md("## 2 · Copy the source bundle from Drive & install dependencies",
-       "Place `Aeon_English_Fluency_Colab_Bundle.zip` at the root of your Google Drive first."),
+       "Place `Aeon_English_Fluency_Colab_Bundle.zip` at the root of your Google Drive (MyDrive) first. "
+       "This cell refuses to write anything to Drive until it has confirmed the mount is real."),
     code(
         "import os, shutil, subprocess, sys\n"
         "\n"
-        "BUNDLE_ZIP = '/content/drive/MyDrive/Aeon_English_Fluency_Colab_Bundle.zip'\n"
+        "# Guard: cell 1 must have run and succeeded first.\n"
+        "assert 'MYDRIVE' in globals(), (\n"
+        "    'MYDRIVE is not defined. Run cell 1 (Mount Google Drive) first.')\n"
+        "assert os.path.isdir(MYDRIVE), (\n"
+        "    f'Drive mount lost between cells; {MYDRIVE!r} no longer exists. '\n"
+        "    'Re-run cell 1.')\n"
+        "\n"
+        "BUNDLE_ZIP = os.path.join(MYDRIVE, 'Aeon_English_Fluency_Colab_Bundle.zip')\n"
         "WORK = '/content/aeon_bundle'\n"
         "assert os.path.exists(BUNDLE_ZIP), (\n"
-        "    f'Bundle zip not found at {BUNDLE_ZIP}. Upload Aeon_English_Fluency_Colab_Bundle.zip '\n"
-        "    'to the root of your Google Drive (MyDrive) first.')\n"
+        "    f'Bundle zip not found at {BUNDLE_ZIP}. Upload '\n"
+        "    'Aeon_English_Fluency_Colab_Bundle.zip to the root of your '\n"
+        "    'Google Drive (MyDrive) first.')\n"
         "if os.path.exists(WORK): shutil.rmtree(WORK)\n"
         "os.makedirs(WORK, exist_ok=True)\n"
         "subprocess.check_call(['unzip', '-q', BUNDLE_ZIP, '-d', WORK])\n"
@@ -111,9 +136,15 @@ CELLS = [
     code(
         "DRY_RUN = True\n"
         "\n"
-        "DRIVE_RUN_DIR = '/content/drive/MyDrive/aeon_fluency_run'\n"
-        "STAGE1_CK_DIR = f'{DRIVE_RUN_DIR}/stage1_checkpoints'\n"
-        "STAGE2_CK_DIR = f'{DRIVE_RUN_DIR}/stage2_checkpoints'\n"
+        "import os\n"
+        "assert 'MYDRIVE' in globals(), (\n"
+        "    'MYDRIVE is not defined. Run cell 1 (Mount Google Drive) first.')\n"
+        "assert os.path.isdir(MYDRIVE), (\n"
+        "    f'Drive mount lost; {MYDRIVE!r} no longer exists. Re-run cell 1.')\n"
+        "\n"
+        "DRIVE_RUN_DIR = os.path.join(MYDRIVE, 'aeon_fluency_run')\n"
+        "STAGE1_CK_DIR = os.path.join(DRIVE_RUN_DIR, 'stage1_checkpoints')\n"
+        "STAGE2_CK_DIR = os.path.join(DRIVE_RUN_DIR, 'stage2_checkpoints')\n"
         "\n"
         "STAGE1_TARGET_TOKENS  = 100_000_000\n"
         "STAGE2_TARGET_TOKENS  =  10_000_000\n"
