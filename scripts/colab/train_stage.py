@@ -225,6 +225,58 @@ def _load_dolly_stage2_validation(root: Path):
 # ---------------------------------------------------------------------------
 # Checkpoint IO
 # ---------------------------------------------------------------------------
+def stage1_next_token_loss(model, input_ids, targets):
+    """Public Stage-1 next-token loss.
+
+    Contract (mathematically):
+        A ∈ N^{B × (T+1)}
+        X = A[:, 0:T]              (input_ids)
+        Y = A[:, 1:T+1]            (targets)
+        L = f_θ(X) ∈ R^{B × T × V}
+        loss = CE(L.reshape(B*T, V), Y.reshape(B*T))
+
+    The Stage-1 batch generator (in main()) already performs the
+    causal shift, so `input_ids` and `targets` MUST both be [B, T]
+    with `input_ids[:, 1:] == targets[:, :-1]` on any pair that
+    shared a row of A. This helper does NOT re-shift; it forwards X
+    through the model and applies cross-entropy at every position.
+
+    Fails closed with a clear shape error if any invariant is broken.
+    """
+    import torch
+    import torch.nn.functional as F
+    if input_ids.ndim != 2:
+        raise RuntimeError(
+            f"stage1_next_token_loss: input_ids must be [B, T]; "
+            f"got shape {tuple(input_ids.shape)}")
+    if targets.ndim != 2:
+        raise RuntimeError(
+            f"stage1_next_token_loss: targets must be [B, T]; "
+            f"got shape {tuple(targets.shape)}")
+    if input_ids.shape != targets.shape:
+        raise RuntimeError(
+            f"stage1_next_token_loss: input_ids and targets must have "
+            f"the same [B, T] shape; got input_ids={tuple(input_ids.shape)} "
+            f"targets={tuple(targets.shape)}")
+
+    out = model(input_ids=input_ids)
+    logits = out.logits
+    if logits.ndim != 3:
+        raise RuntimeError(
+            f"stage1_next_token_loss: model logits must be [B, T, V]; "
+            f"got shape {tuple(logits.shape)}")
+    if logits.shape[:2] != targets.shape:
+        raise RuntimeError(
+            f"Stage-1 causal-LM shape mismatch: "
+            f"logits={tuple(logits.shape)} targets={tuple(targets.shape)}")
+
+    loss = F.cross_entropy(
+        logits.reshape(-1, logits.size(-1)).float(),
+        targets.reshape(-1))
+    vt = int(targets.numel())
+    return loss, vt
+
+
 def _list_checkpoints(ck_dir: Path) -> List[Path]:
     if not ck_dir.exists():
         return []
@@ -492,17 +544,12 @@ def main() -> int:
 
         optimizer.zero_grad(set_to_none=True)
         if args.stage == "stage1":
-            targets = mask.to(device, non_blocking=True)   # mask carries targets here
-            out = model(input_ids=input_ids)
-            # shift-based CE over the full sequence (no padding in stage1)
-            logits = out.logits[:, :-1, :]
-            tgt = targets[:, 1:] if targets.dim() == 2 and targets.size(1) == input_ids.size(1) else targets
-            # Simplified stage-1: use masked_next_token_loss with mask of 1
-            import torch.nn.functional as F
-            loss = F.cross_entropy(
-                logits.reshape(-1, logits.size(-1)).float(),
-                targets.reshape(-1))
-            vt = int(targets.numel())
+            # The Stage-1 batch generator ALREADY performs the causal
+            # shift: input_ids = A[:, :-1] and targets = A[:, 1:], both
+            # of shape [B, T]. Do NOT re-shift here. See
+            # stage1_next_token_loss() for the exact contract.
+            targets = mask.to(device, non_blocking=True)
+            loss, vt = stage1_next_token_loss(model, input_ids, targets)
         else:
             resp_mask = mask.to(device, non_blocking=True)
             loss, vt = conversational_loss(model, input_ids=input_ids,
