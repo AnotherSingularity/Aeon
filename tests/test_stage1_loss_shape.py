@@ -313,6 +313,8 @@ assert threw, "shape guard did not trip on B,T-1,V logits vs B,T targets"
 
 print(json.dumps({
     "ok": True,
+    "B": int(B),
+    "T": int(T),
     "vt": int(vt),
     "loss": float(loss.item()),
     "aeon_file": aeon.__file__,
@@ -369,5 +371,7 @@ def test_clean_room_stage1_loss_step_via_bundle():
             except Exception:
                 continue
         assert payload and payload.get("ok"), payload
-        assert payload["vt"] == 2 * 128, payload
+        assert payload["B"] == 4, payload
+        assert payload["T"] == 512, payload
+        assert payload["vt"] == payload["B"] * payload["T"] == 2048, payload
         assert "AeonV0.02" not in payload.get("aeon_file", ""), payload
