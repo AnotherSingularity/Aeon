@@ -207,25 +207,50 @@ def test_stage1_loss_rejects_wrong_target_rank():
 # 4. Regression: the old buggy pattern must be gone
 # ---------------------------------------------------------------------------
 def test_double_shift_pattern_absent_from_stage1_branch():
-    """The whole file must not contain the buggy patterns anywhere
-    inside a stage1 branch, and the LOSS branch (the one that
-    follows `optimizer.zero_grad`) must delegate to
-    stage1_next_token_loss.
+    """The whole file must not contain the buggy patterns anywhere,
+    and the LOSS branch that follows optimizer.zero_grad must
+    delegate to stage1_next_token_loss.
+
+    Uses plain string / line search to avoid pathological regex
+    backtracking on multi-line captures.
     """
     src = (ROOT / "scripts/colab/train_stage.py").read_text(encoding="utf-8")
     assert "out.logits[:, :-1, :]" not in src, (
         "buggy double-shift pattern still present anywhere in train_stage.py")
-    assert re.search(r'^\s*tgt\s*=\s*targets\[:,\s*1:\]', src, re.MULTILINE) is None, (
-        "unused `tgt = targets[:, 1:]` line still present")
-    # Locate the LOSS block (the one right after optimizer.zero_grad).
-    m = re.search(
-        r'optimizer\.zero_grad\(set_to_none=True\)\s*\n\s*'
-        r'if args\.stage == "stage1":\n(?P<body>(?:[ \t]+.*\n)+?)'
-        r'\s*else:\n',
-        src, re.DOTALL)
-    assert m, "could not find the stage1 LOSS branch (after optimizer.zero_grad)"
-    body = m.group("body")
-    assert "stage1_next_token_loss(model, input_ids, targets)" in body, (
+    # Simple line-based search for the old unused tgt line
+    for line in src.splitlines():
+        assert not re.match(r'^\s*tgt\s*=\s*targets\[:,\s*1:\]', line), (
+            f"unused `tgt = ...` line still present: {line!r}")
+
+    # Locate the LOSS branch by finding optimizer.zero_grad and
+    # walking forward to the matching if-branch body — line by line,
+    # no multi-line regex.
+    lines = src.splitlines()
+    zero_grad_ix = [i for i, ln in enumerate(lines)
+                    if "optimizer.zero_grad(set_to_none=True)" in ln]
+    assert zero_grad_ix, "no optimizer.zero_grad(set_to_none=True) call found"
+    loss_branch_body = None
+    for i in zero_grad_ix:
+        # Look for `if args.stage == "stage1":` within a few lines
+        for j in range(i + 1, min(i + 5, len(lines))):
+            if 'if args.stage == "stage1":' in lines[j]:
+                # Collect body lines until we hit a matching-indent else/return
+                base_indent = len(lines[j]) - len(lines[j].lstrip())
+                body_lines = []
+                for k in range(j + 1, len(lines)):
+                    if lines[k].strip() == "":
+                        body_lines.append(lines[k]); continue
+                    ind = len(lines[k]) - len(lines[k].lstrip())
+                    if ind <= base_indent:
+                        break
+                    body_lines.append(lines[k])
+                loss_branch_body = "\n".join(body_lines)
+                break
+        if loss_branch_body is not None:
+            break
+    assert loss_branch_body is not None, (
+        "could not find `if args.stage == \"stage1\":` after optimizer.zero_grad")
+    assert "stage1_next_token_loss(model, input_ids, targets)" in loss_branch_body, (
         "stage1 LOSS branch must delegate to stage1_next_token_loss")
 
 
